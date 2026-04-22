@@ -153,7 +153,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const buffer = await Packer.toBuffer(doc)
     const filename = `${proposal.title.replace(/[^a-z0-9]/gi, '_')}_v${proposal.version}.docx`
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'Content-Disposition': `attachment; filename="${filename}"`,
