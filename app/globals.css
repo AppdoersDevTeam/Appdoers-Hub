@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    --font-sans: 'Inter', system-ui, sans-serif;
+  }
+
+  /* Team app — dark theme (default) */
+  .theme-team {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --elevated: #1c2537;
+    --border: #1f2d45;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+  }
+
+  /* Client portal — light theme */
+  .theme-portal {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --elevated: #f1f5f9;
+    --border: #e2e8f0;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scrollbar styling for dark theme */
+  .theme-team ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .theme-team ::-webkit-scrollbar-track {
+    background: var(--surface);
+  }
+
+  .theme-team ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  .theme-team ::-webkit-scrollbar-thumb:hover {
+    background: #2d4060;
+  }
+}
+
+@layer components {
+  .hub-input {
+    @apply w-full rounded-md border border-[#1F2D45] bg-[#1C2537] px-3 py-2 text-sm text-[#F1F5F9] placeholder:text-[#94A3B8] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6] transition-colors;
+  }
+
+  .portal-input {
+    @apply w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors;
+  }
+
+  .hub-card {
+    @apply rounded-lg border border-[#1F2D45] bg-[#111827] p-6;
+  }
+
+  .portal-card {
+    @apply rounded-lg border border-slate-200 bg-white p-6 shadow-sm;
+  }
+}
