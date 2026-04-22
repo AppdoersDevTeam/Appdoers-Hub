@@ -7,18 +7,11 @@ import { updateSettingAction } from '@/lib/actions/settings'
 import {
   SLACK_CHANNEL_LABELS,
   SLACK_CHANNEL_DESCRIPTIONS,
+  ALL_SLACK_CHANNELS,
   type SlackChannel,
-} from '@/lib/slack'
+} from '@/lib/slack-channels'
 
-const ALL_CHANNELS: SlackChannel[] = [
-  'general',
-  'billing',
-  'tasks',
-  'projects',
-  'clients',
-  'leads',
-  'proposals',
-]
+const ALL_CHANNELS = ALL_SLACK_CHANNELS
 
 const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
 const sectionTitle = 'text-sm font-semibold text-[#F1F5F9] mb-4'

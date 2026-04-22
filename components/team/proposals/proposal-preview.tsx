@@ -16,8 +16,8 @@ interface Section {
 
 interface Client {
   company_name: string
-  contact_name: string | null
-  contact_email: string | null
+  contact_name?: string | null
+  contact_email?: string | null
 }
 
 export function ProposalPreview({
