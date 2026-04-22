@@ -59,6 +59,13 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
     .eq('client_id', id)
     .order('is_primary', { ascending: false })
 
+  const { data: catalogPlans } = await supabase
+    .from('service_catalog')
+    .select('plan_key, name, monthly_fee')
+    .eq('type', 'plan')
+    .eq('is_active', true)
+    .order('sort_order')
+
   // Fetch notes only when on notes tab
   const { data: clientNotes } = tab === 'notes'
     ? await supabase
@@ -92,6 +99,24 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
     ? await supabase
         .from('client_domains')
         .select('id, domain_name, registrar, expiry_date, auto_renew, hosting_provider, vercel_project_name, ssl_status, tech_stack, dns_notes')
+        .eq('client_id', id)
+        .order('created_at', { ascending: false })
+    : { data: null }
+
+  // Fetch projects only when on projects tab
+  const { data: clientProjects } = tab === 'projects'
+    ? await supabase
+        .from('projects')
+        .select('id, name, type, current_phase, client_status, status, start_date, target_launch_date, estimated_hours, logged_hours')
+        .eq('client_id', id)
+        .order('created_at', { ascending: false })
+    : { data: null }
+
+  // Fetch proposals only when on proposals tab
+  const { data: clientProposals } = tab === 'proposals'
+    ? await supabase
+        .from('proposals')
+        .select('id, title, version, status, created_at, sent_at, total_setup, total_monthly')
         .eq('client_id', id)
         .order('created_at', { ascending: false })
     : { data: null }
@@ -217,24 +242,101 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
             </div>
 
             {/* Edit Form */}
-            <ClientEditForm client={client} />
+            <ClientEditForm
+              client={client}
+              plans={(catalogPlans ?? []).map(p => ({
+                value: p.plan_key ?? p.name.toLowerCase().replace(/\s+/g, '_'),
+                label: p.name,
+                fee: Number(p.monthly_fee),
+              }))}
+            />
           </div>
         </div>
       )}
 
       {tab === 'projects' && (
-        <EmptyState
-          icon={FolderOpen}
-          title="No projects yet"
-          description="Projects will appear here once created."
-        />
+        clientProjects && clientProjects.length > 0 ? (
+          <div className="hub-card overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#1F2D45]">
+                    {['Project', 'Type', 'Phase', 'Client Status', 'Launch Date', 'Hours', 'Status'].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1F2D45]">
+                  {clientProjects.map((p) => {
+                    const phaseLabels: Record<string, string> = { discovery: 'Discovery', design: 'Design', development: 'Development', review_qa: 'Review & QA', launch: 'Launch', maintenance: 'Maintenance' }
+                    const clientStatusCls: Record<string, string> = { new: 'bg-[#94A3B8]/10 text-[#94A3B8]', in_progress: 'bg-[#3B82F6]/10 text-[#3B82F6]', awaiting_appdoers: 'bg-[#F59E0B]/10 text-[#F59E0B]', awaiting_client: 'bg-[#F97316]/10 text-[#F97316]', completed: 'bg-[#10B981]/10 text-[#10B981]', on_hold: 'bg-[#EF4444]/10 text-[#EF4444]' }
+                    const statusCls: Record<string, string> = { active: 'bg-[#10B981]/10 text-[#10B981]', on_hold: 'bg-[#F59E0B]/10 text-[#F59E0B]', completed: 'bg-[#94A3B8]/10 text-[#94A3B8]', cancelled: 'bg-[#EF4444]/10 text-[#EF4444]' }
+                    const hours = p.estimated_hours ? `${Number(p.logged_hours ?? 0).toFixed(1)} / ${p.estimated_hours}h` : `${Number(p.logged_hours ?? 0).toFixed(1)}h`
+                    return (
+                      <tr key={p.id} className="hover:bg-[#1C2537] transition-colors">
+                        <td className="px-4 py-3 font-medium text-[#F1F5F9]">
+                          <Link href={`/app/projects/${p.id}`} className="hover:text-[#3B82F6] transition-colors">{p.name}</Link>
+                        </td>
+                        <td className="px-4 py-3 capitalize text-[#CBD5E1]">{p.type}</td>
+                        <td className="px-4 py-3 text-[#CBD5E1]">{phaseLabels[p.current_phase] ?? p.current_phase}</td>
+                        <td className="px-4 py-3">
+                          <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', clientStatusCls[p.client_status] ?? 'bg-[#94A3B8]/10 text-[#94A3B8]')}>{p.client_status?.replace(/_/g, ' ')}</span>
+                        </td>
+                        <td className="px-4 py-3 text-[#CBD5E1]">{p.target_launch_date ? formatDate(p.target_launch_date) : '—'}</td>
+                        <td className="px-4 py-3 text-[#CBD5E1]">{hours}</td>
+                        <td className="px-4 py-3">
+                          <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', statusCls[p.status] ?? 'bg-[#94A3B8]/10 text-[#94A3B8]')}>{p.status?.replace(/_/g, ' ')}</span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <EmptyState icon={FolderOpen} title="No projects yet" description="Projects will appear here once created." />
+        )
       )}
       {tab === 'proposals' && (
-        <EmptyState
-          icon={FileText}
-          title="No proposals yet"
-          description="Proposals will appear here once created."
-        />
+        clientProposals && clientProposals.length > 0 ? (
+          <div className="hub-card overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#1F2D45]">
+                    {['Title', 'Version', 'Status', 'Setup', 'Monthly', 'Created', 'Sent'].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1F2D45]">
+                  {clientProposals.map((p) => {
+                    const statusCls: Record<string, { label: string; cls: string }> = { draft: { label: 'Draft', cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' }, sent: { label: 'Sent', cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' }, approved: { label: 'Approved', cls: 'bg-[#10B981]/10 text-[#10B981]' }, declined: { label: 'Declined', cls: 'bg-[#EF4444]/10 text-[#EF4444]' }, expired: { label: 'Expired', cls: 'bg-[#F59E0B]/10 text-[#F59E0B]' } }
+                    const st = statusCls[p.status] ?? statusCls.draft
+                    return (
+                      <tr key={p.id} className="hover:bg-[#1C2537] transition-colors">
+                        <td className="px-4 py-3 font-medium text-[#F1F5F9]">
+                          <Link href={`/app/proposals/${p.id}`} className="hover:text-[#3B82F6] transition-colors">{p.title}</Link>
+                        </td>
+                        <td className="px-4 py-3 text-[#CBD5E1]">v{p.version}</td>
+                        <td className="px-4 py-3">
+                          <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>{st.label}</span>
+                        </td>
+                        <td className="px-4 py-3 text-[#CBD5E1]">{p.total_setup ? formatCurrency(Number(p.total_setup)) : '—'}</td>
+                        <td className="px-4 py-3 text-[#CBD5E1]">{p.total_monthly ? `${formatCurrency(Number(p.total_monthly))}/mo` : '—'}</td>
+                        <td className="px-4 py-3 text-[#475569]">{formatDate(p.created_at)}</td>
+                        <td className="px-4 py-3 text-[#475569]">{p.sent_at ? formatDate(p.sent_at) : '—'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <EmptyState icon={FileText} title="No proposals yet" description="Proposals will appear here once created." />
+        )
       )}
       {tab === 'contracts' && (
         <EmptyState

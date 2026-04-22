@@ -47,6 +47,7 @@ export interface CreateProjectInput {
   target_launch_date?: string
   estimated_hours?: number
   description?: string
+  live_url?: string
 }
 
 export async function createProjectAction(

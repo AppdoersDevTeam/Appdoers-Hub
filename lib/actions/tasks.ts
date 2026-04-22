@@ -25,6 +25,7 @@ export interface CreateTaskInput {
   priority: TaskPriority
   assigned_to?: string
   due_date?: string
+  live_url?: string
 }
 
 export async function createTaskAction(

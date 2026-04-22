@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NewTaskSlideOver } from './new-task-slide-over'
 import { updateTaskStatusAction, deleteTaskAction } from '@/lib/actions/tasks'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { formatDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import type { TeamUser } from '@/lib/types/database'
@@ -69,7 +70,7 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('open')
   const [showNew, setShowNew] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<TaskRow | null>(null)
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -89,15 +90,12 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
     })
   }
 
-  const handleDelete = (task: TaskRow) => {
-    if (confirmDelete === task.id) {
-      startTransition(async () => {
-        await deleteTaskAction(task.id, task.project_id)
-        setConfirmDelete(null)
-      })
-    } else {
-      setConfirmDelete(task.id)
-    }
+  const handleDelete = () => {
+    if (!deleteTarget) return
+    startTransition(async () => {
+      await deleteTaskAction(deleteTarget.id, deleteTarget.project_id)
+      setDeleteTarget(null)
+    })
   }
 
   const selectClass = 'rounded-md border border-[#1F2D45] bg-[#111827] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
@@ -192,15 +190,10 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
                             </button>
                           )}
                           <button
-                            onClick={() => handleDelete(t)}
+                            onClick={() => setDeleteTarget(t)}
                             disabled={isPending}
-                            className={cn(
-                              'rounded p-1 transition-colors',
-                              confirmDelete === t.id
-                                ? 'bg-[#EF4444]/20 text-[#EF4444]'
-                                : 'text-[#475569] hover:text-[#EF4444]'
-                            )}
-                            title={confirmDelete === t.id ? 'Click again to confirm delete' : 'Delete task'}
+                            className="rounded p-1 text-[#475569] hover:text-[#EF4444] transition-colors"
+                            title="Delete task"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -221,6 +214,16 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
         projects={projects}
         teamMembers={teamMembers}
         defaultProjectId={defaultProjectId}
+      />
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete Task"
+        message={`Are you sure you want to delete "${deleteTarget?.title}"? This cannot be undone.`}
+        confirmLabel="Delete Task"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+        isPending={isPending}
       />
     </>
   )

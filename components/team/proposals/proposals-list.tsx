@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { SlideOver } from '@/components/ui/slide-over'
 import { Input } from '@/components/ui/input'
 import { createProposalAction, deleteProposalAction } from '@/lib/actions/proposals'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { formatDate, formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 
@@ -42,7 +43,16 @@ export function ProposalsList({
   const [showNew, setShowNew] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({ client_id: '', template_id: '', title: '' })
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ProposalRow | null>(null)
+
+  const handleDelete = () => {
+    if (!deleteTarget) return
+    startTransition(async () => {
+      await deleteProposalAction(deleteTarget.id)
+      setDeleteTarget(null)
+      router.refresh()
+    })
+  }
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
@@ -101,25 +111,10 @@ export function ProposalsList({
                       <td className="px-4 py-3 text-[#475569]">{p.sent_at ? formatDate(p.sent_at) : '—'}</td>
                       <td className="px-4 py-3">
                         <button
-                          onClick={() => {
-                            if (confirmDelete === p.id) {
-                              startTransition(async () => {
-                                await deleteProposalAction(p.id)
-                                setConfirmDelete(null)
-                                router.refresh()
-                              })
-                            } else {
-                              setConfirmDelete(p.id)
-                            }
-                          }}
+                          onClick={() => setDeleteTarget(p)}
                           disabled={isPending}
-                          className={cn(
-                            'rounded p-1 transition-colors',
-                            confirmDelete === p.id
-                              ? 'bg-[#EF4444]/20 text-[#EF4444]'
-                              : 'text-[#475569] hover:text-[#EF4444]'
-                          )}
-                          title={confirmDelete === p.id ? 'Click again to confirm delete' : 'Delete proposal'}
+                          className="rounded p-1 text-[#475569] hover:text-[#EF4444] transition-colors"
+                          title="Delete proposal"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -132,6 +127,16 @@ export function ProposalsList({
           </table>
         </div>
       </div>
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete Proposal"
+        message={`Are you sure you want to delete "${deleteTarget?.title}"? This cannot be undone.`}
+        confirmLabel="Delete Proposal"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+        isPending={isPending}
+      />
 
       <SlideOver open={showNew} onClose={() => setShowNew(false)} title="New Proposal" subtitle="Select a client and template to begin">
         <form onSubmit={handleCreate} className="space-y-5 px-6 py-5">

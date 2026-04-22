@@ -48,6 +48,7 @@ export function NewTaskSlideOver({ open, onClose, projects, teamMembers, default
     priority: 'p2' as TaskPriority,
     assigned_to: '',
     due_date: '',
+    live_url: '',
   })
 
   const set = (field: string, value: string) =>
@@ -68,9 +69,10 @@ export function NewTaskSlideOver({ open, onClose, projects, teamMembers, default
         priority: form.priority,
         assigned_to: form.assigned_to || undefined,
         due_date: form.due_date || undefined,
+        live_url: form.live_url || undefined,
       })
       if (!result.success) { setError(result.error); return }
-      setForm((f) => ({ ...f, title: '', description: '', due_date: '', assigned_to: '' }))
+      setForm((f) => ({ ...f, title: '', description: '', due_date: '', assigned_to: '', live_url: '' }))
       onClose()
       router.refresh()
     })
@@ -133,6 +135,11 @@ export function NewTaskSlideOver({ open, onClose, projects, teamMembers, default
             <label className={labelClass}>Due Date</label>
             <Input type="date" value={form.due_date} onChange={(e) => set('due_date', e.target.value)} />
           </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>Live URL</label>
+          <Input type="url" value={form.live_url} onChange={(e) => set('live_url', e.target.value)} placeholder="https://example.com" />
         </div>
 
         <div className="flex gap-3 pt-2">

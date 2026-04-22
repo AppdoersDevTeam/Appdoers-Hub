@@ -36,6 +36,7 @@ export function NewProjectSlideOver({ open, onClose, clients, defaultClientId }:
     target_launch_date: '',
     estimated_hours: '',
     description: '',
+    live_url: '',
   })
 
   const set = (field: string, value: string) =>
@@ -56,6 +57,7 @@ export function NewProjectSlideOver({ open, onClose, clients, defaultClientId }:
         target_launch_date: form.target_launch_date || undefined,
         estimated_hours: parseFloat(form.estimated_hours) || undefined,
         description: form.description || undefined,
+        live_url: form.live_url || undefined,
       })
       if (!result.success) { setError(result.error); return }
       onClose()
@@ -130,6 +132,16 @@ export function NewProjectSlideOver({ open, onClose, clients, defaultClientId }:
             value={form.estimated_hours}
             onChange={(e) => set('estimated_hours', e.target.value)}
             placeholder="e.g. 40"
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Live URL</label>
+          <Input
+            type="url"
+            value={form.live_url}
+            onChange={(e) => set('live_url', e.target.value)}
+            placeholder="https://example.com"
           />
         </div>
 

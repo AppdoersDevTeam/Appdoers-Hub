@@ -19,7 +19,7 @@ export interface CreateClientInput {
   industry?: string
   website?: string
   location?: string
-  subscription_plan: SubscriptionPlan
+  subscription_plan: string
   monthly_fee: number
   setup_fee: number
   payment_terms: number

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NewProjectSlideOver } from './new-project-slide-over'
 import { deleteProjectAction } from '@/lib/actions/projects'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { formatDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 
@@ -63,7 +64,7 @@ export function ProjectsTable({ projects, clients }: Props) {
   const [phaseFilter, setPhaseFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [showNew, setShowNew] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ProjectRow | null>(null)
 
   const filtered = projects.filter((p) => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -141,25 +142,10 @@ export function ProjectsTable({ projects, clients }: Props) {
                       </td>
                       <td className="px-4 py-3">
                         <button
-                          onClick={() => {
-                            if (confirmDelete === p.id) {
-                              startTransition(async () => {
-                                await deleteProjectAction(p.id, p.client_id)
-                                setConfirmDelete(null)
-                                router.refresh()
-                              })
-                            } else {
-                              setConfirmDelete(p.id)
-                            }
-                          }}
+                          onClick={() => setDeleteTarget(p)}
                           disabled={isPending}
-                          className={cn(
-                            'rounded p-1 transition-colors',
-                            confirmDelete === p.id
-                              ? 'bg-[#EF4444]/20 text-[#EF4444]'
-                              : 'text-[#475569] hover:text-[#EF4444]'
-                          )}
-                          title={confirmDelete === p.id ? 'Click again to confirm delete' : 'Delete project'}
+                          className="rounded p-1 text-[#475569] hover:text-[#EF4444] transition-colors"
+                          title="Delete project"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -174,6 +160,23 @@ export function ProjectsTable({ projects, clients }: Props) {
       </div>
 
       <NewProjectSlideOver open={showNew} onClose={() => setShowNew(false)} clients={clients} />
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete Project"
+        message={`Are you sure you want to delete "${deleteTarget?.name}"? All tasks and phases will also be deleted. This cannot be undone.`}
+        confirmLabel="Delete Project"
+        onConfirm={() => {
+          if (!deleteTarget) return
+          startTransition(async () => {
+            await deleteProjectAction(deleteTarget.id, deleteTarget.client_id)
+            setDeleteTarget(null)
+            router.refresh()
+          })
+        }}
+        onCancel={() => setDeleteTarget(null)}
+        isPending={isPending}
+      />
     </>
   )
 }

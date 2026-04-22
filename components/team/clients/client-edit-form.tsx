@@ -4,9 +4,13 @@ import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { updateClientAction } from '@/lib/actions/clients'
-import type { SubscriptionPlan } from '@/lib/types/database'
+interface PlanOption {
+  value: string
+  label: string
+  fee: number
+}
 
-const PLANS: { value: SubscriptionPlan; label: string; fee: number }[] = [
+const FALLBACK_PLANS: PlanOption[] = [
   { value: 'launch', label: 'Launch', fee: 49 },
   { value: 'growth', label: 'Growth', fee: 79 },
   { value: 'growth_annual', label: 'Growth Annual', fee: 66 },
@@ -33,7 +37,8 @@ const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
 const selectClass =
   'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]'
 
-export function ClientEditForm({ client }: { client: ClientRecord }) {
+export function ClientEditForm({ client, plans }: { client: ClientRecord; plans?: PlanOption[] }) {
+  const PLANS = plans && plans.length > 0 ? plans : FALLBACK_PLANS
   const [isPending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +49,7 @@ export function ClientEditForm({ client }: { client: ClientRecord }) {
     industry: client.industry ?? '',
     website: client.website ?? '',
     location: client.location ?? '',
-    subscription_plan: client.subscription_plan as SubscriptionPlan,
+    subscription_plan: client.subscription_plan,
     monthly_fee: client.monthly_fee,
     setup_fee: client.setup_fee,
     payment_terms: client.payment_terms,
@@ -114,7 +119,7 @@ export function ClientEditForm({ client }: { client: ClientRecord }) {
             className={selectClass}
             value={form.subscription_plan}
             onChange={(e) => {
-              const plan = e.target.value as SubscriptionPlan
+              const plan = e.target.value
               const found = PLANS.find((p) => p.value === plan)
               setForm((prev) => ({
                 ...prev,
