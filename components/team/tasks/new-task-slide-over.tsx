@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { SlideOver } from '@/components/ui/slide-over'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,6 +36,7 @@ const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
 const selectClass = 'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]'
 
 export function NewTaskSlideOver({ open, onClose, projects, teamMembers, defaultProjectId }: Props) {
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -70,6 +72,7 @@ export function NewTaskSlideOver({ open, onClose, projects, teamMembers, default
       if (!result.success) { setError(result.error); return }
       setForm((f) => ({ ...f, title: '', description: '', due_date: '', assigned_to: '' }))
       onClose()
+      router.refresh()
     })
   }
 
