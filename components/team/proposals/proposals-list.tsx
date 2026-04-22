@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SlideOver } from '@/components/ui/slide-over'
@@ -36,6 +37,7 @@ export function ProposalsList({
   clients: { id: string; company_name: string }[]
   templates: { id: string; name: string; plan_key: string }[]
 }) {
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [showNew, setShowNew] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -49,7 +51,12 @@ export function ProposalsList({
       return
     }
     startTransition(async () => {
-      await createProposalAction(form.client_id, form.template_id, form.title)
+      const result = await createProposalAction(form.client_id, form.template_id, form.title)
+      if (!result.success) {
+        setError(result.error)
+        return
+      }
+      router.push(`/app/proposals/${result.data.id}`)
     })
   }
 

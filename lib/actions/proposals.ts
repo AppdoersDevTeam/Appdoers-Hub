@@ -34,50 +34,54 @@ export async function createProposalAction(
   templateId: string,
   title: string,
   projectId?: string
-): Promise<void> {
-  const supabase = await createSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const supabase = await createSupabaseClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  // Load template sections
-  const { data: template } = await supabase
-    .from('proposal_templates')
-    .select('sections, name')
-    .eq('id', templateId)
-    .single()
+    // Load template sections
+    const { data: template } = await supabase
+      .from('proposal_templates')
+      .select('sections, name')
+      .eq('id', templateId)
+      .single()
 
-  if (!template) throw new Error('Template not found')
+    if (!template) return { success: false, error: 'Template not found' }
 
-  const { data: proposal, error } = await supabase
-    .from('proposals')
-    .insert({
-      client_id: clientId,
-      template_id: templateId,
-      project_id: projectId ?? null,
-      title,
-      version: 1,
-      status: 'draft',
-      sections: template.sections,
-      total_setup: 0,
-      total_monthly: 0,
-      created_by: user?.id,
+    const { data: proposal, error } = await supabase
+      .from('proposals')
+      .insert({
+        client_id: clientId,
+        template_id: templateId,
+        project_id: projectId ?? null,
+        title,
+        version: 1,
+        status: 'draft',
+        sections: template.sections,
+        total_setup: 0,
+        total_monthly: 0,
+        created_by: user?.id,
+      })
+      .select('id')
+      .single()
+
+    if (error || !proposal) return { success: false, error: error?.message ?? 'Failed to create' }
+
+    await logActivity({
+      entityType: 'proposal',
+      entityId: proposal.id,
+      clientId,
+      action: 'created',
+      description: `Proposal "${title}" created from ${template.name}`,
     })
-    .select('id')
-    .single()
 
-  if (error || !proposal) throw new Error(error?.message ?? 'Failed to create')
-
-  await logActivity({
-    entityType: 'proposal',
-    entityId: proposal.id,
-    clientId,
-    action: 'created',
-    description: `Proposal "${title}" created from ${template.name}`,
-  })
-
-  revalidatePath('/app/proposals')
-  redirect(`/app/proposals/${proposal.id}`)
+    revalidatePath('/app/proposals')
+    return { success: true, data: { id: proposal.id } }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
 }
 
 // ─── Save Draft ───────────────────────────────────────────────────────────────
