@@ -57,10 +57,10 @@ function ExpiryBadge({ dateStr }: { dateStr: string }) {
 
 function SslIcon({ status }: { status: string | null }) {
   switch (status) {
-    case 'active': return <ShieldCheck className="h-3.5 w-3.5 text-[#10B981]" title="SSL Active" />
-    case 'expiring_soon': return <ShieldAlert className="h-3.5 w-3.5 text-[#F59E0B]" title="SSL Expiring Soon" />
-    case 'expired': return <ShieldOff className="h-3.5 w-3.5 text-[#EF4444]" title="SSL Expired" />
-    default: return <Shield className="h-3.5 w-3.5 text-[#475569]" title="SSL Unknown" />
+    case 'active': return <span title="SSL Active"><ShieldCheck className="h-3.5 w-3.5 text-[#10B981]" /></span>
+    case 'expiring_soon': return <span title="SSL Expiring Soon"><ShieldAlert className="h-3.5 w-3.5 text-[#F59E0B]" /></span>
+    case 'expired': return <span title="SSL Expired"><ShieldOff className="h-3.5 w-3.5 text-[#EF4444]" /></span>
+    default: return <span title="SSL Unknown"><Shield className="h-3.5 w-3.5 text-[#475569]" /></span>
   }
 }
 

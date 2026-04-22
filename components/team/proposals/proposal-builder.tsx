@@ -20,6 +20,7 @@ interface Section {
 }
 
 export interface PricingItem {
+  id: string
   service_id: string | null
   name: string
   description: string

@@ -158,7 +158,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     )
 
     const filename = `${proposal.title.replace(/[^a-z0-9]/gi, '_')}_v${proposal.version}.pdf`
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,

@@ -51,6 +51,7 @@ export function PricingTableEditor({
     const svc = services.find((s) => s.id === selectedServiceId)
     if (!svc) return
     const newItem: PricingItem = {
+      id: crypto.randomUUID(),
       service_id: svc.id,
       name: svc.name,
       description: '',
@@ -65,6 +66,7 @@ export function PricingTableEditor({
   const addCustomItem = () => {
     if (!customItem.name.trim()) return
     const newItem: PricingItem = {
+      id: crypto.randomUUID(),
       service_id: null,
       name: customItem.name,
       description: customItem.description,

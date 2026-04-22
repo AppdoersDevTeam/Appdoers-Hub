@@ -218,7 +218,7 @@ export default async function DashboardPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-[#F1F5F9]">{sub.name as string}</span>
-                      {sub.plan_name && <span className="rounded px-1.5 py-0.5 text-xs bg-[#1F2D45] text-[#94A3B8]">{sub.plan_name as string}</span>}
+                      {!!sub.plan_name && <span className="rounded px-1.5 py-0.5 text-xs bg-[#1F2D45] text-[#94A3B8]">{sub.plan_name as string}</span>}
                     </div>
                     <p className={`text-xs mt-0.5 ${isUrgent ? 'text-[#EF4444] font-semibold' : isWarning ? 'text-[#F59E0B] font-medium' : 'text-[#475569]'}`}>
                       {isUrgent ? '🔴' : isWarning ? '🟡' : '🟠'} Renews in {days} day{days !== 1 ? 's' : ''} · {new Date(sub.renewal_date as string).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })}
