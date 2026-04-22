@@ -12,7 +12,7 @@ export default async function TasksPage() {
         .select(`
           id, title, type, priority, status, project_id,
           due_date, updated_at,
-          team_users(full_name),
+          team_users!assigned_to(full_name),
           projects(name, clients(company_name))
         `)
         .order('updated_at', { ascending: false }),

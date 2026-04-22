@@ -9,7 +9,7 @@ export default async function ProjectsPage() {
     supabase
       .from('projects')
       .select(`
-        id, name, type, current_phase, client_status, status,
+        id, client_id, name, type, current_phase, client_status, status,
         start_date, target_launch_date, estimated_hours,
         clients(company_name),
         time_entries(hours)
@@ -38,6 +38,7 @@ export default async function ProjectsPage() {
       target_launch_date: p.target_launch_date,
       estimated_hours: p.estimated_hours ? Number(p.estimated_hours) : null,
       logged_hours: loggedHours,
+      client_id: p.client_id,
       client_name:
         (p.clients as { company_name?: string } | null)?.company_name ?? '—',
     }

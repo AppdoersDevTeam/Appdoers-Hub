@@ -3,11 +3,11 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SlideOver } from '@/components/ui/slide-over'
 import { Input } from '@/components/ui/input'
-import { createProposalAction } from '@/lib/actions/proposals'
+import { createProposalAction, deleteProposalAction } from '@/lib/actions/proposals'
 import { formatDate, formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 
@@ -42,6 +42,7 @@ export function ProposalsList({
   const [showNew, setShowNew] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({ client_id: '', template_id: '', title: '' })
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,14 +74,14 @@ export function ProposalsList({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#1F2D45]">
-                {['Title', 'Client', 'Version', 'Status', 'Setup', 'Monthly', 'Created', 'Sent'].map((h) => (
+                {['Title', 'Client', 'Version', 'Status', 'Setup', 'Monthly', 'Created', 'Sent', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1F2D45]">
               {proposals.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-10 text-center text-[#475569]">No proposals yet. Create your first proposal.</td></tr>
+                <tr><td colSpan={9} className="px-4 py-10 text-center text-[#475569]">No proposals yet. Create your first proposal.</td></tr>
               ) : (
                 proposals.map((p) => {
                   const st = statusConfig[p.status] ?? statusConfig.draft
@@ -98,6 +99,31 @@ export function ProposalsList({
                       <td className="px-4 py-3 text-[#CBD5E1]">{p.total_monthly ? `${formatCurrency(Number(p.total_monthly))}/mo` : '—'}</td>
                       <td className="px-4 py-3 text-[#475569]">{formatDate(p.created_at)}</td>
                       <td className="px-4 py-3 text-[#475569]">{p.sent_at ? formatDate(p.sent_at) : '—'}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => {
+                            if (confirmDelete === p.id) {
+                              startTransition(async () => {
+                                await deleteProposalAction(p.id)
+                                setConfirmDelete(null)
+                                router.refresh()
+                              })
+                            } else {
+                              setConfirmDelete(p.id)
+                            }
+                          }}
+                          disabled={isPending}
+                          className={cn(
+                            'rounded p-1 transition-colors',
+                            confirmDelete === p.id
+                              ? 'bg-[#EF4444]/20 text-[#EF4444]'
+                              : 'text-[#475569] hover:text-[#EF4444]'
+                          )}
+                          title={confirmDelete === p.id ? 'Click again to confirm delete' : 'Delete proposal'}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
                     </tr>
                   )
                 })

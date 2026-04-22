@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { sendSlackMessage } from '@/lib/slack'
+import { sendToChannel } from '@/lib/slack'
 import type { ProposalStatus } from '@/lib/types/database'
 
 type ActionResult<T = undefined> =
@@ -84,6 +84,20 @@ export async function createProposalAction(
   }
 }
 
+// ─── Delete Proposal ─────────────────────────────────────────────────────────
+
+export async function deleteProposalAction(id: string): Promise<ActionResult<undefined>> {
+  try {
+    const supabase = await createSupabaseClient()
+    const { error } = await supabase.from('proposals').delete().eq('id', id)
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/app/proposals')
+    return { success: true, data: undefined }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
+
 // ─── Save Draft ───────────────────────────────────────────────────────────────
 
 export async function saveProposalDraftAction(
@@ -141,7 +155,7 @@ export async function sendProposalAction(id: string): Promise<ActionResult<undef
       description: `Proposal "${title}" sent to ${clientName}`,
     })
 
-    await sendSlackMessage(`📄 Proposal Sent: ${title}`, [
+    await sendToChannel('proposals', `📄 Proposal Sent: ${title}`, [
       {
         type: 'section',
         text: {

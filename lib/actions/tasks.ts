@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { sendSlackMessage } from '@/lib/slack'
+import { sendToChannel } from '@/lib/slack'
 import type { TaskStatus, TaskType, TaskPriority } from '@/lib/types/database'
 
 type ActionResult<T = undefined> =
@@ -75,7 +75,7 @@ export async function createTaskAction(
       description: `Task "${task.title}" created in ${projectName}`,
     })
 
-    await sendSlackMessage(`🎫 New Task: ${task.title}`, [
+    await sendToChannel('tasks', `🎫 New Task: ${task.title}`, [
       {
         type: 'section',
         text: {
@@ -88,6 +88,22 @@ export async function createTaskAction(
     revalidatePath('/app/tasks')
     revalidatePath(`/app/projects/${input.project_id}`)
     return { success: true, data: { id: task.id } }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
+
+export async function deleteTaskAction(
+  id: string,
+  projectId: string
+): Promise<ActionResult<undefined>> {
+  try {
+    const supabase = await createSupabaseClient()
+    const { error } = await supabase.from('tasks').delete().eq('id', id)
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/app/tasks')
+    revalidatePath(`/app/projects/${projectId}`)
+    return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: String(err) }
   }

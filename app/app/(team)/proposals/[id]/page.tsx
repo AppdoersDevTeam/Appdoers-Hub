@@ -13,7 +13,7 @@ export default async function ProposalBuilderPage({ params }: Props) {
   const [{ data: proposal }, { data: services }] = await Promise.all([
     supabase
       .from('proposals')
-      .select('*, clients(id, company_name, contact_name, contact_email)')
+      .select('*, clients(id, company_name)')
       .eq('id', id)
       .single(),
     supabase
@@ -28,7 +28,7 @@ export default async function ProposalBuilderPage({ params }: Props) {
   return (
     <ProposalBuilder
       proposal={proposal}
-      client={proposal.clients as { id: string; company_name: string; contact_name: string | null; contact_email: string | null } | null}
+      client={proposal.clients as { id: string; company_name: string } | null}
       services={services ?? []}
     />
   )

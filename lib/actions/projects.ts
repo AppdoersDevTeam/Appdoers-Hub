@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { sendSlackMessage } from '@/lib/slack'
+import { sendToChannel } from '@/lib/slack'
 import type { ProjectPhase, ClientFacingStatus } from '@/lib/types/database'
 
 type ActionResult<T = undefined> =
@@ -94,6 +94,23 @@ export async function createProjectAction(
     revalidatePath('/app/projects')
     revalidatePath(`/app/clients/${input.client_id}`)
     return { success: true, data: { id: project.id } }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
+
+// ─── Delete Project ───────────────────────────────────────────────────────────
+
+export async function deleteProjectAction(id: string, clientId: string): Promise<ActionResult<undefined>> {
+  try {
+    const supabase = await createSupabaseClient()
+    await supabase.from('tasks').delete().eq('project_id', id)
+    await supabase.from('project_phases').delete().eq('project_id', id)
+    const { error } = await supabase.from('projects').delete().eq('id', id)
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/app/projects')
+    revalidatePath(`/app/clients/${clientId}`)
+    return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: String(err) }
   }
@@ -201,7 +218,7 @@ export async function advancePhaseAction(
       description: `Project "${projectName}" advanced to ${phaseLabel[nextPhase]}`,
     })
 
-    await sendSlackMessage(`📋 Phase Change: ${projectName}`, [
+    await sendToChannel('projects', `📋 Phase Change: ${projectName}`, [
       {
         type: 'section',
         text: {
@@ -253,7 +270,7 @@ export async function updateClientStatusAction(
       description: `"${projectName}" client status → ${clientStatusLabel[newStatus]}`,
     })
 
-    await sendSlackMessage(`🔄 Status: ${projectName}`, [
+    await sendToChannel('projects', `🔄 Status: ${projectName}`, [
       {
         type: 'section',
         text: {

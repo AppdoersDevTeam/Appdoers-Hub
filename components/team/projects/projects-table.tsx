@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { Plus, Search } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Plus, Search, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NewProjectSlideOver } from './new-project-slide-over'
+import { deleteProjectAction } from '@/lib/actions/projects'
 import { formatDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 
@@ -21,6 +23,7 @@ type ProjectRow = {
   estimated_hours: number | null
   logged_hours: number
   client_name: string
+  client_id: string
 }
 
 const phaseLabels: Record<string, string> = {
@@ -54,10 +57,13 @@ interface Props {
 }
 
 export function ProjectsTable({ projects, clients }: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const [search, setSearch] = useState('')
   const [phaseFilter, setPhaseFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [showNew, setShowNew] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const filtered = projects.filter((p) => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -98,7 +104,7 @@ export function ProjectsTable({ projects, clients }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#1F2D45]">
-                {['Project', 'Client', 'Type', 'Phase', 'Client Status', 'Launch Date', 'Hours', 'Status'].map((h) => (
+                {['Project', 'Client', 'Type', 'Phase', 'Client Status', 'Launch Date', 'Hours', 'Status', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">{h}</th>
                 ))}
               </tr>
@@ -106,7 +112,7 @@ export function ProjectsTable({ projects, clients }: Props) {
             <tbody className="divide-y divide-[#1F2D45]">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-[#475569]">
+                  <td colSpan={9} className="px-4 py-10 text-center text-[#475569]">
                     {projects.length === 0 ? 'No projects yet. Create your first project.' : 'No projects match your filters.'}
                   </td>
                 </tr>
@@ -132,6 +138,31 @@ export function ProjectsTable({ projects, clients }: Props) {
                       <td className="px-4 py-3 text-[#CBD5E1]">{hoursDisplay}</td>
                       <td className="px-4 py-3">
                         <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', ps.cls)}>{ps.label}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => {
+                            if (confirmDelete === p.id) {
+                              startTransition(async () => {
+                                await deleteProjectAction(p.id, p.client_id)
+                                setConfirmDelete(null)
+                                router.refresh()
+                              })
+                            } else {
+                              setConfirmDelete(p.id)
+                            }
+                          }}
+                          disabled={isPending}
+                          className={cn(
+                            'rounded p-1 transition-colors',
+                            confirmDelete === p.id
+                              ? 'bg-[#EF4444]/20 text-[#EF4444]'
+                              : 'text-[#475569] hover:text-[#EF4444]'
+                          )}
+                          title={confirmDelete === p.id ? 'Click again to confirm delete' : 'Delete project'}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </td>
                     </tr>
                   )

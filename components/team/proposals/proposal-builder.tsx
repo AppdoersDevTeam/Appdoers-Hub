@@ -52,8 +52,8 @@ interface Proposal {
 interface Client {
   id: string
   company_name: string
-  contact_name: string | null
-  contact_email: string | null
+  contact_name?: string | null
+  contact_email?: string | null
 }
 
 const statusConfig: Record<string, { label: string; cls: string }> = {

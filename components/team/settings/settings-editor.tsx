@@ -4,6 +4,21 @@ import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { updateSettingAction } from '@/lib/actions/settings'
+import {
+  SLACK_CHANNEL_LABELS,
+  SLACK_CHANNEL_DESCRIPTIONS,
+  type SlackChannel,
+} from '@/lib/slack'
+
+const ALL_CHANNELS: SlackChannel[] = [
+  'general',
+  'billing',
+  'tasks',
+  'projects',
+  'clients',
+  'leads',
+  'proposals',
+]
 
 const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
 const sectionTitle = 'text-sm font-semibold text-[#F1F5F9] mb-4'
@@ -80,20 +95,23 @@ export function SettingsEditor({ settings }: Props) {
     })
   }
 
-  // ── Slack ─────────────────────────────────────────────────
-  const [slack, setSlack] = useState({
-    webhook_url: String(get('slack').webhook_url ?? ''),
-    notify_new_lead: get('slack').notify_new_lead !== false,
-    notify_proposal_sent: get('slack').notify_proposal_sent !== false,
-    notify_contract_signed: get('slack').notify_contract_signed !== false,
-    notify_invoice_paid: get('slack').notify_invoice_paid !== false,
-    notify_recap_sent: get('slack').notify_recap_sent !== false,
+  // ── Slack Channels ────────────────────────────────────────
+  const savedChannels = get('slack_channels') as Record<string, { webhook_url?: string; enabled?: boolean }> | undefined
+  const [channels, setChannels] = useState<Record<SlackChannel, { webhook_url: string; enabled: boolean }>>(() => {
+    const result = {} as Record<SlackChannel, { webhook_url: string; enabled: boolean }>
+    for (const ch of ALL_CHANNELS) {
+      result[ch] = {
+        webhook_url: String(savedChannels?.[ch]?.webhook_url ?? ''),
+        enabled: savedChannels?.[ch]?.enabled !== false,
+      }
+    }
+    return result
   })
   const [slackSaved, setSlackSaved] = useState(false)
 
   const saveSlack = () => {
     startTransition(async () => {
-      await updateSettingAction('slack', slack)
+      await updateSettingAction('slack_channels', channels as unknown as Record<string, unknown>)
       setSlackSaved(true)
       setTimeout(() => setSlackSaved(false), 3000)
     })
@@ -171,35 +189,39 @@ export function SettingsEditor({ settings }: Props) {
       </Section>
 
       {/* Slack */}
-      <Section title="Slack Notifications">
-        <div>
-          <label className={labelClass}>Webhook URL</label>
-          <Input
-            value={slack.webhook_url}
-            onChange={e => setSlack(s => ({ ...s, webhook_url: e.target.value }))}
-            placeholder="https://hooks.slack.com/services/..."
-            className="font-mono text-xs"
-          />
-          <p className="mt-1 text-xs text-[#475569]">Create an incoming webhook in your Slack workspace settings.</p>
-        </div>
-        <div className="space-y-3">
-          <p className="text-xs font-medium text-[#94A3B8]">Notify on:</p>
-          {([
-            ['notify_new_lead', 'New lead added'],
-            ['notify_proposal_sent', 'Proposal sent to client'],
-            ['notify_contract_signed', 'Contract signed'],
-            ['notify_invoice_paid', 'Invoice marked as paid'],
-            ['notify_recap_sent', 'Monthly recap sent'],
-          ] as [keyof typeof slack, string][]).map(([key, label]) => (
-            <label key={key} className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={slack[key] as boolean}
-                onChange={e => setSlack(s => ({ ...s, [key]: e.target.checked }))}
-                className="h-4 w-4 rounded border-[#1F2D45] bg-[#0A0F1E] accent-[#3B82F6]"
+      <Section title="Slack Channels">
+        <p className="text-xs text-[#475569]">
+          Configure a separate Slack incoming webhook for each notification type. Leave blank to use the{' '}
+          <strong className="text-[#94A3B8]">General</strong> channel as a fallback, or set{' '}
+          <strong className="text-[#94A3B8]">General</strong> as your single catch-all webhook.
+          Create webhooks at <span className="font-mono text-[#3B82F6]">api.slack.com/apps</span>.
+        </p>
+        <div className="space-y-4">
+          {ALL_CHANNELS.map((ch) => (
+            <div key={ch} className="rounded-md border border-[#1F2D45] bg-[#0D1526] p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-[#F1F5F9]">{SLACK_CHANNEL_LABELS[ch]}</p>
+                  <p className="text-xs text-[#475569]">{SLACK_CHANNEL_DESCRIPTIONS[ch]}</p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={channels[ch].enabled}
+                    onChange={e => setChannels(prev => ({ ...prev, [ch]: { ...prev[ch], enabled: e.target.checked } }))}
+                    className="h-4 w-4 rounded border-[#1F2D45] bg-[#0A0F1E] accent-[#3B82F6]"
+                  />
+                  <span className="text-xs text-[#94A3B8]">Enabled</span>
+                </label>
+              </div>
+              <Input
+                value={channels[ch].webhook_url}
+                onChange={e => setChannels(prev => ({ ...prev, [ch]: { ...prev[ch], webhook_url: e.target.value } }))}
+                placeholder={ch === 'general' ? 'https://hooks.slack.com/services/… (required as fallback)' : 'https://hooks.slack.com/services/… (optional)'}
+                className="font-mono text-xs"
+                disabled={!channels[ch].enabled}
               />
-              <span className="text-sm text-[#CBD5E1]">{label}</span>
-            </label>
+            </div>
           ))}
         </div>
         <SaveBar isPending={isPending} saved={slackSaved} onSave={saveSlack} />

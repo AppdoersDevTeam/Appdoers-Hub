@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { ServiceCatalogTable } from '@/components/team/settings/service-catalog-table'
 import { SettingsEditor } from '@/components/team/settings/settings-editor'
 import { TeamPermissions } from '@/components/team/settings/team-permissions'
+import { TeamManagement } from '@/components/team/settings/team-management'
 import { redirect } from 'next/navigation'
 
 export default async function SettingsPage() {
@@ -23,7 +24,11 @@ export default async function SettingsPage() {
   const [{ data: services }, { data: settings }, { data: teamMembers }] = await Promise.all([
     supabase.from('service_catalog').select('*').order('sort_order'),
     supabase.from('settings').select('key, value'),
-    supabase.from('team_users').select('id, full_name, email, role, permissions').order('role').order('full_name'),
+    supabase
+      .from('team_users')
+      .select('id, full_name, email, role, phone, title, is_active, permissions')
+      .order('role')
+      .order('full_name'),
   ])
 
   return (
@@ -32,6 +37,20 @@ export default async function SettingsPage() {
 
       {/* Editable settings */}
       <SettingsEditor settings={(settings ?? []) as { key: string; value: Record<string, unknown> }[]} />
+
+      {/* Team Management — create / edit / deactivate members */}
+      <TeamManagement
+        currentUserId={user?.id ?? ''}
+        members={(teamMembers ?? []).map(m => ({
+          id: m.id as string,
+          full_name: m.full_name as string,
+          email: m.email as string,
+          role: m.role as string,
+          phone: (m.phone as string | null) ?? null,
+          title: (m.title as string | null) ?? null,
+          is_active: m.is_active as boolean,
+        }))}
+      />
 
       {/* Team Permissions */}
       <TeamPermissions

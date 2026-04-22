@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NewTaskSlideOver } from './new-task-slide-over'
-import { updateTaskStatusAction } from '@/lib/actions/tasks'
+import { updateTaskStatusAction, deleteTaskAction } from '@/lib/actions/tasks'
 import { formatDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import type { TeamUser } from '@/lib/types/database'
@@ -69,6 +69,7 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('open')
   const [showNew, setShowNew] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -86,6 +87,17 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
     startTransition(async () => {
       await updateTaskStatusAction(task.id, task.project_id, next as 'open' | 'in_progress' | 'awaiting_review' | 'closed')
     })
+  }
+
+  const handleDelete = (task: TaskRow) => {
+    if (confirmDelete === task.id) {
+      startTransition(async () => {
+        await deleteTaskAction(task.id, task.project_id)
+        setConfirmDelete(null)
+      })
+    } else {
+      setConfirmDelete(task.id)
+    }
   }
 
   const selectClass = 'rounded-md border border-[#1F2D45] bg-[#111827] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
@@ -169,15 +181,30 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
                         <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>{st.label}</span>
                       </td>
                       <td className="px-4 py-3">
-                        {nextStatus && (
+                        <div className="flex items-center gap-2">
+                          {nextStatus && (
+                            <button
+                              onClick={() => advanceStatus(t)}
+                              disabled={isPending}
+                              className="text-xs text-[#3B82F6] hover:text-[#60A5FA] transition-colors whitespace-nowrap"
+                            >
+                              → {statusConfig[nextStatus]?.label}
+                            </button>
+                          )}
                           <button
-                            onClick={() => advanceStatus(t)}
+                            onClick={() => handleDelete(t)}
                             disabled={isPending}
-                            className="text-xs text-[#3B82F6] hover:text-[#60A5FA] transition-colors whitespace-nowrap"
+                            className={cn(
+                              'rounded p-1 transition-colors',
+                              confirmDelete === t.id
+                                ? 'bg-[#EF4444]/20 text-[#EF4444]'
+                                : 'text-[#475569] hover:text-[#EF4444]'
+                            )}
+                            title={confirmDelete === t.id ? 'Click again to confirm delete' : 'Delete task'}
                           >
-                            → {statusConfig[nextStatus]?.label}
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   )
