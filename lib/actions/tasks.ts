@@ -162,3 +162,69 @@ export async function updateTaskStatusAction(
     return { success: false, error: String(err) }
   }
 }
+
+export async function addTaskNoteAction(
+  taskId: string,
+  projectId: string,
+  note: string
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const content = note.trim()
+    if (!content) return { success: false, error: 'Note is required.' }
+
+    const supabase = await createSupabaseClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) return { success: false, error: 'You must be signed in to add a note.' }
+
+    const { data: task } = await supabase
+      .from('tasks')
+      .select('title, project_id, projects(name, client_id, clients(company_name))')
+      .eq('id', taskId)
+      .single()
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('activity_log')
+      .insert({
+        entity_type: 'task',
+        entity_id: taskId,
+        client_id: (task?.projects as { client_id?: string } | null)?.client_id ?? null,
+        action: 'user_note',
+        description: content,
+        performed_by: user.id,
+      })
+      .select('id')
+      .single()
+
+    if (insertError || !inserted) {
+      return { success: false, error: insertError?.message ?? 'Failed to save note.' }
+    }
+
+    await supabase.from('tasks').update({ updated_at: new Date().toISOString() }).eq('id', taskId)
+
+    const projectName = (task?.projects as { name?: string } | null)?.name ?? 'project'
+    const clientName =
+      ((task?.projects as { clients?: { company_name?: string } } | null)?.clients?.company_name as
+        | string
+        | undefined) ?? ''
+
+    await sendToChannel('tasks', `📝 Task note added: ${task?.title ?? 'Task'}`, [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*📝 Task Note Added*\n*Task:* ${task?.title ?? 'Task'}\n*Project:* ${projectName}${clientName ? ` (${clientName})` : ''}\n*Note:* ${content}`,
+        },
+      },
+    ])
+
+    revalidatePath('/app/tasks')
+    revalidatePath(`/app/tasks/${taskId}`)
+    revalidatePath(`/app/projects/${projectId}`)
+    return { success: true, data: { id: inserted.id } }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}

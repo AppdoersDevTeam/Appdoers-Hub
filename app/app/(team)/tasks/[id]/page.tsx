@@ -3,9 +3,11 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { TaskDetailActions } from '@/components/team/tasks/task-detail-actions'
-import { formatDate } from '@/lib/utils/format'
+import { TaskNoteComposer } from '@/components/team/tasks/task-note-composer'
+import { formatDate, formatRelativeTime } from '@/lib/utils/format'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { format } from 'date-fns'
 
 const typeConfig: Record<string, { label: string; cls: string }> = {
   feature:  { label: 'Feature',  cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' },
@@ -51,6 +53,14 @@ export default async function TaskDetailPage({ params }: Props) {
 
   if (!task) notFound()
 
+  const { data: activity } = await supabase
+    .from('activity_log')
+    .select('id, action, description, created_at, actor:team_users!performed_by(full_name)')
+    .eq('entity_type', 'task')
+    .eq('entity_id', id)
+    .order('created_at', { ascending: false })
+    .limit(30)
+
   const project = task.projects as { id: string; name: string; client_id: string; clients: { company_name: string } | null } | null
   const clientName = project?.clients?.company_name ?? '—'
   const assignedName = (task.team_users as { full_name?: string } | null)?.full_name ?? '—'
@@ -59,6 +69,10 @@ export default async function TaskDetailPage({ params }: Props) {
   const ty = typeConfig[task.type] ?? typeConfig.admin
   const pr = priorityConfig[task.priority] ?? priorityConfig.p3
   const st = statusConfig[task.status] ?? statusConfig.open
+
+  const lastUpdatedAt = task.updated_at
+    ? `${format(new Date(task.updated_at), 'dd MMM yyyy h:mm a')} (${formatRelativeTime(task.updated_at)})`
+    : '—'
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -98,7 +112,7 @@ export default async function TaskDetailPage({ params }: Props) {
           <InfoRow label="Created By"><span className="text-[#CBD5E1]">{creatorName}</span></InfoRow>
           <InfoRow label="Due Date"><span className="text-[#CBD5E1]">{task.due_date ? formatDate(task.due_date) : '—'}</span></InfoRow>
           <InfoRow label="Created"><span className="text-[#CBD5E1]">{formatDate(task.created_at)}</span></InfoRow>
-          <InfoRow label="Last Updated"><span className="text-[#CBD5E1]">{formatDate(task.updated_at)}</span></InfoRow>
+          <InfoRow label="Last Updated"><span className="text-[#CBD5E1]">{lastUpdatedAt}</span></InfoRow>
         </div>
 
         {/* Description */}
@@ -109,6 +123,35 @@ export default async function TaskDetailPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      <div className="hub-card space-y-4">
+        <h3 className="text-sm font-semibold text-[#F8FAFC]">Activity</h3>
+
+        {!activity || activity.length === 0 ? (
+          <p className="text-sm text-[#64748B]">No activity updates yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {activity.map((item) => {
+              const actorName =
+                (item.actor as { full_name?: string } | null)?.full_name ?? 'System'
+              const when = `${formatRelativeTime(item.created_at)} • ${format(new Date(item.created_at), 'dd MMM yyyy h:mm a')}`
+              return (
+                <div key={item.id} className="rounded-lg border border-[#1F2D45] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-[#E2E8F0]">{item.description}</p>
+                    <span className="text-xs text-[#64748B]">{when}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-[#475569]">
+                    {formatActionLabel(item.action)} by {actorName}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <TaskNoteComposer taskId={id} projectId={task.project_id} />
     </div>
   )
 }
@@ -120,4 +163,21 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
       <div className="mt-0.5">{children}</div>
     </div>
   )
+}
+
+function formatActionLabel(action: string) {
+  switch (action) {
+    case 'cursor_ticket_created':
+      return 'Ticket created'
+    case 'cursor_claimed':
+      return 'Ticket claimed'
+    case 'cursor_stage_changed':
+      return 'Stage changed'
+    case 'cursor_note':
+      return 'Progress note'
+    case 'user_note':
+      return 'Team note'
+    default:
+      return action.replaceAll('_', ' ')
+  }
 }
