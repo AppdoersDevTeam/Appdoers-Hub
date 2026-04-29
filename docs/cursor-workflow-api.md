@@ -53,6 +53,19 @@ Use `PATCH /api/cursor/tickets/:id`:
 }
 ```
 
+Claim pattern:
+
+```json
+{
+  "claim": true,
+  "agent_name": "Cursor AI",
+  "note": "Claimed by Cursor AI",
+  "stage": "developer"
+}
+```
+
+When `claim: true` is provided, the ticket is auto-assigned to the authenticated cursor token owner unless `assigned_to` is explicitly provided.
+
 Stage mapping:
 
 - `pm`, `designer` -> task status `open`

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
 import { CURSOR_STAGES, hashApiToken, stageToTaskStatus } from '@/lib/cursor-workflow'
+import { sendToChannel } from '@/lib/slack'
 
 const updateTicketSchema = z.object({
   title: z.string().min(3).optional(),
@@ -11,6 +12,8 @@ const updateTicketSchema = z.object({
   stage: z.enum(CURSOR_STAGES).optional(),
   assigned_to: z.string().uuid().nullable().optional(),
   note: z.string().min(1).optional(),
+  claim: z.boolean().optional(),
+  agent_name: z.string().min(1).optional(),
 })
 
 async function authenticateCursorRequest(req: Request) {
@@ -61,15 +64,31 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const payload = parsed.data
+  const { data: existing, error: existingError } = await auth.service
+    .from('tasks')
+    .select('id, project_id, title, status, workflow_stage, assigned_to')
+    .eq('id', id)
+    .single()
+
+  if (existingError || !existing) {
+    return NextResponse.json({ error: existingError?.message ?? 'Ticket not found' }, { status: 404 })
+  }
+
   const updateData: Record<string, string | null> = {}
   if (payload.title !== undefined) updateData.title = payload.title
   if (payload.description !== undefined) updateData.description = payload.description
   if (payload.type !== undefined) updateData.type = payload.type
   if (payload.priority !== undefined) updateData.priority = payload.priority
   if (payload.assigned_to !== undefined) updateData.assigned_to = payload.assigned_to
+  if (payload.claim && payload.assigned_to === undefined) {
+    updateData.assigned_to = auth.teamUserId
+  }
   if (payload.stage !== undefined) {
     updateData.workflow_stage = payload.stage
     updateData.status = stageToTaskStatus(payload.stage)
+  }
+  if (Object.keys(updateData).length > 0 || payload.note || payload.claim) {
+    updateData.updated_at = new Date().toISOString()
   }
 
   if (Object.keys(updateData).length > 0) {
@@ -77,12 +96,53 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const { data: task } = await auth.service.from('tasks').select('project_id, title').eq('id', id).single()
+  const { data: task } = await auth.service
+    .from('tasks')
+    .select('project_id, title, assigned_to, workflow_stage, status')
+    .eq('id', id)
+    .single()
   const { data: project } = await auth.service
     .from('projects')
-    .select('client_id')
+    .select('client_id, name, clients(company_name)')
     .eq('id', task?.project_id ?? '')
     .single()
+  const projectName = (project as { name?: string } | null)?.name ?? 'Project'
+  const clientName =
+    ((project as { clients?: { company_name?: string } } | null)?.clients?.company_name as
+      | string
+      | undefined) ?? 'Unknown client'
+
+  let assigneeName: string | null = null
+  if (task?.assigned_to) {
+    const { data: assignee } = await auth.service
+      .from('team_users')
+      .select('full_name')
+      .eq('id', task.assigned_to)
+      .single()
+    assigneeName = assignee?.full_name ?? null
+  }
+
+  if (payload.claim) {
+    const claimBy = payload.agent_name ?? 'Cursor AI'
+    await auth.service.from('activity_log').insert({
+      entity_type: 'task',
+      entity_id: id,
+      client_id: project?.client_id ?? null,
+      action: 'cursor_claimed',
+      description: `${claimBy} claimed ${task?.title ?? 'Task'}`,
+      performed_by: auth.teamUserId,
+    })
+
+    await sendToChannel('tasks', `🤖 Ticket claimed: ${task?.title ?? 'Task'}`, [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*🤖 Ticket Claimed*\n*Task:* ${task?.title ?? 'Task'}\n*Project:* ${projectName} (${clientName})\n*Claimed By:* ${claimBy}\n*Assigned To:* ${assigneeName ?? 'Unassigned'}`,
+        },
+      },
+    ])
+  }
 
   if (payload.stage) {
     await auth.service.from('activity_log').insert({
@@ -93,6 +153,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       description: `[${payload.stage.toUpperCase()}] ${task?.title ?? 'Task'}`,
       performed_by: auth.teamUserId,
     })
+
+    await sendToChannel('tasks', `🔄 Ticket stage update: ${task?.title ?? 'Task'}`, [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*🔄 Workflow Stage Changed*\n*Task:* ${task?.title ?? 'Task'}\n*Project:* ${projectName} (${clientName})\n*New Stage:* ${payload.stage}\n*Status:* ${task?.status ?? 'unknown'}`,
+        },
+      },
+    ])
   }
 
   if (payload.note) {
@@ -104,6 +174,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       description: payload.note,
       performed_by: auth.teamUserId,
     })
+
+    await sendToChannel('tasks', `📝 Ticket note: ${task?.title ?? 'Task'}`, [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*📝 Progress Note*\n*Task:* ${task?.title ?? 'Task'}\n*Project:* ${projectName} (${clientName})\n*Note:* ${payload.note}`,
+        },
+      },
+    ])
   }
 
   const { data: updated } = await auth.service

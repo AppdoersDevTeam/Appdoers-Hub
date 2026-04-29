@@ -12,6 +12,7 @@ Usage:
   node tools/hub-workflow-cli.mjs get-ticket --ticket-id <uuid>
   node tools/hub-workflow-cli.mjs create-ticket --project-id <uuid> --title "..." [--type feature] [--priority p2] [--stage pm] [--note "..."] [--assigned-to <uuid>]
   node tools/hub-workflow-cli.mjs move-ticket --ticket-id <uuid> --stage <pm|designer|developer|qa|reviewer|done> [--note "..."]
+  node tools/hub-workflow-cli.mjs claim-ticket --ticket-id <uuid> [--agent-name "Cursor AI"] [--assigned-to <uuid>] [--note "..."]
   node tools/hub-workflow-cli.mjs note --ticket-id <uuid> --note "..."
 
 Required env vars:
@@ -129,6 +130,26 @@ async function run() {
     const payload = {
       stage: String(args.stage),
       note: args.note ? String(args.note) : undefined,
+    }
+    const data = await hubFetch(`/api/cursor/tickets/${args['ticket-id']}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    })
+    print(data)
+    return
+  }
+
+  if (command === 'claim-ticket') {
+    if (!args['ticket-id']) throw new Error('--ticket-id is required')
+    const agentName = args['agent-name'] ? String(args['agent-name']) : 'Cursor AI'
+    const claimNote = args.note
+      ? String(args.note)
+      : `Claimed by ${agentName}. Starting implementation now.`
+    const payload = {
+      claim: true,
+      agent_name: agentName,
+      note: claimNote,
+      assigned_to: args['assigned-to'] ? String(args['assigned-to']) : undefined,
     }
     const data = await hubFetch(`/api/cursor/tickets/${args['ticket-id']}`, {
       method: 'PATCH',

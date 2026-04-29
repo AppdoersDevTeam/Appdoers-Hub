@@ -1,6 +1,11 @@
 # Hub + Cursor Desktop Setup
 
-This repository is configured to track AI work in Appdoers Hub.
+Primary setup is now workspace-wide. Use:
+
+- `HUB_CURSOR_SETUP.md` at workspace root
+- `tools/setup-hub-workflow.ps1` at workspace root
+
+This file remains as a command reference.
 
 ## 1) Set local environment variables
 

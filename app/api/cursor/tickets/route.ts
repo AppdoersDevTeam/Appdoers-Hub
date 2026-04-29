@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
 import { CURSOR_STAGES, hashApiToken, stageToTaskStatus, type CursorStage } from '@/lib/cursor-workflow'
+import { sendToChannel } from '@/lib/slack'
 
 const createTicketSchema = z.object({
   project_id: z.string().uuid(),
@@ -91,9 +92,14 @@ export async function POST(req: Request) {
 
   const { data: project } = await auth.service
     .from('projects')
-    .select('client_id')
+    .select('client_id, name, clients(company_name)')
     .eq('id', payload.project_id)
     .single()
+  const projectName = (project as { name?: string } | null)?.name ?? 'Project'
+  const clientName =
+    ((project as { clients?: { company_name?: string } } | null)?.clients?.company_name as
+      | string
+      | undefined) ?? 'Unknown client'
 
   await auth.service.from('activity_log').insert({
     entity_type: 'task',
@@ -114,6 +120,16 @@ export async function POST(req: Request) {
       performed_by: auth.teamUserId,
     })
   }
+
+  await sendToChannel('tasks', `🎫 Cursor ticket created: ${payload.title}`, [
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `*🎫 Cursor Ticket Created*\n*Task:* ${payload.title}\n*Project:* ${projectName} (${clientName})\n*Priority:* ${payload.priority.toUpperCase()}\n*Stage:* ${payload.stage}\n*Status:* ${status}`,
+      },
+    },
+  ])
 
   return NextResponse.json({ ticket: inserted }, { status: 201 })
 }
