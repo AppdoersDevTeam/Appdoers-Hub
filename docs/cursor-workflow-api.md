@@ -20,6 +20,7 @@ Use either:
 
 ## 3) Endpoints
 
+- `GET /api/cursor/projects`
 - `GET /api/cursor/tickets?project_id=<uuid>&stage=<pm|designer|developer|qa|reviewer|done>&limit=50`
 - `POST /api/cursor/tickets`
 - `GET /api/cursor/tickets/:id`

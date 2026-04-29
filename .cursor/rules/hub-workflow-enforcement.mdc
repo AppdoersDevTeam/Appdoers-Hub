@@ -1,0 +1,15 @@
+---
+description: Enforce Appdoers Hub ticket workflow for all code tasks
+alwaysApply: true
+---
+
+# Hub Workflow Enforcement
+
+- In this workspace, Appdoers Hub is the source of truth for work tracking.
+- Before changing code, ensure a Hub ticket exists for the request.
+- If no ticket is provided, create one in stage `pm` and share the ticket id.
+- On implementation start, move ticket to `developer`.
+- Before handing work back, add a progress note and move to `qa` (or `reviewer` if QA already done).
+- Never move to `done` unless QA + review are explicitly confirmed.
+- Prefer using `node tools/hub-workflow-cli.mjs` for all ticket actions.
+- Include ticket id in status updates and final response.

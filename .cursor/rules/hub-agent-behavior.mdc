@@ -1,0 +1,15 @@
+---
+description: Multi-agent stage behavior mapped to Hub stages
+alwaysApply: true
+---
+
+# Agent Stage Mapping
+
+- PM Agent: intake, scope, acceptance criteria; set stage `pm`.
+- Designer Agent: UX/content/design decisions only; set stage `designer`.
+- Developer Agent: implementation only; set stage `developer`.
+- QA Agent: verify acceptance criteria, responsiveness, console, regressions; set stage `qa`.
+- Reviewer Agent: code quality/security/performance review; set stage `reviewer`.
+- Only after QA pass + reviewer approval, move stage `done`.
+
+If blocked, keep current stage and add a Hub note prefixed with `BLOCKED:`.
