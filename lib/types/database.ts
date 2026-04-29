@@ -46,6 +46,7 @@ export type ProjectStatus = 'active' | 'on_hold' | 'completed' | 'cancelled'
 export type TaskType = 'feature' | 'bug' | 'revision' | 'content' | 'design' | 'admin'
 
 export type TaskStatus = 'open' | 'in_progress' | 'awaiting_review' | 'closed'
+export type WorkflowStage = 'pm' | 'designer' | 'developer' | 'qa' | 'reviewer' | 'done'
 
 export type TaskPriority = 'p0' | 'p1' | 'p2' | 'p3'
 
@@ -168,6 +169,7 @@ export interface Task {
   type: TaskType
   priority: TaskPriority
   status: TaskStatus
+  workflow_stage: WorkflowStage
   assigned_to: string | null
   due_date: string | null
   created_by: string | null
