@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { Download, File, FileText, Image, FolderOpen } from 'lucide-react'
 import { getPortalFileDownloadUrlAction } from '@/lib/actions/files'
 import { cn } from '@/lib/utils/cn'
+import { formatDate } from '@/lib/utils/format'
 
 interface PortalFile {
   id: string
@@ -26,10 +27,6 @@ function formatBytes(bytes: number | null): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export function PortalFilesView({ files }: { files: PortalFile[] }) {

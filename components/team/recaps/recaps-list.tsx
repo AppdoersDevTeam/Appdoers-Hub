@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { SlideOver } from '@/components/ui/slide-over'
 import { saveRecapAction } from '@/lib/actions/recaps'
 import { cn } from '@/lib/utils/cn'
+import { formatDate } from '@/lib/utils/format'
 
 const MONTHS = [
   'January','February','March','April','May','June',
@@ -111,11 +112,11 @@ export function RecapsList({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-[#475569]">
-                      {new Date(r.created_at).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {formatDate(r.created_at)}
                     </td>
                     <td className="px-4 py-3 text-[#475569]">
                       {r.sent_at
-                        ? new Date(r.sent_at).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+                        ? formatDate(r.sent_at)
                         : '—'}
                     </td>
                   </tr>

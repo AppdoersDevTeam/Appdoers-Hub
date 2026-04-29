@@ -1,6 +1,6 @@
 'use client'
 
-import { formatCurrency } from '@/lib/utils/format'
+import { formatCurrency, formatLongDate } from '@/lib/utils/format'
 
 interface Section {
   id: string
@@ -44,7 +44,7 @@ export function ProposalPreview({
         {client && (
           <p className="text-lg text-[#94A3B8]">Prepared for {client.company_name}</p>
         )}
-        <p className="mt-4 text-sm text-[#475569]">{new Date().toLocaleDateString('en-NZ', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <p className="mt-4 text-sm text-[#475569]">{formatLongDate(new Date())}</p>
       </div>
 
       {/* Sections */}

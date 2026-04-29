@@ -12,6 +12,7 @@ import {
   type SubscriptionInput,
 } from '@/lib/actions/subscriptions'
 import { cn } from '@/lib/utils/cn'
+import { formatDate } from '@/lib/utils/format'
 
 interface Subscription {
   id: string
@@ -38,7 +39,7 @@ function daysUntil(dateStr: string) {
 
 function RenewalBadge({ dateStr }: { dateStr: string }) {
   const days = daysUntil(dateStr)
-  const formatted = new Date(dateStr).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+  const formatted = formatDate(dateStr)
 
   if (days < 0) return <span className="text-xs text-[#EF4444]">Expired</span>
   if (days <= 7) return <span className="text-xs font-semibold text-[#EF4444]">🔴 {days}d — {formatted}</span>

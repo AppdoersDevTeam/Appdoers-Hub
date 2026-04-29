@@ -5,6 +5,7 @@ import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { addNoteAction, deleteNoteAction } from '@/lib/actions/notes'
 import { cn } from '@/lib/utils/cn'
+import { formatDateTime } from '@/lib/utils/format'
 
 interface Note {
   id: string
@@ -28,10 +29,6 @@ const typeColors: Record<string, string> = {
   meeting: 'bg-[#10B981]/10 text-[#10B981]',
   email: 'bg-[#F59E0B]/10 text-[#F59E0B]',
   internal: 'bg-[#94A3B8]/10 text-[#94A3B8]',
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 export function NotesSection({
@@ -122,7 +119,7 @@ export function NotesSection({
                     {NOTE_TYPES.find((t) => t.value === note.type)?.label ?? 'General'}
                   </span>
                   <span className="text-xs text-[#475569]">
-                    {note.team_users?.full_name ?? 'Team'} · {formatDate(note.created_at)}
+                    {note.team_users?.full_name ?? 'Team'} · {formatDateTime(note.created_at)}
                   </span>
                 </div>
                 <button

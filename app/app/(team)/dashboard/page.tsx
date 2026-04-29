@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
-import { formatCurrency, formatRelativeTime } from '@/lib/utils/format'
+import { formatCurrency, formatDate, formatMonthDay, formatRelativeTime } from '@/lib/utils/format'
 import Link from 'next/link'
 import {
   TrendingUp,
@@ -188,7 +188,7 @@ export default async function DashboardPage() {
                     {inv.invoice_number as string}
                   </Link>
                   <p className="text-xs text-[#475569]">
-                    {(inv.clients as { company_name?: string } | null)?.company_name ?? '—'} · Due {inv.due_date as string}
+                    {(inv.clients as { company_name?: string } | null)?.company_name ?? '—'} · Due {formatDate(inv.due_date as string)}
                   </p>
                 </div>
                 <span className="text-sm font-semibold text-[#EF4444]">{formatCurrency(Number(inv.total))}</span>
@@ -221,7 +221,7 @@ export default async function DashboardPage() {
                       {!!sub.plan_name && <span className="rounded px-1.5 py-0.5 text-xs bg-[#1F2D45] text-[#94A3B8]">{sub.plan_name as string}</span>}
                     </div>
                     <p className={`text-xs mt-0.5 ${isUrgent ? 'text-[#EF4444] font-semibold' : isWarning ? 'text-[#F59E0B] font-medium' : 'text-[#475569]'}`}>
-                      {isUrgent ? '🔴' : isWarning ? '🟡' : '🟠'} Renews in {days} day{days !== 1 ? 's' : ''} · {new Date(sub.renewal_date as string).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })}
+                      {isUrgent ? '🔴' : isWarning ? '🟡' : '🟠'} Renews in {days} day{days !== 1 ? 's' : ''} · {formatMonthDay(sub.renewal_date as string)}
                     </p>
                   </div>
                   <div className="text-right">

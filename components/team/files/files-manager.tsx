@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getFileDownloadUrlAction, deleteFileAction, toggleFileVisibilityAction } from '@/lib/actions/files'
 import { cn } from '@/lib/utils/cn'
+import { formatDate } from '@/lib/utils/format'
 
 interface FileRow {
   id: string
@@ -33,10 +34,6 @@ function formatBytes(bytes: number | null): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 const FOLDERS = ['General', 'Contracts', 'Invoices', 'Design', 'Assets', 'Reports']

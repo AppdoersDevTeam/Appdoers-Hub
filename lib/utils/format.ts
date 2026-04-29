@@ -1,4 +1,6 @@
-import { formatDistanceToNow, format } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
+
+export const APP_TIMEZONE = 'Pacific/Auckland'
 
 export function formatCurrency(amount: number, currency = 'NZD'): string {
   return new Intl.NumberFormat('en-NZ', {
@@ -9,7 +11,41 @@ export function formatCurrency(amount: number, currency = 'NZD'): string {
 }
 
 export function formatDate(date: string | Date): string {
-  return format(new Date(date), 'dd MMM yyyy')
+  return new Intl.DateTimeFormat('en-NZ', {
+    timeZone: APP_TIMEZONE,
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(date))
+}
+
+export function formatDateTime(date: string | Date): string {
+  return new Intl.DateTimeFormat('en-NZ', {
+    timeZone: APP_TIMEZONE,
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(new Date(date))
+}
+
+export function formatLongDate(date: string | Date): string {
+  return new Intl.DateTimeFormat('en-NZ', {
+    timeZone: APP_TIMEZONE,
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(date))
+}
+
+export function formatMonthDay(date: string | Date): string {
+  return new Intl.DateTimeFormat('en-NZ', {
+    timeZone: APP_TIMEZONE,
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date(date))
 }
 
 export function formatRelativeTime(date: string | Date): string {

@@ -4,10 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { TaskDetailActions } from '@/components/team/tasks/task-detail-actions'
 import { TaskNoteComposer } from '@/components/team/tasks/task-note-composer'
-import { formatDate, formatRelativeTime } from '@/lib/utils/format'
+import { formatRelativeTime } from '@/lib/utils/format'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
-import { format } from 'date-fns'
 
 const typeConfig: Record<string, { label: string; cls: string }> = {
   feature:  { label: 'Feature',  cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' },
@@ -71,11 +70,11 @@ export default async function TaskDetailPage({ params }: Props) {
   const st = statusConfig[task.status] ?? statusConfig.open
 
   const lastUpdatedAt = task.updated_at
-    ? `${format(new Date(task.updated_at), 'dd MMM yyyy h:mm a')} (${formatRelativeTime(task.updated_at)})`
+    ? `${formatNzDateTime(task.updated_at)} (${formatRelativeTime(task.updated_at)})`
     : '—'
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       <Link
         href="/app/tasks"
         className="inline-flex items-center gap-1.5 text-sm text-[#94A3B8] hover:text-[#F1F5F9] transition-colors"
@@ -88,70 +87,75 @@ export default async function TaskDetailPage({ params }: Props) {
         <TaskDetailActions taskId={id} projectId={task.project_id} currentStatus={task.status} />
       </div>
 
-      <div className="hub-card space-y-5">
-        {/* Badges row */}
-        <div className="flex flex-wrap gap-2">
-          <span className={cn('rounded-full px-3 py-1 text-xs font-medium', ty.cls)}>{ty.label}</span>
-          <span className={cn('rounded-full px-3 py-1 text-xs font-medium', pr.cls)}>{pr.label}</span>
-          <span className={cn('rounded-full px-3 py-1 text-xs font-medium', st.cls)}>{st.label}</span>
+      <div className="grid gap-6 xl:grid-cols-12">
+        <div className="space-y-6 xl:col-span-4">
+          <div className="hub-card space-y-5 xl:sticky xl:top-6">
+            <div className="flex flex-wrap gap-2">
+              <span className={cn('rounded-full px-3 py-1 text-xs font-medium', ty.cls)}>{ty.label}</span>
+              <span className={cn('rounded-full px-3 py-1 text-xs font-medium', pr.cls)}>{pr.label}</span>
+              <span className={cn('rounded-full px-3 py-1 text-xs font-medium', st.cls)}>{st.label}</span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 xl:grid-cols-1">
+              <InfoRow label="Project">
+                {project
+                  ? <Link href={`/app/projects/${project.id}`} className="text-[#3B82F6] hover:underline">{project.name}</Link>
+                  : '—'}
+              </InfoRow>
+              <InfoRow label="Client">
+                {project?.client_id
+                  ? <Link href={`/app/clients/${project.client_id}`} className="text-[#3B82F6] hover:underline">{clientName}</Link>
+                  : '—'}
+              </InfoRow>
+              <InfoRow label="Assigned To"><span className="text-[#CBD5E1]">{assignedName}</span></InfoRow>
+              <InfoRow label="Created By"><span className="text-[#CBD5E1]">{creatorName}</span></InfoRow>
+              <InfoRow label="Due Date"><span className="text-[#CBD5E1]">{task.due_date ? formatNzDate(task.due_date) : '—'}</span></InfoRow>
+              <InfoRow label="Created"><span className="text-[#CBD5E1]">{formatNzDate(task.created_at)}</span></InfoRow>
+              <InfoRow label="Last Updated"><span className="text-[#CBD5E1]">{lastUpdatedAt}</span></InfoRow>
+            </div>
+
+            {task.description && (
+              <div className="border-t border-[#1F2D45] pt-4">
+                <p className="text-xs text-[#475569] mb-2">Description</p>
+                <p className="text-sm text-[#CBD5E1] whitespace-pre-wrap leading-relaxed">{task.description}</p>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Details grid */}
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <InfoRow label="Project">
-            {project
-              ? <Link href={`/app/projects/${project.id}`} className="text-[#3B82F6] hover:underline">{project.name}</Link>
-              : '—'}
-          </InfoRow>
-          <InfoRow label="Client">
-            {project?.client_id
-              ? <Link href={`/app/clients/${project.client_id}`} className="text-[#3B82F6] hover:underline">{clientName}</Link>
-              : '—'}
-          </InfoRow>
-          <InfoRow label="Assigned To"><span className="text-[#CBD5E1]">{assignedName}</span></InfoRow>
-          <InfoRow label="Created By"><span className="text-[#CBD5E1]">{creatorName}</span></InfoRow>
-          <InfoRow label="Due Date"><span className="text-[#CBD5E1]">{task.due_date ? formatDate(task.due_date) : '—'}</span></InfoRow>
-          <InfoRow label="Created"><span className="text-[#CBD5E1]">{formatDate(task.created_at)}</span></InfoRow>
-          <InfoRow label="Last Updated"><span className="text-[#CBD5E1]">{lastUpdatedAt}</span></InfoRow>
+        <div className="space-y-6 xl:col-span-8">
+          <TaskNoteComposer taskId={id} projectId={task.project_id} />
+
+          <div className="hub-card space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[#F8FAFC]">Activity</h3>
+              <span className="text-xs text-[#64748B]">{activity?.length ?? 0} items</span>
+            </div>
+
+            {!activity || activity.length === 0 ? (
+              <p className="text-sm text-[#64748B]">No activity updates yet.</p>
+            ) : (
+              <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+                {activity.map((item) => {
+                  const actorName = getActorName(item.action, item.actor as { full_name?: string } | null)
+                  const when = `${formatRelativeTime(item.created_at)} • ${formatNzDateTime(item.created_at)}`
+                  return (
+                    <div key={item.id} className="rounded-lg border border-[#1F2D45] p-3">
+                      <p className="text-sm text-[#E2E8F0] whitespace-pre-wrap leading-relaxed">{item.description}</p>
+                      <div className="mt-2 flex items-center justify-between gap-3">
+                        <p className="text-xs text-[#475569]">
+                          {formatActionLabel(item.action)} by {actorName}
+                        </p>
+                        <span className="text-xs text-[#64748B]">{when}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
-
-        {/* Description */}
-        {task.description && (
-          <div className="border-t border-[#1F2D45] pt-4">
-            <p className="text-xs text-[#475569] mb-2">Description</p>
-            <p className="text-sm text-[#CBD5E1] whitespace-pre-wrap">{task.description}</p>
-          </div>
-        )}
       </div>
-
-      <div className="hub-card space-y-4">
-        <h3 className="text-sm font-semibold text-[#F8FAFC]">Activity</h3>
-
-        {!activity || activity.length === 0 ? (
-          <p className="text-sm text-[#64748B]">No activity updates yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {activity.map((item) => {
-              const actorName =
-                (item.actor as { full_name?: string } | null)?.full_name ?? 'System'
-              const when = `${formatRelativeTime(item.created_at)} • ${format(new Date(item.created_at), 'dd MMM yyyy h:mm a')}`
-              return (
-                <div key={item.id} className="rounded-lg border border-[#1F2D45] p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm text-[#E2E8F0]">{item.description}</p>
-                    <span className="text-xs text-[#64748B]">{when}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-[#475569]">
-                    {formatActionLabel(item.action)} by {actorName}
-                  </p>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      <TaskNoteComposer taskId={id} projectId={task.project_id} />
     </div>
   )
 }
@@ -180,4 +184,30 @@ function formatActionLabel(action: string) {
     default:
       return action.replaceAll('_', ' ')
   }
+}
+
+function getActorName(action: string, actor: { full_name?: string } | null) {
+  if (action.startsWith('cursor_')) return 'Cursor AI'
+  return actor?.full_name ?? 'System'
+}
+
+function formatNzDate(value: string | Date) {
+  return new Intl.DateTimeFormat('en-NZ', {
+    timeZone: 'Pacific/Auckland',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(value))
+}
+
+function formatNzDateTime(value: string | Date) {
+  return new Intl.DateTimeFormat('en-NZ', {
+    timeZone: 'Pacific/Auckland',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(new Date(value))
 }

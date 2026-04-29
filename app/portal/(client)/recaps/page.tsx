@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils/cn'
+import { formatDate, formatLongDate } from '@/lib/utils/format'
 
 const MONTHS = [
   'January','February','March','April','May','June',
@@ -112,7 +113,7 @@ function RecapCard({ recap, expanded }: {
           </div>
           {recap.sent_at && (
             <p className="text-xs text-gray-400">
-              {new Date(recap.sent_at).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}
+              {formatDate(recap.sent_at)}
             </p>
           )}
         </div>
@@ -136,7 +137,7 @@ function RecapCard({ recap, expanded }: {
         <h2 className="text-2xl font-bold text-white mt-1">{periodLabel}</h2>
         {recap.sent_at && (
           <p className="text-blue-200 text-sm mt-1">
-            Sent {new Date(recap.sent_at).toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })}
+            Sent {formatLongDate(recap.sent_at)}
           </p>
         )}
       </div>

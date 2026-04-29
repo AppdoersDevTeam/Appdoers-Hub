@@ -51,7 +51,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
       supabase.from('project_phases').select('*').eq('project_id', id).order('created_at'),
       supabase.from('team_users').select('id, full_name, hourly_rate').eq('is_active', true),
       supabase.from('time_entries').select('*, team_users(full_name, hourly_rate), tasks(title)').eq('project_id', id).order('date', { ascending: false }),
-      supabase.from('tasks').select('*, team_users(full_name)').eq('project_id', id).order('created_at', { ascending: false }),
+      supabase.from('tasks').select('*, team_users!assigned_to(full_name)').eq('project_id', id).order('created_at', { ascending: false }),
     ])
 
   if (!project) notFound()

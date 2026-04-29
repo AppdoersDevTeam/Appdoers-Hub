@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SlideOver } from '@/components/ui/slide-over'
 import { createDomainAction, updateDomainAction, deleteDomainAction, type DomainInput } from '@/lib/actions/domains'
+import { formatDate } from '@/lib/utils/format'
 
 interface Domain {
   id: string
@@ -36,7 +37,7 @@ function daysUntil(dateStr: string): number {
 
 function ExpiryBadge({ dateStr }: { dateStr: string }) {
   const days = daysUntil(dateStr)
-  const formatted = new Date(dateStr).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+  const formatted = formatDate(dateStr)
 
   if (days < 0) return (
     <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-[#EF4444]/20 text-[#EF4444]">
