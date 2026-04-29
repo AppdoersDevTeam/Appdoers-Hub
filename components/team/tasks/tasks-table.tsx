@@ -154,9 +154,9 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
                   return (
                     <tr key={t.id} className={cn('transition-colors hover:bg-[#1C2537]', isOverdue && 'border-l-2 border-l-[#EF4444]')}>
                       <td className="px-4 py-3">
-                        <span className={cn('font-medium', isOverdue ? 'text-[#EF4444]' : 'text-[#F1F5F9]')}>
+                        <Link href={`/app/tasks/${t.id}`} className={cn('font-medium hover:text-[#3B82F6] transition-colors', isOverdue ? 'text-[#EF4444]' : 'text-[#F1F5F9]')}>
                           {t.title}
-                        </span>
+                        </Link>
                         {isOverdue && <span className="ml-2 text-xs text-[#EF4444]">Overdue</span>}
                       </td>
                       <td className="px-4 py-3">

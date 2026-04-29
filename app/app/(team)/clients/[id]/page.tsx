@@ -8,6 +8,7 @@ import { formatCurrency, formatDate } from '@/lib/utils/format'
 import { ClientEditForm } from '@/components/team/clients/client-edit-form'
 import { ArrowLeft, FolderOpen, FileText, ScrollText, Receipt } from 'lucide-react'
 import { FilesManager } from '@/components/team/files/files-manager'
+import { TasksTable } from '@/components/team/tasks/tasks-table'
 import { NotesSection } from '@/components/team/notes/notes-section'
 import { CredentialsSection } from '@/components/team/clients/credentials-section'
 import { DomainsSection } from '@/components/team/clients/domains-section'
@@ -26,6 +27,7 @@ const planLabels: Record<string, string> = {
 const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'projects', label: 'Projects' },
+  { key: 'tasks', label: 'Tasks' },
   { key: 'proposals', label: 'Proposals' },
   { key: 'contracts', label: 'Contracts' },
   { key: 'invoices', label: 'Invoices' },
@@ -52,6 +54,12 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
     .single()
 
   if (!client) notFound()
+
+  const { data: teamMembers } = await supabase
+    .from('team_users')
+    .select('id, full_name')
+    .eq('is_active', true)
+    .order('full_name')
 
   const { data: contacts } = await supabase
     .from('client_contacts')
@@ -107,10 +115,28 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
   const { data: clientProjects } = tab === 'projects'
     ? await supabase
         .from('projects')
-        .select('id, name, type, current_phase, client_status, status, start_date, target_launch_date, estimated_hours, logged_hours')
+        .select('id, name, type, current_phase, client_status, status, start_date, target_launch_date, estimated_hours')
         .eq('client_id', id)
         .order('created_at', { ascending: false })
     : { data: null }
+
+  // Fetch tasks only when on tasks tab — get project IDs first, then tasks
+  let clientTasks = null
+  if (tab === 'tasks') {
+    const { data: projectIds } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('client_id', id)
+    if (projectIds && projectIds.length > 0) {
+      const ids = projectIds.map((p) => p.id)
+      const { data } = await supabase
+        .from('tasks')
+        .select('id, title, type, priority, status, project_id, due_date, updated_at, team_users!assigned_to(full_name), projects(name)')
+        .in('project_id', ids)
+        .order('created_at', { ascending: false })
+      clientTasks = data
+    }
+  }
 
   // Fetch proposals only when on proposals tab
   const { data: clientProposals } = tab === 'proposals'
@@ -271,7 +297,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
                     const phaseLabels: Record<string, string> = { discovery: 'Discovery', design: 'Design', development: 'Development', review_qa: 'Review & QA', launch: 'Launch', maintenance: 'Maintenance' }
                     const clientStatusCls: Record<string, string> = { new: 'bg-[#94A3B8]/10 text-[#94A3B8]', in_progress: 'bg-[#3B82F6]/10 text-[#3B82F6]', awaiting_appdoers: 'bg-[#F59E0B]/10 text-[#F59E0B]', awaiting_client: 'bg-[#F97316]/10 text-[#F97316]', completed: 'bg-[#10B981]/10 text-[#10B981]', on_hold: 'bg-[#EF4444]/10 text-[#EF4444]' }
                     const statusCls: Record<string, string> = { active: 'bg-[#10B981]/10 text-[#10B981]', on_hold: 'bg-[#F59E0B]/10 text-[#F59E0B]', completed: 'bg-[#94A3B8]/10 text-[#94A3B8]', cancelled: 'bg-[#EF4444]/10 text-[#EF4444]' }
-                    const hours = p.estimated_hours ? `${Number(p.logged_hours ?? 0).toFixed(1)} / ${p.estimated_hours}h` : `${Number(p.logged_hours ?? 0).toFixed(1)}h`
+                    const hours = p.estimated_hours ? `${p.estimated_hours}h est.` : '—'
                     return (
                       <tr key={p.id} className="hover:bg-[#1C2537] transition-colors">
                         <td className="px-4 py-3 font-medium text-[#F1F5F9]">
@@ -297,6 +323,26 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
         ) : (
           <EmptyState icon={FolderOpen} title="No projects yet" description="Projects will appear here once created." />
         )
+      )}
+      {tab === 'tasks' && (
+        <TasksTable
+          tasks={(clientTasks ?? []).map((t) => ({
+            id: t.id,
+            title: t.title,
+            type: t.type,
+            priority: t.priority,
+            status: t.status,
+            project_id: t.project_id,
+            project_name: (t.projects as { name?: string } | null)?.name ?? '—',
+            client_name: client.company_name,
+            assigned_to_name: (t.team_users as { full_name?: string } | null)?.full_name ?? null,
+            due_date: t.due_date,
+            updated_at: t.updated_at,
+          }))}
+          projects={(clientProjects ?? []).map((p) => ({ id: p.id, name: p.name }))}
+          teamMembers={teamMembers ?? []}
+          showProjectCol={true}
+        />
       )}
       {tab === 'proposals' && (
         clientProposals && clientProposals.length > 0 ? (
