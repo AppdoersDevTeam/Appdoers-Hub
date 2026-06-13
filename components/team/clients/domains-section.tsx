@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { Plus, Edit2, Trash2, ExternalLink, RefreshCw, Shield, ShieldAlert, ShieldCheck, ShieldOff } from 'lucide-react'
@@ -21,11 +21,11 @@ interface Domain {
   dns_notes: string | null
 }
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
-const inputClass = 'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
+const inputClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
-const REGISTRARS = ['GoDaddy', 'Namecheap', 'Cloudflare', 'Google Domains', 'Hover', 'Name.com', 'Domain.com', 'Other']
-const HOSTING = ['Vercel', 'Netlify', 'WP Engine', 'SiteGround', 'Kinsta', 'Cloudflare Pages', 'AWS', 'DigitalOcean', 'Other']
+const REGISTRARS = ['GoDaddy', 'Namecheap', 'Cloudflare', 'Google Domains', 'Hover', 'Host Papa', 'Hostinger', 'My Host', 'Name.com', 'Domain.com', 'Other']
+const HOSTING = ['Vercel', 'Netlify', 'WP Engine', 'SiteGround', 'Kinsta', 'Cloudflare Pages', 'AWS', 'DigitalOcean', 'Hostinger', 'HostPapa', 'My Host', 'Other']
 const SSL_OPTIONS = ['active', 'expiring_soon', 'expired', 'unknown']
 const TECH_OPTIONS = ['WordPress', 'Next.js', 'React', 'Webflow', 'Shopify', 'Squarespace', 'Wix', 'Laravel', 'Gatsby', 'Astro', 'Vue', 'Nuxt']
 
@@ -40,17 +40,17 @@ function ExpiryBadge({ dateStr }: { dateStr: string }) {
   const formatted = formatDate(dateStr)
 
   if (days < 0) return (
-    <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-[#EF4444]/20 text-[#EF4444]">
+    <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700">
       Expired {formatted}
     </span>
   )
   if (days <= 30) return (
-    <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-[#F59E0B]/20 text-[#F59E0B]">
+    <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-600">
       ⚠ Expires in {days}d · {formatted}
     </span>
   )
   return (
-    <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-[#1F2D45] text-[#94A3B8]">
+    <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-500">
       Expires {formatted}
     </span>
   )
@@ -58,10 +58,10 @@ function ExpiryBadge({ dateStr }: { dateStr: string }) {
 
 function SslIcon({ status }: { status: string | null }) {
   switch (status) {
-    case 'active': return <span title="SSL Active"><ShieldCheck className="h-3.5 w-3.5 text-[#10B981]" /></span>
-    case 'expiring_soon': return <span title="SSL Expiring Soon"><ShieldAlert className="h-3.5 w-3.5 text-[#F59E0B]" /></span>
-    case 'expired': return <span title="SSL Expired"><ShieldOff className="h-3.5 w-3.5 text-[#EF4444]" /></span>
-    default: return <span title="SSL Unknown"><Shield className="h-3.5 w-3.5 text-[#475569]" /></span>
+    case 'active': return <span title="SSL Active"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /></span>
+    case 'expiring_soon': return <span title="SSL Expiring Soon"><ShieldAlert className="h-3.5 w-3.5 text-amber-600" /></span>
+    case 'expired': return <span title="SSL Expired"><ShieldOff className="h-3.5 w-3.5 text-red-600" /></span>
+    default: return <span title="SSL Unknown"><Shield className="h-3.5 w-3.5 text-slate-500" /></span>
   }
 }
 
@@ -181,14 +181,14 @@ export function DomainsSection({
     <>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-[#475569]">Track domains, expiry dates, hosting, and tech stack.</p>
+          <p className="text-sm text-slate-500">Track domains, expiry dates, hosting, and tech stack.</p>
           <Button size="sm" onClick={openAdd}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Add Domain
           </Button>
         </div>
 
         {domains.length === 0 ? (
-          <div className="rounded-lg border border-[#1F2D45] px-4 py-10 text-center text-[#475569]">
+          <div className="rounded-lg border border-slate-200 px-4 py-10 text-center text-slate-500">
             No domains tracked yet. Add the client's domain(s) above.
           </div>
         ) : (
@@ -203,17 +203,17 @@ export function DomainsSection({
                       href={`https://${d.domain_name}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm font-semibold text-[#F1F5F9] hover:text-[#3B82F6] transition-colors truncate flex items-center gap-1"
+                      className="text-sm font-semibold text-slate-900 hover:text-blue-600 transition-colors truncate flex items-center gap-1"
                     >
                       {d.domain_name}
                       <ExternalLink className="h-3 w-3 shrink-0" />
                     </a>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <button onClick={() => openEdit(d)} className="rounded p-1 text-[#475569] hover:bg-[#1F2D45] hover:text-[#94A3B8]">
+                    <button onClick={() => openEdit(d)} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600">
                       <Edit2 className="h-3.5 w-3.5" />
                     </button>
-                    <button onClick={() => handleDelete(d.id)} disabled={isPending} className="rounded p-1 text-[#475569] hover:bg-[#1F2D45] hover:text-[#EF4444]">
+                    <button onClick={() => handleDelete(d.id)} disabled={isPending} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -224,7 +224,7 @@ export function DomainsSection({
                   <div className="flex items-center justify-between">
                     <ExpiryBadge dateStr={d.expiry_date} />
                     {d.auto_renew && (
-                      <span className="flex items-center gap-1 text-xs text-[#10B981]">
+                      <span className="flex items-center gap-1 text-xs text-emerald-600">
                         <RefreshCw className="h-3 w-3" /> Auto-renew
                       </span>
                     )}
@@ -235,20 +235,20 @@ export function DomainsSection({
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                   {d.registrar && (
                     <>
-                      <span className="text-[#475569]">Registrar</span>
-                      <span className="text-[#CBD5E1]">{d.registrar}</span>
+                      <span className="text-slate-500">Registrar</span>
+                      <span className="text-slate-600">{d.registrar}</span>
                     </>
                   )}
                   {d.hosting_provider && (
                     <>
-                      <span className="text-[#475569]">Hosting</span>
-                      <span className="text-[#CBD5E1]">{d.hosting_provider}</span>
+                      <span className="text-slate-500">Hosting</span>
+                      <span className="text-slate-600">{d.hosting_provider}</span>
                     </>
                   )}
                   {d.vercel_project_name && (
                     <>
-                      <span className="text-[#475569]">Vercel Project</span>
-                      <span className="text-[#CBD5E1] font-mono">{d.vercel_project_name}</span>
+                      <span className="text-slate-500">Vercel Project</span>
+                      <span className="text-slate-600 font-mono">{d.vercel_project_name}</span>
                     </>
                   )}
                 </div>
@@ -257,14 +257,14 @@ export function DomainsSection({
                 {d.tech_stack && d.tech_stack.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {d.tech_stack.map(t => (
-                      <span key={t} className="rounded px-1.5 py-0.5 text-xs bg-[#1F2D45] text-[#94A3B8]">{t}</span>
+                      <span key={t} className="rounded px-1.5 py-0.5 text-xs bg-slate-100 text-slate-500">{t}</span>
                     ))}
                   </div>
                 )}
 
                 {/* DNS notes */}
                 {d.dns_notes && (
-                  <p className="text-xs text-[#475569] border-t border-[#1F2D45] pt-2">{d.dns_notes}</p>
+                  <p className="text-xs text-slate-500 border-t border-slate-200 pt-2">{d.dns_notes}</p>
                 )}
               </div>
             ))}
@@ -274,7 +274,7 @@ export function DomainsSection({
 
       <SlideOver open={showForm} onClose={() => setShowForm(false)} title={editing ? 'Edit Domain' : 'Add Domain'}>
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
-          {error && <div className="rounded-md border border-[#EF4444]/20 bg-[#EF4444]/10 px-4 py-2 text-sm text-[#EF4444]">{error}</div>}
+          {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
 
           <div>
             <label className={labelClass}>Domain Name *</label>
@@ -317,9 +317,9 @@ export function DomainsSection({
               id="auto_renew"
               checked={form.auto_renew ?? false}
               onChange={e => setForm(f => ({ ...f, auto_renew: e.target.checked }))}
-              className="h-4 w-4 rounded border-[#1F2D45] bg-[#0A0F1E] accent-[#3B82F6]"
+              className="h-4 w-4 rounded border-slate-200 bg-white accent-blue-600"
             />
-            <label htmlFor="auto_renew" className="text-sm text-[#CBD5E1]">Auto-renew enabled</label>
+            <label htmlFor="auto_renew" className="text-sm text-slate-600">Auto-renew enabled</label>
           </div>
 
           <div>
@@ -337,8 +337,8 @@ export function DomainsSection({
                   onClick={() => toggleTech(t)}
                   className={`rounded px-2 py-1 text-xs transition-colors ${
                     form.tech_stack?.includes(t)
-                      ? 'bg-[#3B82F6] text-white'
-                      : 'bg-[#1F2D45] text-[#94A3B8] hover:bg-[#263548]'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                   }`}
                 >
                   {t}
@@ -353,7 +353,7 @@ export function DomainsSection({
               value={form.dns_notes ?? ''}
               onChange={e => setForm(f => ({ ...f, dns_notes: e.target.value }))}
               rows={2}
-              className="w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] placeholder:text-[#475569] focus:border-[#3B82F6] focus:outline-none resize-none"
+              className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none resize-none"
               placeholder="DNS provider, special records, notes…"
             />
           </div>

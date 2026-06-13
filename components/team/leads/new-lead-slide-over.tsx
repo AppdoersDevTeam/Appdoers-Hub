@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -23,9 +23,9 @@ interface Props {
   teamMembers: Pick<TeamUser, 'id' | 'full_name'>[]
 }
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 const selectClass =
-  'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]'
+  'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
 
 export function NewLeadSlideOver({ open, onClose, teamMembers }: Props) {
   const router = useRouter()
@@ -88,7 +88,7 @@ export function NewLeadSlideOver({ open, onClose, teamMembers }: Props) {
     <SlideOver open={open} onClose={onClose} title="New Lead" width="lg">
       <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
         {error && (
-          <div className="rounded-md bg-[#EF4444]/10 border border-[#EF4444]/20 px-4 py-3 text-sm text-[#EF4444]">
+          <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
             {error}
           </div>
         )}
@@ -185,9 +185,9 @@ export function NewLeadSlideOver({ open, onClose, teamMembers }: Props) {
         </div>
 
         {estValue > 0 && (
-          <div className="rounded-md bg-[#3B82F6]/10 border border-[#3B82F6]/20 px-4 py-2 text-sm text-[#3B82F6]">
+          <div className="rounded-md bg-blue-50 border border-blue-600/20 px-4 py-2 text-sm text-blue-600">
             Est. Total Value: ${estValue.toLocaleString()} NZD{' '}
-            <span className="text-[#94A3B8] text-xs">(setup + monthly × 12)</span>
+            <span className="text-slate-500 text-xs">(setup + monthly × 12)</span>
           </div>
         )}
 

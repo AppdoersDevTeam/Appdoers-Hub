@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
@@ -26,9 +26,9 @@ interface Props {
 const LEVELS: PermissionLevel[] = ['edit', 'view', 'none']
 
 const levelStyle: Record<PermissionLevel, string> = {
-  edit: 'bg-[#10B981] text-white',
-  view: 'bg-[#3B82F6] text-white',
-  none: 'bg-[#1F2D45] text-[#475569]',
+  edit: 'bg-emerald-500 text-white',
+  view: 'bg-blue-600 text-white',
+  none: 'bg-slate-100 text-slate-500',
 }
 
 const levelLabel: Record<PermissionLevel, string> = {
@@ -51,12 +51,12 @@ function MemberPermissions({ member }: { member: TeamMember }) {
       <div className="hub-card space-y-3">
         <div className="flex items-center gap-3">
           <div>
-            <p className="text-sm font-medium text-[#F1F5F9]">{member.full_name}</p>
-            <p className="text-xs text-[#475569]">{member.email}</p>
+            <p className="text-sm font-medium text-slate-900">{member.full_name}</p>
+            <p className="text-xs text-slate-500">{member.email}</p>
           </div>
-          <span className="ml-auto rounded-full bg-[#3B82F6]/10 px-2.5 py-0.5 text-xs font-medium text-[#3B82F6]">Director</span>
+          <span className="ml-auto rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-600">Director</span>
         </div>
-        <p className="text-xs text-[#475569]">Directors have full access to all features and cannot be restricted.</p>
+        <p className="text-xs text-slate-500">Directors have full access to all features and cannot be restricted.</p>
       </div>
     )
   }
@@ -80,23 +80,23 @@ function MemberPermissions({ member }: { member: TeamMember }) {
   return (
     <div className="hub-card space-y-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1F2D45] text-xs font-semibold text-[#94A3B8]">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">
           {member.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
         </div>
         <div>
-          <p className="text-sm font-medium text-[#F1F5F9]">{member.full_name}</p>
-          <p className="text-xs text-[#475569]">{member.email} · <span className="capitalize">{member.role}</span></p>
+          <p className="text-sm font-medium text-slate-900">{member.full_name}</p>
+          <p className="text-xs text-slate-500">{member.email} · <span className="capitalize">{member.role}</span></p>
         </div>
       </div>
 
       <div className="space-y-2">
-        <div className="grid grid-cols-[1fr_auto] gap-2 pb-1 border-b border-[#1F2D45]">
-          <p className="text-xs font-medium text-[#475569] uppercase tracking-wide">Feature</p>
-          <p className="text-xs font-medium text-[#475569] uppercase tracking-wide">Access</p>
+        <div className="grid grid-cols-[1fr_auto] gap-2 pb-1 border-b border-slate-200">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Feature</p>
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Access</p>
         </div>
         {ALL_FEATURES.map(feature => (
           <div key={feature} className="grid grid-cols-[1fr_auto] items-center gap-2">
-            <span className="text-sm text-[#CBD5E1]">{FEATURE_LABELS[feature]}</span>
+            <span className="text-sm text-slate-600">{FEATURE_LABELS[feature]}</span>
             <button
               type="button"
               onClick={() => toggleLevel(feature)}
@@ -108,17 +108,17 @@ function MemberPermissions({ member }: { member: TeamMember }) {
         ))}
       </div>
 
-      <p className="text-xs text-[#475569]">
-        Click a badge to cycle: <span className="text-[#10B981]">Edit</span> → <span className="text-[#3B82F6]">View</span> → <span className="text-[#475569]">None</span>
+      <p className="text-xs text-slate-500">
+        Click a badge to cycle: <span className="text-emerald-600">Edit</span> → <span className="text-blue-600">View</span> → <span className="text-slate-500">None</span>
       </p>
 
-      {error && <p className="text-xs text-[#EF4444]">{error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
 
       <div className="flex items-center gap-3">
         <Button size="sm" onClick={handleSave} disabled={isPending}>
           {isPending ? 'Saving…' : 'Save Permissions'}
         </Button>
-        {saved && <span className="text-xs text-[#10B981]">✓ Saved</span>}
+        {saved && <span className="text-xs text-emerald-600">✓ Saved</span>}
       </div>
     </div>
   )
@@ -128,8 +128,8 @@ export function TeamPermissions({ members }: Props) {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-base font-semibold text-[#F1F5F9]">Team Permissions</h2>
-        <p className="text-sm text-[#475569]">Control what each team member can view or edit. Directors always have full access.</p>
+        <h2 className="text-base font-semibold text-slate-900">Team Permissions</h2>
+        <p className="text-sm text-slate-500">Control what each team member can view or edit. Directors always have full access.</p>
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {members.map(member => (

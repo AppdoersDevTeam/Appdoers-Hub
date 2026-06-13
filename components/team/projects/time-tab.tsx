@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { Trash2 } from 'lucide-react'
@@ -34,8 +34,8 @@ interface Props {
   tasks: { id: string; title: string }[]
 }
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
-const selectClass = 'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
+const selectClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
 export function TimeTab({ projectId, clientId, entries, estimatedHours, teamMembers, currentUserId, tasks }: Props) {
   const [isPending, startTransition] = useTransition()
@@ -106,14 +106,14 @@ export function TimeTab({ projectId, clientId, entries, estimatedHours, teamMemb
           { label: 'Estimated', value: estimatedHours ? `${estimatedHours}h` : '—' },
         ].map((s) => (
           <div key={s.label} className="hub-card py-3">
-            <p className="text-xs text-[#475569]">{s.label}</p>
-            <p className="mt-1 text-lg font-semibold text-[#F1F5F9]">{s.value}</p>
+            <p className="text-xs text-slate-500">{s.label}</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">{s.value}</p>
           </div>
         ))}
       </div>
 
       {error && (
-        <div className="rounded-md border border-[#EF4444]/20 bg-[#EF4444]/10 px-4 py-2 text-sm text-[#EF4444]">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
           {error}
         </div>
       )}
@@ -134,11 +134,11 @@ export function TimeTab({ projectId, clientId, entries, estimatedHours, teamMemb
 
       {showInvoiceForm && (
         <div className="hub-card flex items-center gap-4">
-          <p className="text-sm text-[#CBD5E1] shrink-0">
+          <p className="text-sm text-slate-600 shrink-0">
             Create invoice for <strong>{uninvoicedBillable.length}</strong> billable entries
           </p>
           <div>
-            <label className="block text-xs text-[#94A3B8] mb-1">Due Date</label>
+            <label className="block text-xs text-slate-500 mb-1">Due Date</label>
             <Input type="date" value={invoiceDueDate} onChange={(e) => setInvoiceDueDate(e.target.value)} />
           </div>
           <Button
@@ -168,7 +168,7 @@ export function TimeTab({ projectId, clientId, entries, estimatedHours, teamMemb
 
       {showForm && (
         <form onSubmit={handleLog} className="hub-card space-y-4">
-          <h3 className="text-sm font-semibold text-[#F1F5F9]">Log Time</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Log Time</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Team Member</label>
@@ -201,9 +201,9 @@ export function TimeTab({ projectId, clientId, entries, estimatedHours, teamMemb
               type="checkbox"
               checked={form.is_billable}
               onChange={(e) => set('is_billable', e.target.checked)}
-              className="rounded border-[#1F2D45]"
+              className="rounded border-slate-200"
             />
-            <span className="text-sm text-[#CBD5E1]">Billable</span>
+            <span className="text-sm text-slate-600">Billable</span>
           </label>
           <Button type="submit" disabled={isPending}>
             {isPending ? 'Logging…' : 'Log Time'}
@@ -216,39 +216,39 @@ export function TimeTab({ projectId, clientId, entries, estimatedHours, teamMemb
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1F2D45]">
+              <tr className="border-b border-slate-200">
                 {['Date', 'Team Member', 'Task', 'Hours', 'Description', 'Billable', 'Invoiced', ''].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1F2D45]">
+            <tbody className="divide-y divide-slate-200">
               {entries.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-[#475569]">
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
                     No time logged yet.
                   </td>
                 </tr>
               ) : (
                 entries.map((entry) => (
-                  <tr key={entry.id} className={cn('transition-colors', entry.is_invoiced ? 'opacity-50' : 'hover:bg-[#1C2537]')}>
-                    <td className="px-4 py-3 text-[#CBD5E1]">{formatDate(entry.date)}</td>
-                    <td className="px-4 py-3 text-[#CBD5E1]">{entry.team_users?.full_name ?? '—'}</td>
-                    <td className="px-4 py-3 text-[#CBD5E1]">{entry.tasks?.title ?? '—'}</td>
-                    <td className="px-4 py-3 font-medium text-[#F1F5F9]">{Number(entry.hours).toFixed(1)}h</td>
-                    <td className="px-4 py-3 text-[#CBD5E1]">{entry.description ?? '—'}</td>
+                  <tr key={entry.id} className={cn('transition-colors', entry.is_invoiced ? 'opacity-50' : 'hover:bg-slate-50')}>
+                    <td className="px-4 py-3 text-slate-600">{formatDate(entry.date)}</td>
+                    <td className="px-4 py-3 text-slate-600">{entry.team_users?.full_name ?? '—'}</td>
+                    <td className="px-4 py-3 text-slate-600">{entry.tasks?.title ?? '—'}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{Number(entry.hours).toFixed(1)}h</td>
+                    <td className="px-4 py-3 text-slate-600">{entry.description ?? '—'}</td>
                     <td className="px-4 py-3 text-center">
-                      {entry.is_billable ? <span className="text-[#10B981]">✓</span> : <span className="text-[#475569]">—</span>}
+                      {entry.is_billable ? <span className="text-emerald-600">✓</span> : <span className="text-slate-500">—</span>}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {entry.is_invoiced ? <span className="text-[#94A3B8]">Invoiced</span> : <span className="text-[#475569]">—</span>}
+                      {entry.is_invoiced ? <span className="text-slate-500">Invoiced</span> : <span className="text-slate-500">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       {!entry.is_invoiced && (
                         <button
                           onClick={() => handleDelete(entry.id)}
                           disabled={isPending}
-                          className="text-[#475569] hover:text-[#EF4444] transition-colors"
+                          className="text-slate-500 hover:text-red-600 transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -32,20 +32,20 @@ export default function TeamLoginPage() {
   }
 
   return (
-    <div className="theme-team flex min-h-screen items-center justify-center bg-[#0A0F1E] px-4">
+    <div className="theme-team flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#3B82F6] shadow-lg shadow-blue-500/20">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-500/20">
             <span className="text-xl font-bold text-white">A</span>
           </div>
-          <h1 className="mt-4 text-xl font-semibold text-[#F1F5F9]">Appdoers Hub</h1>
-          <p className="mt-1 text-sm text-[#94A3B8]">Team access</p>
+          <h1 className="mt-4 text-xl font-semibold text-slate-900">Appdoers Hub</h1>
+          <p className="mt-1 text-sm text-slate-500">Team access</p>
         </div>
 
         <div className="hub-card">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">
+              <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
                 Email
               </label>
               <Input
@@ -59,7 +59,7 @@ export default function TeamLoginPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">
+              <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
                 Password
               </label>
               <Input
@@ -73,7 +73,7 @@ export default function TeamLoginPage() {
             </div>
 
             {error && (
-              <p className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                 {error}
               </p>
             )}
@@ -84,9 +84,9 @@ export default function TeamLoginPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-xs text-[#475569]">
+        <p className="mt-6 text-center text-xs text-slate-500">
           Are you a client?{' '}
-          <a href="/portal/login" className="text-[#3B82F6] hover:underline">
+          <a href="/portal/login" className="text-blue-600 hover:underline">
             Access the client portal →
           </a>
         </p>

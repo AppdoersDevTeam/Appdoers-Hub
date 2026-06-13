@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -32,8 +32,8 @@ const LOST_REASONS: { value: LostReason; label: string }[] = [
 ]
 
 const selectClass =
-  'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
+  'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 
 interface Props {
   leadId: string
@@ -94,10 +94,10 @@ export function LeadActions({
 
   return (
     <div className="hub-card space-y-3">
-      <h3 className="text-sm font-semibold text-[#F1F5F9]">Actions</h3>
+      <h3 className="text-sm font-semibold text-slate-900">Actions</h3>
 
       {error && (
-        <div className="rounded-md bg-[#EF4444]/10 border border-[#EF4444]/20 px-3 py-2 text-sm text-[#EF4444]">
+        <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
           {error}
         </div>
       )}
@@ -137,7 +137,7 @@ export function LeadActions({
 
       {/* Lost form */}
       {showLostForm && (
-        <form onSubmit={markLost} className="space-y-3 rounded-lg border border-[#EF4444]/20 bg-[#EF4444]/5 p-3">
+        <form onSubmit={markLost} className="space-y-3 rounded-lg border border-red-200 bg-red-50/50 p-3">
           <div>
             <label className={labelClass}>Lost Reason *</label>
             <select
@@ -195,27 +195,27 @@ export function LeadActions({
       )}
 
       {currentStatus === 'won' && hasConvertedClient && (
-        <p className="text-center text-xs text-[#10B981]">
+        <p className="text-center text-xs text-emerald-600">
           ✓ Converted to client
         </p>
       )}
 
       {currentStatus === 'lost' && (
-        <p className="text-center text-xs text-[#475569]">
+        <p className="text-center text-xs text-slate-500">
           This lead is closed as lost.
         </p>
       )}
 
       {/* Status indicator */}
-      <div className="border-t border-[#1F2D45] pt-2">
-        <p className="text-xs text-[#475569]">
+      <div className="border-t border-slate-200 pt-2">
+        <p className="text-xs text-slate-500">
           Current status:{' '}
-          <span className="font-medium text-[#CBD5E1]">
+          <span className="font-medium text-slate-600">
             {currentStatus.replace('_', ' ')}
           </span>
         </p>
         <button
-          className="mt-1 text-xs text-[#475569] hover:text-[#94A3B8] underline"
+          className="mt-1 text-xs text-slate-500 hover:text-slate-600 underline"
           onClick={() => router.refresh()}
         >
           Refresh

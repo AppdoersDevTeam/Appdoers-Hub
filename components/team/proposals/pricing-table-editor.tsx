@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
@@ -23,8 +23,8 @@ interface Section {
   content: string
 }
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
-const selectClass = 'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
+const selectClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
 export function PricingTableEditor({
   section,
@@ -92,8 +92,8 @@ export function PricingTableEditor({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-[#F1F5F9]">{section.title}</h2>
-        <p className="text-sm text-[#475569]">Define the services and pricing for this proposal.</p>
+        <h2 className="text-lg font-semibold text-slate-900">{section.title}</h2>
+        <p className="text-sm text-slate-500">Define the services and pricing for this proposal.</p>
       </div>
 
       {/* Intro text */}
@@ -103,15 +103,15 @@ export function PricingTableEditor({
           value={section.content}
           onChange={(e) => onContentUpdate(e.target.value)}
           rows={4}
-          className="w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-4 py-3 text-sm text-[#F1F5F9] placeholder:text-[#475569] focus:border-[#3B82F6] focus:outline-none resize-y leading-relaxed"
+          className="w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none resize-y leading-relaxed"
           placeholder="Brief intro to the investment section…"
         />
       </div>
 
       {/* Pricing items table */}
       <div className="hub-card overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-[#1F2D45] px-4 py-3">
-          <p className="text-sm font-medium text-[#F1F5F9]">Line Items</p>
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+          <p className="text-sm font-medium text-slate-900">Line Items</p>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={() => setAddMode('catalog')}>
               <Plus className="mr-1 h-3.5 w-3.5" /> From Catalog
@@ -124,7 +124,7 @@ export function PricingTableEditor({
 
         {/* Add from catalog */}
         {addMode === 'catalog' && (
-          <div className="flex items-end gap-3 border-b border-[#1F2D45] bg-[#0D1526] px-4 py-3">
+          <div className="flex items-end gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
             <div className="flex-1">
               <label className={labelClass}>Select from Service Catalog</label>
               <select className={selectClass} value={selectedServiceId} onChange={(e) => setSelectedServiceId(e.target.value)}>
@@ -148,7 +148,7 @@ export function PricingTableEditor({
 
         {/* Add custom item */}
         {addMode === 'custom' && (
-          <div className="border-b border-[#1F2D45] bg-[#0D1526] px-4 py-3">
+          <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
                 <label className={labelClass}>Name *</label>
@@ -177,30 +177,30 @@ export function PricingTableEditor({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1F2D45]">
+              <tr className="border-b border-slate-200">
                 {['Service', 'Description', 'Setup Fee', 'Monthly Fee', ''].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1F2D45]">
+            <tbody className="divide-y divide-slate-200">
               {pricingItems.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-[#475569]">No line items yet. Add from the catalog or create a custom item.</td></tr>
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">No line items yet. Add from the catalog or create a custom item.</td></tr>
               ) : (
                 pricingItems.map((item, i) => (
-                  <tr key={i} className="hover:bg-[#1C2537] transition-colors">
+                  <tr key={i} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-2">
                       <Input
                         value={item.name}
                         onChange={(e) => updateItem(i, 'name', e.target.value)}
-                        className="border-transparent bg-transparent text-[#F1F5F9] hover:border-[#1F2D45] focus:border-[#3B82F6]"
+                        className="border-transparent bg-transparent text-slate-900 hover:border-slate-300 focus:border-blue-500"
                       />
                     </td>
                     <td className="px-4 py-2">
                       <Input
                         value={item.description}
                         onChange={(e) => updateItem(i, 'description', e.target.value)}
-                        className="border-transparent bg-transparent text-[#CBD5E1] hover:border-[#1F2D45] focus:border-[#3B82F6]"
+                        className="border-transparent bg-transparent text-slate-600 hover:border-slate-300 focus:border-blue-500"
                         placeholder="—"
                       />
                     </td>
@@ -211,7 +211,7 @@ export function PricingTableEditor({
                         step={0.01}
                         value={item.setup_fee}
                         onChange={(e) => updateItem(i, 'setup_fee', parseFloat(e.target.value) || 0)}
-                        className="border-transparent bg-transparent text-[#CBD5E1] hover:border-[#1F2D45] focus:border-[#3B82F6] w-28"
+                        className="border-transparent bg-transparent text-slate-600 hover:border-slate-300 focus:border-blue-500 w-28"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -221,11 +221,11 @@ export function PricingTableEditor({
                         step={0.01}
                         value={item.monthly_fee}
                         onChange={(e) => updateItem(i, 'monthly_fee', parseFloat(e.target.value) || 0)}
-                        className="border-transparent bg-transparent text-[#CBD5E1] hover:border-[#1F2D45] focus:border-[#3B82F6] w-28"
+                        className="border-transparent bg-transparent text-slate-600 hover:border-slate-300 focus:border-blue-500 w-28"
                       />
                     </td>
                     <td className="px-4 py-2">
-                      <button onClick={() => removeItem(i)} className="rounded p-1 text-[#475569] hover:bg-[#1F2D45] hover:text-[#EF4444]">
+                      <button onClick={() => removeItem(i)} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </td>
@@ -235,10 +235,10 @@ export function PricingTableEditor({
             </tbody>
             {pricingItems.length > 0 && (
               <tfoot>
-                <tr className="border-t-2 border-[#1F2D45] bg-[#0D1526]">
-                  <td colSpan={2} className="px-4 py-3 text-sm font-semibold text-[#F1F5F9]">Totals</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-[#F1F5F9]">{formatCurrency(totalSetup)}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-[#F1F5F9]">{formatCurrency(totalMonthly)}/mo</td>
+                <tr className="border-t-2 border-slate-200 bg-slate-50">
+                  <td colSpan={2} className="px-4 py-3 text-sm font-semibold text-slate-900">Totals</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-slate-900">{formatCurrency(totalSetup)}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-slate-900">{formatCurrency(totalMonthly)}/mo</td>
                   <td />
                 </tr>
               </tfoot>
@@ -251,16 +251,16 @@ export function PricingTableEditor({
       {pricingItems.length > 0 && (
         <div className="grid grid-cols-3 gap-4">
           <div className="hub-card">
-            <p className="text-xs text-[#475569]">One-time Setup</p>
-            <p className="mt-1 text-2xl font-bold text-[#F1F5F9]">{formatCurrency(totalSetup)}</p>
+            <p className="text-xs text-slate-500">One-time Setup</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{formatCurrency(totalSetup)}</p>
           </div>
           <div className="hub-card">
-            <p className="text-xs text-[#475569]">Monthly Recurring</p>
-            <p className="mt-1 text-2xl font-bold text-[#F1F5F9]">{formatCurrency(totalMonthly)}<span className="text-sm font-normal text-[#475569]">/mo</span></p>
+            <p className="text-xs text-slate-500">Monthly Recurring</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{formatCurrency(totalMonthly)}<span className="text-sm font-normal text-slate-500">/mo</span></p>
           </div>
           <div className="hub-card">
-            <p className="text-xs text-[#475569]">Annual Value (12mo)</p>
-            <p className="mt-1 text-2xl font-bold text-[#10B981]">{formatCurrency(totalSetup + totalMonthly * 12)}</p>
+            <p className="text-xs text-slate-500">Annual Value (12mo)</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-600">{formatCurrency(totalSetup + totalMonthly * 12)}</p>
           </div>
         </div>
       )}

@@ -14,15 +14,9 @@ import { CredentialsSection } from '@/components/team/clients/credentials-sectio
 import { DomainsSection } from '@/components/team/clients/domains-section'
 import { cn } from '@/lib/utils/cn'
 
-const planLabels: Record<string, string> = {
-  launch: 'Launch',
-  growth: 'Growth',
-  growth_annual: 'Growth Annual',
-  scale: 'Scale',
-  founders_special: 'Founders Special',
-  community: 'Community',
-  none: '—',
-}
+import { PLAN_LABELS } from '@/lib/constants/plans'
+
+const planLabels: Record<string, string> = { ...PLAN_LABELS, none: '—' }
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -69,7 +63,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
 
   const { data: catalogPlans } = await supabase
     .from('service_catalog')
-    .select('plan_key, name, monthly_fee')
+    .select('plan_key, name, monthly_fee, setup_fee')
     .eq('type', 'plan')
     .eq('is_active', true)
     .order('sort_order')
@@ -152,7 +146,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
       {/* Back link */}
       <Link
         href="/app/clients"
-        className="inline-flex items-center gap-1.5 text-sm text-[#94A3B8] hover:text-[#F1F5F9] transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" /> All Clients
       </Link>
@@ -163,7 +157,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
       />
 
       {/* Tabs */}
-      <div className="border-b border-[#1F2D45]">
+      <div className="border-b border-slate-200">
         <nav className="flex gap-0.5 overflow-x-auto">
           {TABS.map(({ key, label }) => (
             <Link
@@ -172,8 +166,8 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
               className={cn(
                 'px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap',
                 tab === key
-                  ? 'border-[#3B82F6] text-[#3B82F6]'
-                  : 'border-transparent text-[#94A3B8] hover:text-[#F1F5F9]'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-900'
               )}
             >
               {label}
@@ -189,7 +183,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
           <div className="space-y-6 lg:col-span-2">
             {/* Details Card */}
             <div className="hub-card space-y-4">
-              <h3 className="text-sm font-semibold text-[#F1F5F9]">Details</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Details</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <InfoRow label="Industry" value={client.industry ?? '—'} />
                 <InfoRow label="Location" value={client.location ?? '—'} />
@@ -201,7 +195,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
                         href={client.website}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[#3B82F6] hover:underline"
+                        className="text-blue-600 hover:underline"
                       >
                         {client.website}
                       </a>
@@ -212,9 +206,9 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
                 />
                 <InfoRow label="Status" value={
                   <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium',
-                    client.status === 'active' ? 'bg-[#10B981]/10 text-[#10B981]' :
-                    client.status === 'churned' ? 'bg-[#EF4444]/10 text-[#EF4444]' :
-                    'bg-[#94A3B8]/10 text-[#94A3B8]'
+                    client.status === 'active' ? 'bg-emerald-50 text-emerald-700' :
+                    client.status === 'churned' ? 'bg-red-50 text-red-700' :
+                    'bg-slate-100 text-slate-500'
                   )}>
                     {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
                   </span>
@@ -236,30 +230,30 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
           {/* Right: Financials */}
           <div className="space-y-4">
             <div className="hub-card space-y-4">
-              <h3 className="text-sm font-semibold text-[#F1F5F9]">Financials</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Financials</h3>
               <div className="space-y-3 text-sm">
                 <div>
-                  <p className="text-xs text-[#475569]">Subscription Plan</p>
-                  <p className="mt-0.5 font-medium text-[#F1F5F9]">
+                  <p className="text-xs text-slate-500">Subscription Plan</p>
+                  <p className="mt-0.5 font-medium text-slate-900">
                     {planLabels[client.subscription_plan]}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#475569]">Monthly Fee (MRR)</p>
-                  <p className="mt-0.5 text-xl font-semibold text-[#10B981]">
+                  <p className="text-xs text-slate-500">Monthly Fee (MRR)</p>
+                  <p className="mt-0.5 text-xl font-semibold text-emerald-600">
                     {formatCurrency(client.monthly_fee)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#475569]">Setup Fee</p>
-                  <p className="mt-0.5 font-medium text-[#F1F5F9]">
+                  <p className="text-xs text-slate-500">Setup Fee</p>
+                  <p className="mt-0.5 font-medium text-slate-900">
                     {formatCurrency(client.setup_fee)}
                   </p>
                 </div>
                 {client.subscription_start_date && (
                   <div>
-                    <p className="text-xs text-[#475569]">Subscription Start</p>
-                    <p className="mt-0.5 text-[#CBD5E1]">
+                    <p className="text-xs text-slate-500">Subscription Start</p>
+                    <p className="mt-0.5 text-slate-600">
                       {formatDate(client.subscription_start_date)}
                     </p>
                   </div>
@@ -274,6 +268,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
                 value: p.plan_key ?? p.name.toLowerCase().replace(/\s+/g, '_'),
                 label: p.name,
                 fee: Number(p.monthly_fee),
+                setup: Number(p.setup_fee),
               }))}
             />
           </div>
@@ -286,32 +281,32 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#1F2D45]">
+                  <tr className="border-b border-slate-200">
                     {['Project', 'Type', 'Phase', 'Client Status', 'Launch Date', 'Hours', 'Status'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">{h}</th>
+                      <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1F2D45]">
+                <tbody className="divide-y divide-slate-200">
                   {clientProjects.map((p) => {
                     const phaseLabels: Record<string, string> = { discovery: 'Discovery', design: 'Design', development: 'Development', review_qa: 'Review & QA', launch: 'Launch', maintenance: 'Maintenance' }
-                    const clientStatusCls: Record<string, string> = { new: 'bg-[#94A3B8]/10 text-[#94A3B8]', in_progress: 'bg-[#3B82F6]/10 text-[#3B82F6]', awaiting_appdoers: 'bg-[#F59E0B]/10 text-[#F59E0B]', awaiting_client: 'bg-[#F97316]/10 text-[#F97316]', completed: 'bg-[#10B981]/10 text-[#10B981]', on_hold: 'bg-[#EF4444]/10 text-[#EF4444]' }
-                    const statusCls: Record<string, string> = { active: 'bg-[#10B981]/10 text-[#10B981]', on_hold: 'bg-[#F59E0B]/10 text-[#F59E0B]', completed: 'bg-[#94A3B8]/10 text-[#94A3B8]', cancelled: 'bg-[#EF4444]/10 text-[#EF4444]' }
+                    const clientStatusCls: Record<string, string> = { new: 'bg-slate-100 text-slate-500', in_progress: 'bg-blue-50 text-blue-700', awaiting_appdoers: 'bg-amber-50 text-amber-700', awaiting_client: 'bg-orange-50 text-orange-700', completed: 'bg-emerald-50 text-emerald-700', on_hold: 'bg-red-50 text-red-700' }
+                    const statusCls: Record<string, string> = { active: 'bg-emerald-50 text-emerald-700', on_hold: 'bg-amber-50 text-amber-700', completed: 'bg-slate-100 text-slate-500', cancelled: 'bg-red-50 text-red-700' }
                     const hours = p.estimated_hours ? `${p.estimated_hours}h est.` : '—'
                     return (
-                      <tr key={p.id} className="hover:bg-[#1C2537] transition-colors">
-                        <td className="px-4 py-3 font-medium text-[#F1F5F9]">
-                          <Link href={`/app/projects/${p.id}`} className="hover:text-[#3B82F6] transition-colors">{p.name}</Link>
+                      <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          <Link href={`/app/projects/${p.id}`} className="hover:text-blue-600 transition-colors">{p.name}</Link>
                         </td>
-                        <td className="px-4 py-3 capitalize text-[#CBD5E1]">{p.type}</td>
-                        <td className="px-4 py-3 text-[#CBD5E1]">{phaseLabels[p.current_phase] ?? p.current_phase}</td>
+                        <td className="px-4 py-3 capitalize text-slate-600">{p.type}</td>
+                        <td className="px-4 py-3 text-slate-600">{phaseLabels[p.current_phase] ?? p.current_phase}</td>
                         <td className="px-4 py-3">
-                          <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', clientStatusCls[p.client_status] ?? 'bg-[#94A3B8]/10 text-[#94A3B8]')}>{p.client_status?.replace(/_/g, ' ')}</span>
+                          <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', clientStatusCls[p.client_status] ?? 'bg-slate-100 text-slate-500')}>{p.client_status?.replace(/_/g, ' ')}</span>
                         </td>
-                        <td className="px-4 py-3 text-[#CBD5E1]">{p.target_launch_date ? formatDate(p.target_launch_date) : '—'}</td>
-                        <td className="px-4 py-3 text-[#CBD5E1]">{hours}</td>
+                        <td className="px-4 py-3 text-slate-600">{p.target_launch_date ? formatDate(p.target_launch_date) : '—'}</td>
+                        <td className="px-4 py-3 text-slate-600">{hours}</td>
                         <td className="px-4 py-3">
-                          <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', statusCls[p.status] ?? 'bg-[#94A3B8]/10 text-[#94A3B8]')}>{p.status?.replace(/_/g, ' ')}</span>
+                          <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', statusCls[p.status] ?? 'bg-slate-100 text-slate-500')}>{p.status?.replace(/_/g, ' ')}</span>
                         </td>
                       </tr>
                     )
@@ -350,29 +345,29 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#1F2D45]">
+                  <tr className="border-b border-slate-200">
                     {['Title', 'Version', 'Status', 'Setup', 'Monthly', 'Created', 'Sent'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">{h}</th>
+                      <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1F2D45]">
+                <tbody className="divide-y divide-slate-200">
                   {clientProposals.map((p) => {
-                    const statusCls: Record<string, { label: string; cls: string }> = { draft: { label: 'Draft', cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' }, sent: { label: 'Sent', cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' }, approved: { label: 'Approved', cls: 'bg-[#10B981]/10 text-[#10B981]' }, declined: { label: 'Declined', cls: 'bg-[#EF4444]/10 text-[#EF4444]' }, expired: { label: 'Expired', cls: 'bg-[#F59E0B]/10 text-[#F59E0B]' } }
+                    const statusCls: Record<string, { label: string; cls: string }> = { draft: { label: 'Draft', cls: 'bg-slate-100 text-slate-500' }, sent: { label: 'Sent', cls: 'bg-blue-50 text-blue-700' }, approved: { label: 'Approved', cls: 'bg-emerald-50 text-emerald-700' }, declined: { label: 'Declined', cls: 'bg-red-50 text-red-700' }, expired: { label: 'Expired', cls: 'bg-amber-50 text-amber-700' } }
                     const st = statusCls[p.status] ?? statusCls.draft
                     return (
-                      <tr key={p.id} className="hover:bg-[#1C2537] transition-colors">
-                        <td className="px-4 py-3 font-medium text-[#F1F5F9]">
-                          <Link href={`/app/proposals/${p.id}`} className="hover:text-[#3B82F6] transition-colors">{p.title}</Link>
+                      <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          <Link href={`/app/proposals/${p.id}`} className="hover:text-blue-600 transition-colors">{p.title}</Link>
                         </td>
-                        <td className="px-4 py-3 text-[#CBD5E1]">v{p.version}</td>
+                        <td className="px-4 py-3 text-slate-600">v{p.version}</td>
                         <td className="px-4 py-3">
                           <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>{st.label}</span>
                         </td>
-                        <td className="px-4 py-3 text-[#CBD5E1]">{p.total_setup ? formatCurrency(Number(p.total_setup)) : '—'}</td>
-                        <td className="px-4 py-3 text-[#CBD5E1]">{p.total_monthly ? `${formatCurrency(Number(p.total_monthly))}/mo` : '—'}</td>
-                        <td className="px-4 py-3 text-[#475569]">{formatDate(p.created_at)}</td>
-                        <td className="px-4 py-3 text-[#475569]">{p.sent_at ? formatDate(p.sent_at) : '—'}</td>
+                        <td className="px-4 py-3 text-slate-600">{p.total_setup ? formatCurrency(Number(p.total_setup)) : '—'}</td>
+                        <td className="px-4 py-3 text-slate-600">{p.total_monthly ? `${formatCurrency(Number(p.total_monthly))}/mo` : '—'}</td>
+                        <td className="px-4 py-3 text-slate-500">{formatDate(p.created_at)}</td>
+                        <td className="px-4 py-3 text-slate-500">{p.sent_at ? formatDate(p.sent_at) : '—'}</td>
                       </tr>
                     )
                   })}
@@ -475,8 +470,8 @@ function InfoRow({
 }) {
   return (
     <div>
-      <p className="text-xs text-[#475569]">{label}</p>
-      <p className="mt-0.5 text-[#CBD5E1]">{value}</p>
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="mt-0.5 text-slate-600">{value}</p>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
@@ -14,7 +14,7 @@ const NOTE_TYPES = [
 type NoteType = 'general' | 'call' | 'meeting' | 'email'
 
 const selectClass =
-  'rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
+  'rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
 export function LeadNotes({ leadId }: { leadId: string }) {
   const [isPending, startTransition] = useTransition()
@@ -52,14 +52,14 @@ export function LeadNotes({ leadId }: { leadId: string }) {
         </select>
       </div>
       <textarea
-        className="w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] placeholder-[#475569] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6] resize-none"
+        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
         rows={3}
         placeholder="Add a note, call log, or meeting summary…"
         value={content}
         onChange={(e) => setContent(e.target.value)}
       />
       {error && (
-        <p className="text-xs text-[#EF4444]">{error}</p>
+        <p className="text-xs text-red-600">{error}</p>
       )}
       <Button type="submit" disabled={isPending || !content.trim()} size="sm">
         {isPending ? 'Adding…' : 'Add Note'}

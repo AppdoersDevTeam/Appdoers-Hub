@@ -59,12 +59,8 @@ export type InvoiceType = 'setup' | 'monthly' | 'adhoc'
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'void'
 
 export type SubscriptionPlan =
-  | 'launch'
-  | 'growth'
-  | 'growth_annual'
-  | 'scale'
-  | 'founders_special'
-  | 'community'
+  | 'basic'
+  | 'full'
   | 'none'
 
 export type FileFolder =

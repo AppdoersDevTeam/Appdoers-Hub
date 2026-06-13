@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -19,9 +19,9 @@ interface Props {
   defaultClientId?: string
 }
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 const selectClass =
-  'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]'
+  'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
 
 export function NewProjectSlideOver({ open, onClose, clients, defaultClientId }: Props) {
   const router = useRouter()
@@ -69,7 +69,7 @@ export function NewProjectSlideOver({ open, onClose, clients, defaultClientId }:
     <SlideOver open={open} onClose={onClose} title="New Project" width="lg">
       <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
         {error && (
-          <div className="rounded-md border border-[#EF4444]/20 bg-[#EF4444]/10 px-4 py-3 text-sm text-[#EF4444]">
+          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             {error}
           </div>
         )}
@@ -148,7 +148,7 @@ export function NewProjectSlideOver({ open, onClose, clients, defaultClientId }:
         <div>
           <label className={labelClass}>Description</label>
           <textarea
-            className="w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] placeholder-[#475569] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6] resize-none"
+            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
             rows={3}
             value={form.description}
             onChange={(e) => set('description', e.target.value)}

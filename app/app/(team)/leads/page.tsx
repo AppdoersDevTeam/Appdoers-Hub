@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { LeadsTable } from '@/components/team/leads/leads-table'
 import { formatCurrency } from '@/lib/utils/format'
@@ -38,29 +38,29 @@ export default async function LeadsPage() {
       label: 'Pipeline Value',
       value: formatCurrency(pipelineValue),
       icon: TrendingUp,
-      color: 'text-[#3B82F6]',
-      bg: 'bg-[#3B82F6]/10',
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
     },
     {
       label: 'Active Leads',
       value: String(activeLeads.length),
       icon: Users,
-      color: 'text-[#F59E0B]',
-      bg: 'bg-[#F59E0B]/10',
+      color: 'text-amber-600',
+      bg: 'bg-amber-50',
     },
     {
       label: 'Won',
       value: String(wonLeads.length),
       icon: CheckCircle,
-      color: 'text-[#10B981]',
-      bg: 'bg-[#10B981]/10',
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50',
     },
     {
       label: 'Lost',
       value: String(lostLeads.length),
       icon: XCircle,
-      color: 'text-[#EF4444]',
-      bg: 'bg-[#EF4444]/10',
+      color: 'text-red-600',
+      bg: 'bg-red-50',
     },
   ]
 
@@ -81,10 +81,10 @@ export default async function LeadsPage() {
                 <Icon className={`h-5 w-5 ${c.color}`} />
               </div>
               <div>
-                <p className="text-xl font-semibold text-[#F1F5F9]">
+                <p className="text-xl font-semibold text-slate-900">
                   {c.value}
                 </p>
-                <p className="text-xs text-[#475569]">{c.label}</p>
+                <p className="text-xs text-slate-500">{c.label}</p>
               </div>
             </div>
           )

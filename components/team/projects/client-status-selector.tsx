@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useTransition } from 'react'
 import { updateClientStatusAction } from '@/lib/actions/projects'
@@ -33,7 +33,7 @@ export function ClientStatusSelector({ projectId, currentStatus }: Props) {
       value={currentStatus}
       onChange={handleChange}
       disabled={isPending}
-      className="rounded-md border border-[#1F2D45] bg-[#111827] px-3 py-1.5 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none disabled:opacity-50"
+      className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none disabled:opacity-50"
       title="Set client-facing status"
     >
       {OPTIONS.map((o) => (

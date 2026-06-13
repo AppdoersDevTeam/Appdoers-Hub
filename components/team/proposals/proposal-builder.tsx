@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback, useTransition } from 'react'
 import Link from 'next/link'
@@ -57,11 +57,11 @@ interface Client {
 }
 
 const statusConfig: Record<string, { label: string; cls: string }> = {
-  draft: { label: 'Draft', cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' },
-  sent: { label: 'Sent', cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' },
-  approved: { label: 'Approved', cls: 'bg-[#10B981]/10 text-[#10B981]' },
-  declined: { label: 'Declined', cls: 'bg-[#EF4444]/10 text-[#EF4444]' },
-  expired: { label: 'Expired', cls: 'bg-[#F59E0B]/10 text-[#F59E0B]' },
+  draft: { label: 'Draft', cls: 'bg-slate-100 text-slate-500' },
+  sent: { label: 'Sent', cls: 'bg-blue-50 text-blue-700' },
+  approved: { label: 'Approved', cls: 'bg-emerald-50 text-emerald-700' },
+  declined: { label: 'Declined', cls: 'bg-red-50 text-red-700' },
+  expired: { label: 'Expired', cls: 'bg-amber-50 text-amber-700' },
 }
 
 export function ProposalBuilder({
@@ -138,22 +138,22 @@ export function ProposalBuilder({
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center gap-4 border-b border-[#1F2D45] bg-[#0D1526] px-6 py-3">
-        <Link href="/app/proposals" className="text-[#475569] hover:text-[#94A3B8] transition-colors">
+      <div className="flex items-center gap-4 border-b border-slate-200 bg-slate-50 px-6 py-3">
+        <Link href="/app/proposals" className="text-slate-500 hover:text-slate-600 transition-colors">
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex flex-1 items-center gap-3">
           <Input
             value={title}
             onChange={(e) => { setTitle(e.target.value); setSaveStatus('unsaved') }}
-            className="max-w-sm border-transparent bg-transparent text-[#F1F5F9] font-medium hover:border-[#1F2D45] focus:border-[#3B82F6]"
+            className="max-w-sm border-transparent bg-transparent text-slate-900 font-medium hover:border-slate-300 focus:border-blue-500"
           />
           <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>{st.label}</span>
-          {client && <span className="text-sm text-[#475569]">{client.company_name}</span>}
-          <span className="text-xs text-[#475569]">v{proposal.version}</span>
+          {client && <span className="text-sm text-slate-500">{client.company_name}</span>}
+          <span className="text-xs text-slate-500">v{proposal.version}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={cn('text-xs', saveStatus === 'saved' ? 'text-[#10B981]' : saveStatus === 'saving' ? 'text-[#F59E0B]' : 'text-[#475569]')}>
+          <span className={cn('text-xs', saveStatus === 'saved' ? 'text-emerald-600' : saveStatus === 'saving' ? 'text-amber-600' : 'text-slate-500')}>
             {saveStatus === 'saved' ? 'Saved' : saveStatus === 'saving' ? 'Saving…' : 'Unsaved changes'}
           </span>
           <Button size="sm" variant="outline" onClick={() => doSave(sections, title)} disabled={isPending}>
@@ -166,13 +166,13 @@ export function ProposalBuilder({
             href={`/api/proposals/${proposal.id}/export-pdf`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#1F2D45] bg-transparent px-3 py-1.5 text-sm text-[#94A3B8] hover:border-[#3B82F6] hover:text-[#F1F5F9] transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-transparent px-3 py-1.5 text-sm text-slate-500 hover:border-blue-600 hover:text-slate-900 transition-colors"
           >
             <Download className="h-3.5 w-3.5" /> PDF
           </a>
           <a
             href={`/api/proposals/${proposal.id}/export-docx`}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#1F2D45] bg-transparent px-3 py-1.5 text-sm text-[#94A3B8] hover:border-[#3B82F6] hover:text-[#F1F5F9] transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-transparent px-3 py-1.5 text-sm text-slate-500 hover:border-blue-600 hover:text-slate-900 transition-colors"
           >
             <FileText className="h-3.5 w-3.5" /> Word
           </a>
@@ -205,8 +205,8 @@ export function ProposalBuilder({
 
       {/* Send confirm banner */}
       {sendConfirm && (
-        <div className="flex items-center gap-4 border-b border-[#F59E0B]/30 bg-[#F59E0B]/10 px-6 py-3">
-          <p className="flex-1 text-sm text-[#F59E0B]">
+        <div className="flex items-center gap-4 border-b border-amber-200 bg-amber-50 px-6 py-3">
+          <p className="flex-1 text-sm text-amber-600">
             This will mark the proposal as <strong>Sent</strong> and notify the team on Slack. Are you sure?
           </p>
           <Button size="sm" onClick={handleSend} disabled={isPending}>Confirm Send</Button>
@@ -227,8 +227,8 @@ export function ProposalBuilder({
       ) : (
         <div className="flex flex-1 overflow-hidden">
           {/* Section nav */}
-          <div className="w-52 shrink-0 border-r border-[#1F2D45] bg-[#0A0F1E] overflow-y-auto py-4">
-            <p className="px-4 pb-2 text-xs font-medium uppercase tracking-wide text-[#475569]">Sections</p>
+          <div className="w-52 shrink-0 border-r border-slate-200 bg-white overflow-y-auto py-4">
+            <p className="px-4 pb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Sections</p>
             {sections.map((s) => (
               <button
                 key={s.id}
@@ -236,8 +236,8 @@ export function ProposalBuilder({
                 className={cn(
                   'w-full px-4 py-2 text-left text-sm transition-colors',
                   activeSection === s.id
-                    ? 'bg-[#1C2537] text-[#F1F5F9]'
-                    : 'text-[#94A3B8] hover:bg-[#1C2537]/50 hover:text-[#CBD5E1]'
+                    ? 'bg-slate-100 text-slate-900'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                 )}
               >
                 {s.title}

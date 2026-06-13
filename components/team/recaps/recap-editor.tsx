@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
@@ -27,9 +27,9 @@ interface Recap {
   is_sent: boolean
 }
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
-const selectClass = 'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
-const textareaClass = 'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] placeholder:text-[#475569] focus:border-[#3B82F6] focus:outline-none resize-y'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
+const selectClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
+const textareaClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none resize-y'
 
 export function RecapEditor({
   recap,
@@ -123,14 +123,14 @@ export function RecapEditor({
     <div className="space-y-6">
       {/* Top bar */}
       <div className="flex items-center gap-4">
-        <Link href="/app/recaps" className="text-[#475569] hover:text-[#94A3B8] transition-colors">
+        <Link href="/app/recaps" className="text-slate-500 hover:text-slate-600 transition-colors">
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex flex-1 items-center gap-3">
-          <h1 className="text-xl font-bold text-[#F1F5F9]">{periodLabel} Recap</h1>
-          <span className="text-sm text-[#475569]">—</span>
-          <span className="text-sm text-[#475569]">{clientName}</span>
-          <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', isSent ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-[#94A3B8]/10 text-[#94A3B8]')}>
+          <h1 className="text-xl font-bold text-slate-900">{periodLabel} Recap</h1>
+          <span className="text-sm text-slate-500">—</span>
+          <span className="text-sm text-slate-500">{clientName}</span>
+          <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', isSent ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500')}>
             {isSent ? 'Sent' : 'Draft'}
           </span>
         </div>
@@ -151,20 +151,20 @@ export function RecapEditor({
 
       {/* Banners */}
       {sendConfirm && (
-        <div className="flex items-center gap-4 rounded-lg border border-[#F59E0B]/30 bg-[#F59E0B]/10 px-4 py-3">
-          <p className="flex-1 text-sm text-[#F59E0B]">This will mark the recap as <strong>Sent</strong> and notify the team. Confirm?</p>
+        <div className="flex items-center gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="flex-1 text-sm text-amber-600">This will mark the recap as <strong>Sent</strong> and notify the team. Confirm?</p>
           <Button size="sm" onClick={handleSend} disabled={isPending}>Confirm Send</Button>
           <Button size="sm" variant="outline" onClick={() => setSendConfirm(false)}>Cancel</Button>
         </div>
       )}
       {generateMsg && (
-        <div className="rounded-lg border border-[#3B82F6]/30 bg-[#3B82F6]/10 px-4 py-3 text-sm text-[#3B82F6]">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-600">
           ✓ {generateMsg}
         </div>
       )}
-      {error && <div className="rounded-md border border-[#EF4444]/20 bg-[#EF4444]/10 px-4 py-2 text-sm text-[#EF4444]">{error}</div>}
+      {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
       {isSent && (
-        <div className="rounded-lg border border-[#10B981]/30 bg-[#10B981]/10 px-4 py-3 text-sm text-[#10B981]">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">
           ✓ This recap has been sent to the client and is visible in their portal.
         </div>
       )}
@@ -174,8 +174,8 @@ export function RecapEditor({
 
           {/* Intro */}
           <div className="hub-card space-y-3">
-            <h2 className="text-sm font-semibold text-[#F1F5F9]">Introduction</h2>
-            <p className="text-xs text-[#475569]">Opening message to the client — friendly summary of the month.</p>
+            <h2 className="text-sm font-semibold text-slate-900">Introduction</h2>
+            <p className="text-xs text-slate-500">Opening message to the client — friendly summary of the month.</p>
             <textarea
               value={introText}
               onChange={(e) => setIntroText(e.target.value)}
@@ -190,8 +190,8 @@ export function RecapEditor({
           <div className="hub-card space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-semibold text-[#F1F5F9]">Work Completed</h2>
-                <p className="text-xs text-[#475569] mt-0.5">List of tasks, features, and deliverables this month.</p>
+                <h2 className="text-sm font-semibold text-slate-900">Work Completed</h2>
+                <p className="text-xs text-slate-500 mt-0.5">List of tasks, features, and deliverables this month.</p>
               </div>
               {!isSent && (
                 <Button size="sm" variant="outline" onClick={addWorkItem}>
@@ -201,7 +201,7 @@ export function RecapEditor({
             </div>
 
             {workItems.length === 0 ? (
-              <p className="text-sm text-[#475569] py-4 text-center">No work items yet. Click "Auto-fill from Data" or add manually.</p>
+              <p className="text-sm text-slate-500 py-4 text-center">No work items yet. Click "Auto-fill from Data" or add manually.</p>
             ) : (
               <div className="space-y-2">
                 {workItems.map((item, i) => (
@@ -222,7 +222,7 @@ export function RecapEditor({
                       className="flex-1"
                     />
                     {!isSent && (
-                      <button onClick={() => removeWorkItem(i)} className="text-[#475569] hover:text-[#EF4444] transition-colors p-1">
+                      <button onClick={() => removeWorkItem(i)} className="text-slate-500 hover:text-red-600 transition-colors p-1">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -234,8 +234,8 @@ export function RecapEditor({
 
           {/* Performance notes */}
           <div className="hub-card space-y-3">
-            <h2 className="text-sm font-semibold text-[#F1F5F9]">Performance & Highlights</h2>
-            <p className="text-xs text-[#475569]">Metrics, wins, site performance, SEO results, etc.</p>
+            <h2 className="text-sm font-semibold text-slate-900">Performance & Highlights</h2>
+            <p className="text-xs text-slate-500">Metrics, wins, site performance, SEO results, etc.</p>
             <textarea
               value={performanceNotes}
               onChange={(e) => setPerformanceNotes(e.target.value)}
@@ -248,8 +248,8 @@ export function RecapEditor({
 
           {/* Coming next */}
           <div className="hub-card space-y-3">
-            <h2 className="text-sm font-semibold text-[#F1F5F9]">Coming Next Month</h2>
-            <p className="text-xs text-[#475569]">What the client can expect next — sets clear expectations.</p>
+            <h2 className="text-sm font-semibold text-slate-900">Coming Next Month</h2>
+            <p className="text-xs text-slate-500">What the client can expect next — sets clear expectations.</p>
             <textarea
               value={comingNext}
               onChange={(e) => setComingNext(e.target.value)}
@@ -264,30 +264,30 @@ export function RecapEditor({
         {/* Sidebar */}
         <div className="space-y-4">
           <div className="hub-card space-y-3">
-            <h3 className="text-sm font-semibold text-[#F1F5F9]">Recap Details</h3>
+            <h3 className="text-sm font-semibold text-slate-900">Recap Details</h3>
             <div className="space-y-2 text-sm">
               <div>
-                <p className="text-xs text-[#475569]">Period</p>
-                <p className="text-[#CBD5E1]">{periodLabel}</p>
+                <p className="text-xs text-slate-500">Period</p>
+                <p className="text-slate-600">{periodLabel}</p>
               </div>
               <div>
-                <p className="text-xs text-[#475569]">Client</p>
-                <p className="text-[#CBD5E1]">{clientName}</p>
+                <p className="text-xs text-slate-500">Client</p>
+                <p className="text-slate-600">{clientName}</p>
               </div>
               <div>
-                <p className="text-xs text-[#475569]">Work Items</p>
-                <p className="text-[#CBD5E1]">{workItems.filter(w => w.description.trim()).length} items</p>
+                <p className="text-xs text-slate-500">Work Items</p>
+                <p className="text-slate-600">{workItems.filter(w => w.description.trim()).length} items</p>
               </div>
               <div>
-                <p className="text-xs text-[#475569]">Status</p>
-                <p className={isSent ? 'text-[#10B981]' : 'text-[#94A3B8]'}>{isSent ? 'Sent to client' : 'Draft'}</p>
+                <p className="text-xs text-slate-500">Status</p>
+                <p className={isSent ? 'text-emerald-600' : 'text-slate-500'}>{isSent ? 'Sent to client' : 'Draft'}</p>
               </div>
             </div>
           </div>
 
           <div className="hub-card space-y-2">
-            <h3 className="text-sm font-semibold text-[#F1F5F9]">Tips</h3>
-            <ul className="space-y-1.5 text-xs text-[#475569]">
+            <h3 className="text-sm font-semibold text-slate-900">Tips</h3>
+            <ul className="space-y-1.5 text-xs text-slate-500">
               <li>• Use "Auto-fill from Data" to pull tasks + hours from the month automatically</li>
               <li>• Keep the intro friendly and personal — mention the client by name</li>
               <li>• Be specific about what was done — avoid vague phrases like "worked on the site"</li>

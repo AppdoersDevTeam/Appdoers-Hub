@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import Link from 'next/link'
@@ -23,13 +23,13 @@ type LeadRow = {
 }
 
 const statusConfig: Record<string, { label: string; cls: string }> = {
-  new: { label: 'New', cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' },
-  contacted: { label: 'Contacted', cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' },
-  qualified: { label: 'Qualified', cls: 'bg-[#F59E0B]/10 text-[#F59E0B]' },
-  proposal_sent: { label: 'Proposal Sent', cls: 'bg-[#8B5CF6]/10 text-[#8B5CF6]' },
-  negotiating: { label: 'Negotiating', cls: 'bg-[#F97316]/10 text-[#F97316]' },
-  won: { label: 'Won', cls: 'bg-[#10B981]/10 text-[#10B981]' },
-  lost: { label: 'Lost', cls: 'bg-[#EF4444]/10 text-[#EF4444]' },
+  new: { label: 'New', cls: 'bg-slate-100 text-slate-500' },
+  contacted: { label: 'Contacted', cls: 'bg-blue-50 text-blue-700' },
+  qualified: { label: 'Qualified', cls: 'bg-amber-50 text-amber-700' },
+  proposal_sent: { label: 'Proposal Sent', cls: 'bg-purple-50 text-purple-700' },
+  negotiating: { label: 'Negotiating', cls: 'bg-orange-50 text-orange-700' },
+  won: { label: 'Won', cls: 'bg-emerald-50 text-emerald-700' },
+  lost: { label: 'Lost', cls: 'bg-red-50 text-red-700' },
 }
 
 const sourceLabels: Record<string, string> = {
@@ -64,14 +64,14 @@ export function LeadsTable({ leads, teamMembers }: Props) {
   })
 
   const selectClass =
-    'rounded-md border border-[#1F2D45] bg-[#111827] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
+    'rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
   return (
     <>
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#475569]" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -113,7 +113,7 @@ export function LeadsTable({ leads, teamMembers }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1F2D45]">
+              <tr className="border-b border-slate-200">
                 {[
                   'Contact',
                   'Company',
@@ -126,19 +126,19 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                 ].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]"
+                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500"
                   >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1F2D45]">
+            <tbody className="divide-y divide-slate-200">
               {filtered.length === 0 ? (
                 <tr>
                   <td
                     colSpan={8}
-                    className="px-4 py-10 text-center text-[#475569]"
+                    className="px-4 py-10 text-center text-slate-500"
                   >
                     {leads.length === 0
                       ? 'No leads yet. Add your first lead to get started.'
@@ -149,16 +149,16 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                 filtered.map((l) => {
                   const st = statusConfig[l.status] ?? statusConfig.new
                   return (
-                    <tr key={l.id} className="hover:bg-[#1C2537] transition-colors">
-                      <td className="px-4 py-3 font-medium text-[#F1F5F9]">
+                    <tr key={l.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-slate-900">
                         <Link
                           href={`/app/leads/${l.id}`}
-                          className="hover:text-[#3B82F6] transition-colors"
+                          className="hover:text-blue-600 transition-colors"
                         >
                           {l.contact_name}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-[#CBD5E1]">
+                      <td className="px-4 py-3 text-slate-600">
                         {l.company_name ?? '—'}
                       </td>
                       <td className="px-4 py-3">
@@ -171,23 +171,23 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                           {st.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-[#CBD5E1]">
+                      <td className="px-4 py-3 text-slate-600">
                         {l.estimated_value
                           ? formatCurrency(l.estimated_value)
                           : '—'}
                       </td>
-                      <td className="px-4 py-3 text-[#CBD5E1]">
+                      <td className="px-4 py-3 text-slate-600">
                         {sourceLabels[l.source] ?? l.source}
                       </td>
-                      <td className="px-4 py-3 text-[#CBD5E1]">
+                      <td className="px-4 py-3 text-slate-600">
                         {l.assigned_to_name ?? '—'}
                       </td>
-                      <td className="px-4 py-3 text-[#CBD5E1]">
+                      <td className="px-4 py-3 text-slate-600">
                         {l.next_action_date
                           ? formatDate(l.next_action_date)
                           : '—'}
                       </td>
-                      <td className="px-4 py-3 text-[#475569]">
+                      <td className="px-4 py-3 text-slate-500">
                         {formatRelativeTime(l.updated_at)}
                       </td>
                     </tr>

@@ -26,7 +26,7 @@ export default async function TeamLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <div className="theme-team min-h-screen bg-[#0A0F1E]">
+    <div className="theme-team min-h-screen bg-[#F8FAFC]">
       <Sidebar hiddenHrefs={hiddenHrefs} />
       <TopBar />
       <main className="ml-60 pt-14">

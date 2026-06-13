@@ -47,7 +47,7 @@ export function SlideOver({
       {/* Backdrop */}
       <div
         className={cn(
-          'fixed inset-0 z-40 bg-black/60 transition-opacity duration-200',
+          'fixed inset-0 z-40 bg-black/40 transition-opacity duration-200',
           open ? 'opacity-100' : 'pointer-events-none opacity-0'
         )}
         onClick={onClose}
@@ -56,22 +56,22 @@ export function SlideOver({
       {/* Panel */}
       <div
         className={cn(
-          'fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-[#111827] shadow-2xl transition-transform duration-200',
+          'fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-white shadow-2xl transition-transform duration-200',
           widthClass,
           open ? 'translate-x-0' : 'translate-x-full'
         )}
       >
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-[#1F2D45] px-6 py-4">
+        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
           <div>
-            <h2 className="text-base font-semibold text-[#F1F5F9]">{title}</h2>
+            <h2 className="text-base font-semibold text-slate-900">{title}</h2>
             {subtitle && (
-              <p className="mt-0.5 text-xs text-[#94A3B8]">{subtitle}</p>
+              <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="ml-4 rounded-md p-1 text-[#94A3B8] transition-colors hover:bg-[#1C2537] hover:text-[#F1F5F9]"
+            className="ml-4 rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
           >
             <X className="h-5 w-5" />
           </button>

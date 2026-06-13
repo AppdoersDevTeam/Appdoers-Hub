@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
@@ -27,26 +27,26 @@ type TaskRow = {
 }
 
 const typeConfig: Record<string, { label: string; cls: string }> = {
-  feature: { label: 'Feature', cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' },
-  bug: { label: 'Bug', cls: 'bg-[#EF4444]/10 text-[#EF4444]' },
-  revision: { label: 'Revision', cls: 'bg-[#F59E0B]/10 text-[#F59E0B]' },
-  content: { label: 'Content', cls: 'bg-[#10B981]/10 text-[#10B981]' },
-  design: { label: 'Design', cls: 'bg-[#8B5CF6]/10 text-[#8B5CF6]' },
-  admin: { label: 'Admin', cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' },
+  feature: { label: 'Feature', cls: 'bg-blue-50 text-blue-700' },
+  bug: { label: 'Bug', cls: 'bg-red-50 text-red-700' },
+  revision: { label: 'Revision', cls: 'bg-amber-50 text-amber-700' },
+  content: { label: 'Content', cls: 'bg-emerald-50 text-emerald-700' },
+  design: { label: 'Design', cls: 'bg-purple-50 text-purple-700' },
+  admin: { label: 'Admin', cls: 'bg-slate-100 text-slate-500' },
 }
 
 const priorityConfig: Record<string, { label: string; cls: string }> = {
-  p0: { label: 'P0', cls: 'bg-[#EF4444]/20 text-[#EF4444] font-bold' },
-  p1: { label: 'P1', cls: 'bg-[#F97316]/10 text-[#F97316]' },
-  p2: { label: 'P2', cls: 'bg-[#F59E0B]/10 text-[#F59E0B]' },
-  p3: { label: 'P3', cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' },
+  p0: { label: 'P0', cls: 'bg-red-100 text-red-700 font-bold' },
+  p1: { label: 'P1', cls: 'bg-orange-50 text-orange-700' },
+  p2: { label: 'P2', cls: 'bg-amber-50 text-amber-700' },
+  p3: { label: 'P3', cls: 'bg-slate-100 text-slate-500' },
 }
 
 const statusConfig: Record<string, { label: string; cls: string }> = {
-  open: { label: 'Open', cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' },
-  in_progress: { label: 'In Progress', cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' },
-  awaiting_review: { label: 'Awaiting Review', cls: 'bg-[#F59E0B]/10 text-[#F59E0B]' },
-  closed: { label: 'Closed', cls: 'bg-[#10B981]/10 text-[#10B981]' },
+  open: { label: 'Open', cls: 'bg-slate-100 text-slate-500' },
+  in_progress: { label: 'In Progress', cls: 'bg-blue-50 text-blue-700' },
+  awaiting_review: { label: 'Awaiting Review', cls: 'bg-amber-50 text-amber-700' },
+  closed: { label: 'Closed', cls: 'bg-emerald-50 text-emerald-700' },
 }
 
 const STATUS_FLOW: Record<string, string> = {
@@ -98,7 +98,7 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
     })
   }
 
-  const selectClass = 'rounded-md border border-[#1F2D45] bg-[#111827] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
+  const selectClass = 'rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
   const cols = ['Title', 'Type', 'Priority', ...(showProjectCol ? ['Project', 'Client'] : []), 'Assigned To', 'Due Date', 'Status', '']
 
@@ -106,7 +106,7 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
     <>
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#475569]" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search tasks…" className="pl-9" />
         </div>
         <select className={selectClass} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
@@ -130,16 +130,16 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1F2D45]">
+              <tr className="border-b border-slate-200">
                 {cols.map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1F2D45]">
+            <tbody className="divide-y divide-slate-200">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={cols.length} className="px-4 py-10 text-center text-[#475569]">
+                  <td colSpan={cols.length} className="px-4 py-10 text-center text-slate-500">
                     {tasks.length === 0 ? 'No tasks yet.' : 'No tasks match your filters.'}
                   </td>
                 </tr>
@@ -152,12 +152,12 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
                   const nextStatus = STATUS_FLOW[t.status]
 
                   return (
-                    <tr key={t.id} className={cn('transition-colors hover:bg-[#1C2537]', isOverdue && 'border-l-2 border-l-[#EF4444]')}>
+                    <tr key={t.id} className={cn('transition-colors hover:bg-slate-50', isOverdue && 'border-l-2 border-l-[#EF4444]')}>
                       <td className="px-4 py-3">
-                        <Link href={`/app/tasks/${t.id}`} className={cn('font-medium hover:text-[#3B82F6] transition-colors', isOverdue ? 'text-[#EF4444]' : 'text-[#F1F5F9]')}>
+                        <Link href={`/app/tasks/${t.id}`} className={cn('font-medium hover:text-blue-600 transition-colors', isOverdue ? 'text-red-600' : 'text-slate-900')}>
                           {t.title}
                         </Link>
-                        {isOverdue && <span className="ml-2 text-xs text-[#EF4444]">Overdue</span>}
+                        {isOverdue && <span className="ml-2 text-xs text-red-600">Overdue</span>}
                       </td>
                       <td className="px-4 py-3">
                         <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', ty.cls)}>{ty.label}</span>
@@ -167,14 +167,14 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
                       </td>
                       {showProjectCol && (
                         <>
-                          <td className="px-4 py-3 text-[#CBD5E1]">
-                            <Link href={`/app/projects/${t.project_id}`} className="hover:text-[#3B82F6] transition-colors">{t.project_name}</Link>
+                          <td className="px-4 py-3 text-slate-600">
+                            <Link href={`/app/projects/${t.project_id}`} className="hover:text-blue-600 transition-colors">{t.project_name}</Link>
                           </td>
-                          <td className="px-4 py-3 text-[#CBD5E1]">{t.client_name}</td>
+                          <td className="px-4 py-3 text-slate-600">{t.client_name}</td>
                         </>
                       )}
-                      <td className="px-4 py-3 text-[#CBD5E1]">{t.assigned_to_name ?? '—'}</td>
-                      <td className="px-4 py-3 text-[#CBD5E1]">{t.due_date ? formatDate(t.due_date) : '—'}</td>
+                      <td className="px-4 py-3 text-slate-600">{t.assigned_to_name ?? '—'}</td>
+                      <td className="px-4 py-3 text-slate-600">{t.due_date ? formatDate(t.due_date) : '—'}</td>
                       <td className="px-4 py-3">
                         <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>{st.label}</span>
                       </td>
@@ -184,7 +184,7 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
                             <button
                               onClick={() => advanceStatus(t)}
                               disabled={isPending}
-                              className="text-xs text-[#3B82F6] hover:text-[#60A5FA] transition-colors whitespace-nowrap"
+                              className="text-xs text-blue-600 hover:text-blue-500 transition-colors whitespace-nowrap"
                             >
                               → {statusConfig[nextStatus]?.label}
                             </button>
@@ -192,7 +192,7 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
                           <button
                             onClick={() => setDeleteTarget(t)}
                             disabled={isPending}
-                            className="rounded p-1 text-[#475569] hover:text-[#EF4444] transition-colors"
+                            className="rounded p-1 text-slate-500 hover:text-red-600 transition-colors"
                             title="Delete task"
                           >
                             <Trash2 className="h-3.5 w-3.5" />

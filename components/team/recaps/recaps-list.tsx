@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
@@ -24,8 +24,8 @@ interface RecapRow {
   client_name: string
 }
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
-const selectClass = 'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
+const selectClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
 export function RecapsList({
   recaps,
@@ -79,42 +79,42 @@ export function RecapsList({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1F2D45]">
+              <tr className="border-b border-slate-200">
                 {['Period', 'Client', 'Status', 'Created', 'Sent'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1F2D45]">
+            <tbody className="divide-y divide-slate-200">
               {recaps.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-[#475569]">
+                  <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
                     No recaps yet. Create your first monthly recap above.
                   </td>
                 </tr>
               ) : (
                 recaps.map((r) => (
-                  <tr key={r.id} className="hover:bg-[#1C2537] transition-colors">
-                    <td className="px-4 py-3 font-medium text-[#F1F5F9]">
-                      <Link href={`/app/recaps/${r.id}`} className="hover:text-[#3B82F6] transition-colors">
+                  <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3 font-medium text-slate-900">
+                      <Link href={`/app/recaps/${r.id}`} className="hover:text-blue-600 transition-colors">
                         {MONTHS[r.month - 1]} {r.year}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-[#CBD5E1]">{r.client_name}</td>
+                    <td className="px-4 py-3 text-slate-600">{r.client_name}</td>
                     <td className="px-4 py-3">
                       <span className={cn(
                         'rounded-full px-2.5 py-0.5 text-xs font-medium',
                         r.is_sent
-                          ? 'bg-[#10B981]/10 text-[#10B981]'
-                          : 'bg-[#94A3B8]/10 text-[#94A3B8]'
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-slate-100 text-slate-500'
                       )}>
                         {r.is_sent ? 'Sent' : 'Draft'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[#475569]">
+                    <td className="px-4 py-3 text-slate-500">
                       {formatDate(r.created_at)}
                     </td>
-                    <td className="px-4 py-3 text-[#475569]">
+                    <td className="px-4 py-3 text-slate-500">
                       {r.sent_at
                         ? formatDate(r.sent_at)
                         : '—'}
@@ -129,7 +129,7 @@ export function RecapsList({
 
       <SlideOver open={showNew} onClose={() => setShowNew(false)} title="New Monthly Recap" subtitle="Select a client and period to begin">
         <form onSubmit={handleCreate} className="space-y-5 px-6 py-5">
-          {error && <div className="rounded-md border border-[#EF4444]/20 bg-[#EF4444]/10 px-4 py-2 text-sm text-[#EF4444]">{error}</div>}
+          {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
           <div>
             <label className={labelClass}>Client *</label>
             <select className={selectClass} value={form.client_id} onChange={(e) => setForm(f => ({ ...f, client_id: e.target.value }))} required>

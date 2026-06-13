@@ -34,17 +34,17 @@ export async function TopBar() {
   }
 
   return (
-    <header className="fixed right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-[#1F2D45] bg-[#111827] px-6 left-60">
+    <header className="fixed right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6 left-60">
       {/* Breadcrumb placeholder — filled per page */}
       <div id="topbar-breadcrumb" />
 
       {/* User area */}
       <div className="flex items-center gap-3">
         <div className="text-right">
-          <p className="text-sm font-medium text-[#F1F5F9]">{teamUser?.full_name ?? 'Team Member'}</p>
-          <p className="text-xs text-[#94A3B8]">{roleLabel[teamUser?.role ?? ''] ?? 'Team'}</p>
+          <p className="text-sm font-medium text-slate-900">{teamUser?.full_name ?? 'Team Member'}</p>
+          <p className="text-xs text-slate-500">{roleLabel[teamUser?.role ?? ''] ?? 'Team'}</p>
         </div>
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#3B82F6] text-xs font-semibold text-white">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
           {initials}
         </div>
         <SignOutButton />

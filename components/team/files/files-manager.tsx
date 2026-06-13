@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useRef, useTransition } from 'react'
 import { Upload, Download, Trash2, Eye, EyeOff, FileText, Image, File, FolderOpen } from 'lucide-react'
@@ -142,7 +142,7 @@ export function FilesManager({
     })
   }
 
-  const selectClass = 'rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
+  const selectClass = 'rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
   return (
     <div className="space-y-4">
@@ -151,7 +151,7 @@ export function FilesManager({
         <div className="flex flex-wrap items-end gap-3">
           {!clientId && (
             <div>
-              <label className="block text-xs font-medium text-[#94A3B8] mb-1">Client *</label>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Client *</label>
               <select className={selectClass} value={selectedClientId} onChange={(e) => setSelectedClientId(e.target.value)}>
                 <option value="">Select client…</option>
                 {clients.map((c) => <option key={c.id} value={c.id}>{c.company_name}</option>)}
@@ -159,7 +159,7 @@ export function FilesManager({
             </div>
           )}
           <div>
-            <label className="block text-xs font-medium text-[#94A3B8] mb-1">Folder</label>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Folder</label>
             <select className={selectClass} value={selectedFolder} onChange={(e) => setSelectedFolder(e.target.value)}>
               <option value="">General</option>
               {FOLDERS.filter(f => f !== 'General').map((f) => <option key={f} value={f}>{f}</option>)}
@@ -171,9 +171,9 @@ export function FilesManager({
               id="clientVisible"
               checked={isClientVisible}
               onChange={(e) => setIsClientVisible(e.target.checked)}
-              className="rounded border-[#1F2D45]"
+              className="rounded border-slate-200"
             />
-            <label htmlFor="clientVisible" className="text-sm text-[#CBD5E1] cursor-pointer">Visible to client in portal</label>
+            <label htmlFor="clientVisible" className="text-sm text-slate-600 cursor-pointer">Visible to client in portal</label>
           </div>
           <Button
             onClick={() => fileInputRef.current?.click()}
@@ -184,8 +184,8 @@ export function FilesManager({
           </Button>
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
         </div>
-        {uploadError && <p className="mt-2 text-sm text-[#EF4444]">{uploadError}</p>}
-        <p className="mt-2 text-xs text-[#475569]">Max 50MB · PDF, Word, Excel, images, ZIP, video</p>
+        {uploadError && <p className="mt-2 text-sm text-red-600">{uploadError}</p>}
+        <p className="mt-2 text-xs text-slate-500">Max 50MB · PDF, Word, Excel, images, ZIP, video</p>
       </div>
 
       {/* Filters */}
@@ -212,37 +212,37 @@ export function FilesManager({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1F2D45]">
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">Name</th>
-                {showClientColumn && <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">Client</th>}
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">Folder</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">Size</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">Uploaded</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">Portal</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]"></th>
+              <tr className="border-b border-slate-200">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Name</th>
+                {showClientColumn && <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Client</th>}
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Folder</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Size</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Uploaded</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Portal</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1F2D45]">
+            <tbody className="divide-y divide-slate-200">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={showClientColumn ? 7 : 6} className="px-4 py-10 text-center text-[#475569]">
+                  <td colSpan={showClientColumn ? 7 : 6} className="px-4 py-10 text-center text-slate-500">
                     <FolderOpen className="mx-auto h-8 w-8 mb-2 opacity-40" />
                     No files yet. Upload your first file above.
                   </td>
                 </tr>
               ) : (
                 filtered.map((f) => (
-                  <tr key={f.id} className="hover:bg-[#1C2537] transition-colors">
+                  <tr key={f.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-[#475569]"><FileIcon mimeType={f.mime_type} /></span>
-                        <span className="font-medium text-[#F1F5F9] truncate max-w-[240px]" title={f.name}>{f.name}</span>
+                        <span className="text-slate-500"><FileIcon mimeType={f.mime_type} /></span>
+                        <span className="font-medium text-slate-900 truncate max-w-[240px]" title={f.name}>{f.name}</span>
                       </div>
                     </td>
-                    {showClientColumn && <td className="px-4 py-3 text-[#CBD5E1]">{f.client_name}</td>}
-                    <td className="px-4 py-3 text-[#475569]">{f.folder ?? 'General'}</td>
-                    <td className="px-4 py-3 text-[#475569]">{formatBytes(f.size)}</td>
-                    <td className="px-4 py-3 text-[#475569]">{formatDate(f.created_at)}</td>
+                    {showClientColumn && <td className="px-4 py-3 text-slate-600">{f.client_name}</td>}
+                    <td className="px-4 py-3 text-slate-500">{f.folder ?? 'General'}</td>
+                    <td className="px-4 py-3 text-slate-500">{formatBytes(f.size)}</td>
+                    <td className="px-4 py-3 text-slate-500">{formatDate(f.created_at)}</td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => handleToggleVisibility(f)}
@@ -251,8 +251,8 @@ export function FilesManager({
                         className={cn(
                           'rounded p-1 transition-colors',
                           f.is_client_visible
-                            ? 'text-[#10B981] hover:bg-[#1F2D45]'
-                            : 'text-[#475569] hover:bg-[#1F2D45] hover:text-[#94A3B8]'
+                            ? 'text-emerald-600 hover:bg-slate-100'
+                            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-600'
                         )}
                       >
                         {f.is_client_visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
@@ -263,7 +263,7 @@ export function FilesManager({
                         <button
                           onClick={() => handleDownload(f.id)}
                           disabled={isPending}
-                          className="rounded p-1 text-[#475569] hover:bg-[#1F2D45] hover:text-[#94A3B8] transition-colors"
+                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600 transition-colors"
                           title="Download"
                         >
                           <Download className="h-3.5 w-3.5" />
@@ -271,7 +271,7 @@ export function FilesManager({
                         <button
                           onClick={() => handleDelete(f)}
                           disabled={isPending}
-                          className="rounded p-1 text-[#475569] hover:bg-[#1F2D45] hover:text-[#EF4444] transition-colors"
+                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600 transition-colors"
                           title="Delete"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -35,15 +35,15 @@ export function TaskNoteComposer({ taskId, projectId }: Props) {
 
   return (
     <div className="hub-card space-y-3">
-      <h3 className="text-sm font-semibold text-[#F8FAFC]">Add Note</h3>
-      {error && <p className="text-sm text-[#EF4444]">{error}</p>}
+      <h3 className="text-sm font-semibold text-slate-900">Add Note</h3>
+      {error && <p className="text-sm text-red-600">{error}</p>}
       <form onSubmit={submit} className="space-y-3">
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
           placeholder="Write a task update note..."
-          className="w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] placeholder:text-[#475569] focus:border-[#3B82F6] focus:outline-none resize-none"
+          className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none resize-none"
         />
         <Button type="submit" size="sm" disabled={isPending || !note.trim()}>
           {isPending ? 'Saving…' : 'Add Note'}

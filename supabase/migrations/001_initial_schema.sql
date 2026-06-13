@@ -31,7 +31,7 @@ CREATE TABLE clients (
   industry TEXT,
   website TEXT,
   location TEXT,
-  subscription_plan TEXT DEFAULT 'none' CHECK (subscription_plan IN ('launch','growth','growth_annual','scale','founders_special','community','none')),
+  subscription_plan TEXT DEFAULT 'none' CHECK (subscription_plan IN ('basic','full','none')),
   subscription_start_date DATE,
   subscription_end_date DATE,
   monthly_fee DECIMAL(10,2) DEFAULT 0,
@@ -571,78 +571,43 @@ CREATE POLICY "settings_team_read" ON settings FOR SELECT USING (is_team_member(
 
 -- Default settings
 INSERT INTO settings (key, value) VALUES
-  ('company', '{"name": "Appdoers", "email": "hello@appdoers.co.nz", "phone": "", "address": "", "website": "https://appdoers.co.nz", "logo_url": ""}'),
+  ('company', '{"name": "Appdoers", "email": "hello@appdoers.co.nz", "phone": "+64 22 5060 870", "address": "", "website": "https://www.appdoers.co.nz", "logo_url": ""}'),
   ('billing', '{"gst_rate": 0.15, "default_payment_terms": 14, "invoice_prefix": "APD-", "bank_name": "", "bank_account": "", "bank_reference_prefix": "INV"}'),
   ('slack', '{"webhook_url": "", "enabled": false}');
 
--- Service catalog — all 5 Appdoers plans
+-- Service catalog — Appdoers website plans (appdoers.co.nz)
 INSERT INTO service_catalog (name, description, type, plan_key, setup_fee, monthly_fee, sort_order) VALUES
-  ('The Launch Tier', 'Passive tech management, static architecture, mobile-first design, essential SEO, 72-hour email support', 'plan', 'launch', 599.00, 79.00, 1),
-  ('The Growth Tier', 'Everything in Launch + headless CMS, code-locked layouts, monthly analytics, 48-hour priority support', 'plan', 'growth', 599.00, 99.00, 2),
-  ('The Growth Tier (12-month)', 'Everything in Growth with discounted setup fee on 12-month commitment', 'plan', 'growth_annual', 299.00, 99.00, 3),
-  ('The Scale Tier', 'Everything in Growth + Stripe/Shopify integration, 3D elements, user management, 24-hour VIP support', 'plan', 'scale', 0.00, 149.00, 4),
-  ('The Founders Special', 'Scale Tier at early-client discount — all Scale features at reduced monthly rate', 'plan', 'founders_special', 0.00, 99.00, 5),
-  ('The Community Tier', 'Sermon sync, secure giving, admin dashboards, member portal — free for nonprofits', 'plan', 'community', 0.00, 0.00, 6);
+  ('Basic Website', 'Public website with unlimited pages, domain/hosting/security, Google setup, YouTube catalogue, contact form, and 3 design feedback rounds. 12-month plan: $165.13/mo, $1,499 setup.', 'plan', 'basic', 1499.00, 165.13, 1),
+  ('Full Website', 'Everything in Basic plus team admin, member portal, events, rosters, groups, and online donations. 12-month plan: $349/mo, $2,999 setup.', 'plan', 'full', 2999.00, 349.00, 2),
+  ('Basic Email', '5GB per mailbox. $3/mailbox/mo on 12-month contract.', 'addon', 'basic_email', 0.00, 3.00, 10),
+  ('Standard Email', '20GB per mailbox. $6.50/mailbox/mo on 12-month contract.', 'addon', 'standard_email', 0.00, 6.50, 11),
+  ('Premium Email', '50GB per mailbox. $12.50/mailbox/mo on 12-month contract.', 'addon', 'premium_email', 0.00, 12.50, 12),
+  ('Online Donations Setup', 'Stripe giving integration. ~$147 at $49/hr (usually 3 hours).', 'addon', 'donations_setup', 147.00, 0.00, 20),
+  ('Additional Work', 'Extra design rounds, post-launch updates. $49 NZD/hour.', 'addon', 'additional_work', 0.00, 0.00, 21);
 
--- Proposal templates (5) — sections stored as JSONB
+-- Proposal templates — sections stored as JSONB
 INSERT INTO proposal_templates (name, plan_key, description, sections) VALUES
-  ('The Launch Tier Proposal', 'launch', 'For trades, cafés, and local services', '[
-    {"id": "cover", "title": "Cover Page", "content": "**Appdoers**\n\nWeb Development at the Speed of Ambition\n\nPrepared for: [CLIENT NAME]\nDate: [DATE]"},
-    {"id": "executive_summary", "title": "Executive Summary", "content": "We will design and build a high-performance, mobile-first website for [CLIENT NAME] that drives real business results. Our Launch Tier delivers everything your business needs to establish a strong online presence — professionally designed, passively managed, and built to last."},
-    {"id": "about", "title": "About Appdoers", "content": "Appdoers is a New Zealand-based digital agency specialising in web development at the speed of ambition. We build engineering-grade websites for local businesses who deserve more than a template.\n\n**Fabiano Da Silva** — Strategist, vision, business development\n**Sara Da Silva** — Engineer, Next.js architecture, AI integration"},
-    {"id": "goals", "title": "Understanding Your Goals", "content": "Based on our conversation, here is our understanding of what you need:\n\n- [Goal 1]\n- [Goal 2]\n- [Goal 3]\n\nThis proposal addresses each of these directly."},
-    {"id": "scope", "title": "Scope of Work", "content": "**Included:**\n- Mobile-first responsive design\n- Static site architecture (fast & secure)\n- Essential SEO & Google Business setup\n- 100% passive tech management (we handle all updates)\n- 72-hour email support SLA\n\n**Not included:**\n- E-commerce functionality\n- CMS / client content editing\n- Custom integrations"},
-    {"id": "timeline", "title": "Project Timeline", "content": "| Phase | Duration |\n|-------|----------|\n| Discovery | 1 week |\n| Design | 1-2 weeks |\n| Development | 2-3 weeks |\n| Review & QA | 1 week |\n| Launch | 1 day |\n\n**Estimated total: 5-7 weeks from project kickoff**"},
-    {"id": "investment", "title": "Investment", "content": ""},
-    {"id": "why", "title": "Why Appdoers", "content": "- Engineering-grade reliability — not a template, not a page builder\n- Mobile-first by default — not an afterthought\n- Ongoing support included — we are your tech team\n- New Zealand based — we understand your market"},
-    {"id": "next_steps", "title": "Next Steps", "content": "1. Review and approve this proposal\n2. Sign the service agreement\n3. Pay the setup fee to begin\n4. Complete the project brief form\n5. Kick-off call scheduled within 48 hours\n\nThis proposal is valid for 30 days from the date above."},
-    {"id": "terms", "title": "Terms & Conditions", "content": "**Payment:** Setup fee due on project commencement. Monthly retainer billed on the 1st of each month.\n**Revisions:** Two rounds of revisions included in the design and development phases.\n**Intellectual Property:** Full ownership of the completed website transfers to the client upon receipt of all payments.\n**Termination:** Either party may terminate with 30 days written notice.\n**Governing Law:** New Zealand"}
-  ]'),
-  ('The Growth Tier Proposal', 'growth', 'For content creators, blogs, and growing brands', '[
-    {"id": "cover", "title": "Cover Page", "content": "**Appdoers**\n\nWeb Development at the Speed of Ambition\n\nPrepared for: [CLIENT NAME]\nDate: [DATE]"},
-    {"id": "executive_summary", "title": "Executive Summary", "content": "We will build a high-performance website for [CLIENT NAME] with a powerful headless CMS for full content control. The Growth Tier is designed for brands that publish, grow, and need their website to keep up."},
-    {"id": "about", "title": "About Appdoers", "content": "Appdoers is a New Zealand-based digital agency specialising in web development at the speed of ambition.\n\n**Fabiano Da Silva** — Strategist\n**Sara Da Silva** — Engineer, Next.js, WebGL, AI integration"},
+  ('Basic Website Proposal', 'basic', 'Simple public website for churches, businesses, and organisations', '[
+    {"id": "cover", "title": "Cover Page", "content": "**Appdoers**\n\nWebsites & Online Tools for New Zealand\n\nPrepared for: [CLIENT NAME]\nDate: [DATE]"},
+    {"id": "executive_summary", "title": "Executive Summary", "content": "We will design and build a fast, easy-to-use Basic Website for [CLIENT NAME] — a professional public site with clear pricing, hosting and security included, and direct access to the Appdoers team."},
+    {"id": "about", "title": "About Appdoers", "content": "Appdoers Limited is a New Zealand website company with teams in Ashburton and New Plymouth.\n\n**Fabiano Da Silva** — Founder, client strategy\n**Sara Da Silva** — Technical lead, design, build, hosting & support"},
     {"id": "goals", "title": "Understanding Your Goals", "content": "- [Goal 1]\n- [Goal 2]\n- [Goal 3]"},
-    {"id": "scope", "title": "Scope of Work", "content": "**Included:**\n- Everything in Launch Tier\n- Headless CMS (you control your content)\n- Code-locked layouts (design stays consistent)\n- Monthly analytics & performance reports\n- Priority 48-hour support SLA\n\n**Not included:**\n- E-commerce / payment processing\n- Custom app integrations"},
-    {"id": "timeline", "title": "Project Timeline", "content": "| Phase | Duration |\n|-------|----------|\n| Discovery | 1 week |\n| Design | 2 weeks |\n| Development | 3-4 weeks |\n| Review & QA | 1 week |\n| Launch | 1 day |\n\n**Estimated total: 7-9 weeks**"},
+    {"id": "scope", "title": "Scope of Work — Basic Website", "content": "**Included:**\n- Unlimited pages, mobile-first design\n- Domain, security & hosting\n- YouTube video catalogue\n- Contact form\n- 3 design feedback rounds\n\n**Not included:**\n- Member areas or team admin\n- Online donations (add-on available)"},
+    {"id": "timeline", "title": "Project Timeline", "content": "We aim to develop your site within **8 weeks** from project start."},
     {"id": "investment", "title": "Investment", "content": ""},
-    {"id": "why", "title": "Why Appdoers", "content": "- True CMS control — publish and update without touching code\n- Analytics built in — see what is working\n- One of only 25 Growth spots available\n- Engineering-grade performance"},
-    {"id": "next_steps", "title": "Next Steps", "content": "1. Approve this proposal\n2. Sign service agreement\n3. Pay setup fee\n4. Complete project brief\n5. Kick-off call within 48 hours"},
-    {"id": "terms", "title": "Terms & Conditions", "content": "**Payment:** Setup fee on commencement. Monthly on the 1st.\n**Revisions:** Two rounds included.\n**IP:** Transfers to client on full payment.\n**Termination:** 30 days written notice.\n**Governing Law:** New Zealand"}
+    {"id": "why", "title": "Why Appdoers", "content": "- Built for New Zealand clients\n- Clear monthly pricing\n- You own your domain\n- Responsive support"},
+    {"id": "next_steps", "title": "Next Steps", "content": "1. Approve proposal\n2. Sign agreement\n3. Pay setup fee\n4. Provide content\n5. Kick-off within 48 hours"},
+    {"id": "terms", "title": "Terms & Conditions", "content": "**Setup:** $1,499 ($799 min upfront). **Monthly:** from $165.13/mo on 12-month plan. **Hourly:** $49/hr outside scope. **Governing Law:** New Zealand"}
   ]'),
-  ('The Scale Tier Proposal', 'scale', 'For e-commerce and complex digital builds', '[
-    {"id": "cover", "title": "Cover Page", "content": "**Appdoers**\n\nWeb Development at the Speed of Ambition\n\nPrepared for: [CLIENT NAME]\nDate: [DATE]"},
-    {"id": "executive_summary", "title": "Executive Summary", "content": "We will build a fully-featured digital ecosystem for [CLIENT NAME] — including Stripe or Shopify integration, interactive 3D elements, and a user management system. The Scale Tier is for businesses ready to transact online at scale."},
-    {"id": "about", "title": "About Appdoers", "content": "Appdoers — New Zealand digital agency.\n\n**Fabiano Da Silva** — Strategist\n**Sara Da Silva** — Engineer, e-commerce, WebGL, AI"},
+  ('Full Website Proposal', 'full', 'Member areas, team tools, and admin features', '[
+    {"id": "cover", "title": "Cover Page", "content": "**Appdoers**\n\nWebsites & Online Tools for New Zealand\n\nPrepared for: [CLIENT NAME]\nDate: [DATE]"},
+    {"id": "executive_summary", "title": "Executive Summary", "content": "We will build a Full Website for [CLIENT NAME] — private team management, member areas, events, rosters, prayer requests, and online giving."},
+    {"id": "about", "title": "About Appdoers", "content": "Appdoers Limited — New Zealand website company.\n\n**Fabiano Da Silva** — Founder\n**Sara Da Silva** — Technical lead"},
     {"id": "goals", "title": "Understanding Your Goals", "content": "- [Goal 1]\n- [Goal 2]\n- [Goal 3]"},
-    {"id": "scope", "title": "Scope of Work", "content": "**Included:**\n- Everything in Growth Tier\n- Stripe or Shopify store integration\n- Interactive 3D product/brand elements\n- User login/signup system\n- VIP 24-hour support SLA\n- 12-month contract (setup fee waived)\n\n**Not included:**\n- Third-party API integrations beyond Stripe/Shopify\n- Custom mobile apps"},
-    {"id": "timeline", "title": "Project Timeline", "content": "| Phase | Duration |\n|-------|----------|\n| Discovery | 1-2 weeks |\n| Design | 2-3 weeks |\n| Development | 4-6 weeks |\n| Review & QA | 1-2 weeks |\n| Launch | 1 day |\n\n**Estimated total: 9-14 weeks**"},
+    {"id": "scope", "title": "Scope of Work — Full Website", "content": "**Everything in Basic, plus:**\n- Private team management area\n- Member-only portal\n- Events, newsletters, prayer requests\n- Directory, rosters, groups\n- Online donations (~$147 setup)"},
+    {"id": "timeline", "title": "Project Timeline", "content": "We aim to develop your site within **8 weeks** from project start."},
     {"id": "investment", "title": "Investment", "content": ""},
-    {"id": "why", "title": "Why Appdoers", "content": "- E-commerce built on engineering-grade infrastructure\n- 3D/WebGL capabilities — very few NZ agencies offer this\n- Setup fee waived on 12-month commitment\n- VIP 24-hour support"},
-    {"id": "next_steps", "title": "Next Steps", "content": "1. Approve this proposal\n2. Sign 12-month service agreement\n3. Complete project brief\n4. Kick-off call within 24 hours"},
-    {"id": "terms", "title": "Terms & Conditions", "content": "**Payment:** Monthly on the 1st. 12-month minimum commitment. Setup fee waived.\n**Revisions:** Three rounds included.\n**IP:** Transfers on full payment.\n**Termination:** 12-month minimum — early termination fee applies.\n**Governing Law:** New Zealand"}
-  ]'),
-  ('The Founders Special Proposal', 'founders_special', 'Scale Tier features at early-client discount', '[
-    {"id": "cover", "title": "Cover Page", "content": "**Appdoers**\n\nWeb Development at the Speed of Ambition\n\n*Founders Special — Exclusive Early-Client Rate*\n\nPrepared for: [CLIENT NAME]\nDate: [DATE]"},
-    {"id": "executive_summary", "title": "Executive Summary", "content": "As one of Appdoers'' founding clients, [CLIENT NAME] is being offered the full Scale Tier — our most comprehensive package — at an exclusive discounted rate of $99/month. This rate is locked in for the life of your contract."},
-    {"id": "about", "title": "About Appdoers", "content": "Appdoers — New Zealand digital agency.\n\n**Fabiano Da Silva** — Strategist\n**Sara Da Silva** — Engineer"},
-    {"id": "goals", "title": "Understanding Your Goals", "content": "- [Goal 1]\n- [Goal 2]\n- [Goal 3]"},
-    {"id": "scope", "title": "Scope of Work", "content": "**Full Scale Tier included:**\n- Everything in Growth Tier\n- Stripe or Shopify integration\n- Interactive 3D elements\n- User management system\n- VIP 24-hour support SLA\n- Setup fee waived\n\nThis is the same scope as our $149/month Scale Tier — offered at $99/month exclusively for founding clients."},
-    {"id": "timeline", "title": "Project Timeline", "content": "| Phase | Duration |\n|-------|----------|\n| Discovery | 1-2 weeks |\n| Design | 2-3 weeks |\n| Development | 4-6 weeks |\n| Review & QA | 1-2 weeks |\n| Launch | 1 day |"},
-    {"id": "investment", "title": "Investment", "content": ""},
-    {"id": "why", "title": "Why Appdoers", "content": "- Full Scale Tier features at a founders'' discount\n- Rate locked in — never increases while on this plan\n- Engineering-grade build\n- Supporting a New Zealand startup"},
-    {"id": "next_steps", "title": "Next Steps", "content": "1. Approve this proposal\n2. Sign 12-month service agreement\n3. Complete project brief\n4. Kick-off call within 24 hours\n\nThis Founders Special offer expires [DATE + 14 days]."},
-    {"id": "terms", "title": "Terms & Conditions", "content": "**Payment:** $99/month on the 1st. 12-month minimum. Setup fee waived.\n**Rate Lock:** $99/month rate guaranteed for duration of contract.\n**Revisions:** Three rounds included.\n**IP:** Transfers on full payment.\n**Termination:** 12-month minimum applies.\n**Governing Law:** New Zealand"}
-  ]'),
-  ('The Community Tier Proposal', 'community', 'For nonprofits and churches', '[
-    {"id": "cover", "title": "Cover Page", "content": "**Appdoers**\n\nDigital Tools for Community\n\nPrepared for: [ORGANISATION NAME]\nDate: [DATE]"},
-    {"id": "executive_summary", "title": "Executive Summary", "content": "Appdoers is committed to serving New Zealand''s nonprofit and faith communities. We will build [ORGANISATION NAME] a fully-featured community platform — completely free — including sermon management, secure giving, event management, and member portals."},
-    {"id": "about", "title": "About Appdoers", "content": "Appdoers is a New Zealand-based digital agency. Our Community Tier is our commitment to giving back — nonprofits and churches receive the same engineering-grade quality as our paying clients, at no cost.\n\n**Fabiano Da Silva** — Strategist\n**Sara Da Silva** — Engineer"},
-    {"id": "goals", "title": "Understanding Your Goals", "content": "- [Goal 1]\n- [Goal 2]\n- [Goal 3]"},
-    {"id": "scope", "title": "Scope of Work", "content": "**Included at no cost:**\n- YouTube sermon sync (automatically pulls latest sermons)\n- Secure online giving via Stripe\n- Admin dashboard for staff\n- Member portal (events, prayer requests, newsletter)\n- Mobile-first design\n- Ongoing hosting and maintenance\n\n**12-month commitment required**"},
-    {"id": "timeline", "title": "Project Timeline", "content": "| Phase | Duration |\n|-------|----------|\n| Discovery | 1 week |\n| Design | 2 weeks |\n| Development | 3-4 weeks |\n| Review & QA | 1 week |\n| Launch | 1 day |"},
-    {"id": "investment", "title": "Investment", "content": "**Setup Fee: $0**\n**Monthly: $0**\n\nThis service is provided free of charge to qualifying nonprofits and churches registered in New Zealand. A 12-month commitment is required to ensure we can plan and resource your project appropriately."},
-    {"id": "why", "title": "Why Appdoers", "content": "- Purpose-built features for faith communities\n- Zero cost — our contribution to the community\n- Engineering-grade quality\n- New Zealand built and supported"},
-    {"id": "next_steps", "title": "Next Steps", "content": "1. Approve this proposal\n2. Sign 12-month community agreement\n3. Provide charity/nonprofit registration number\n4. Complete project brief\n5. Kick-off call within 48 hours"},
-    {"id": "terms", "title": "Terms & Conditions", "content": "**Eligibility:** Registered New Zealand charity or nonprofit.\n**Commitment:** 12-month minimum.\n**Revisions:** Two rounds included.\n**IP:** Transfers to organisation on completion.\n**Termination:** 30 days written notice after 12-month period.\n**Governing Law:** New Zealand"}
+    {"id": "why", "title": "Why Appdoers", "content": "- Built for churches and growing organisations\n- Member tools included\n- NZ-based team"},
+    {"id": "next_steps", "title": "Next Steps", "content": "1. Approve proposal\n2. Sign agreement\n3. Pay setup fee ($1,199 min upfront)\n4. Kick-off within 48 hours"},
+    {"id": "terms", "title": "Terms & Conditions", "content": "**Setup:** $2,999 ($1,199 min upfront). **Monthly:** from $349/mo on 12-month plan. **Hourly:** $49/hr outside scope. **Governing Law:** New Zealand"}
   ]');

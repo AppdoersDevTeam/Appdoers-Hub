@@ -39,20 +39,20 @@ export function ConfirmModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onCancel}
       />
       {/* Dialog */}
-      <div className="relative z-10 w-full max-w-sm rounded-xl border border-[#1F2D45] bg-[#0D1526] p-6 shadow-2xl">
-        <h3 className="text-base font-semibold text-[#F1F5F9]">{title}</h3>
-        <p className="mt-2 text-sm text-[#94A3B8]">{message}</p>
+      <div className="relative z-10 w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+        <p className="mt-2 text-sm text-slate-500">{message}</p>
         <div className="mt-6 flex gap-3">
           <Button
             onClick={onConfirm}
             disabled={isPending}
             className={
               danger
-                ? 'flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white border-0'
+                ? 'flex-1 bg-red-500 hover:bg-red-600 text-white border-0'
                 : 'flex-1'
             }
           >

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+﻿import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { ServiceCatalogTable } from '@/components/team/settings/service-catalog-table'
 import { SettingsEditor } from '@/components/team/settings/settings-editor'
@@ -66,8 +66,8 @@ export default async function SettingsPage() {
       {/* Service Catalog */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-base font-semibold text-[#F1F5F9]">Service Catalog</h2>
-          <p className="text-sm text-[#475569]">Manage plans and add-ons used in proposals.</p>
+          <h2 className="text-base font-semibold text-slate-900">Service Catalog</h2>
+          <p className="text-sm text-slate-500">Manage plans and add-ons used in proposals.</p>
         </div>
         <ServiceCatalogTable services={services ?? []} />
       </div>

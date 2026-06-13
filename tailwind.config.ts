@@ -10,16 +10,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Team app — dark theme
+        // Team app — light theme
         hub: {
-          bg: '#0A0F1E',
-          surface: '#111827',
-          elevated: '#1C2537',
-          border: '#1F2D45',
+          bg: '#F8FAFC',
+          surface: '#FFFFFF',
+          elevated: '#F1F5F9',
+          border: '#E2E8F0',
           accent: '#3B82F6',
           'accent-hover': '#2563EB',
-          'text-primary': '#F1F5F9',
-          'text-secondary': '#94A3B8',
+          'text-primary': '#0F172A',
+          'text-secondary': '#64748B',
         },
         // Semantic
         success: '#10B981',

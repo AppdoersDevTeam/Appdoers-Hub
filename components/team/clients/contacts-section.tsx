@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { Plus, Trash2, Mail, Phone, Edit2, Globe } from 'lucide-react'
@@ -29,7 +29,7 @@ interface Props {
   contacts: Contact[]
 }
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 
 export function ContactsSection({ clientId, contacts }: Props) {
   const [isPending, startTransition] = useTransition()
@@ -115,59 +115,59 @@ export function ContactsSection({ clientId, contacts }: Props) {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-[#F1F5F9]">Contacts</h3>
+        <h3 className="text-sm font-semibold text-slate-900">Contacts</h3>
         <Button size="sm" onClick={openAdd}>
           <Plus className="mr-1 h-3.5 w-3.5" /> Add Contact
         </Button>
       </div>
 
       {error && (
-        <div className="mb-3 rounded-md bg-[#EF4444]/10 border border-[#EF4444]/20 px-4 py-2 text-sm text-[#EF4444]">
+        <div className="mb-3 rounded-md bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-600">
           {error}
         </div>
       )}
 
       {contacts.length === 0 ? (
-        <p className="py-6 text-center text-sm text-[#475569]">
+        <p className="py-6 text-center text-sm text-slate-500">
           No contacts yet. Add the first contact for this client.
         </p>
       ) : (
-        <div className="divide-y divide-[#1F2D45] rounded-lg border border-[#1F2D45]">
+        <div className="divide-y divide-slate-200 rounded-lg border border-slate-200">
           {contacts.map((c) => (
             <div key={c.id} className="flex items-center gap-4 px-4 py-3">
               {/* Avatar */}
-              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#1C2537] text-sm font-medium text-[#94A3B8]">
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-medium text-slate-500">
                 {c.full_name.charAt(0).toUpperCase()}
               </div>
 
               {/* Info */}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-[#F1F5F9]">
+                  <span className="text-sm font-medium text-slate-900">
                     {c.full_name}
                   </span>
                   {c.is_primary && (
-                    <span className="rounded-full bg-[#3B82F6]/10 px-2 py-0.5 text-xs text-[#3B82F6]">
+                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
                       Primary
                     </span>
                   )}
                   {c.has_portal_access && (
-                    <span className="rounded-full bg-[#10B981]/10 px-2 py-0.5 text-xs text-[#10B981]">
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-600">
                       Portal Access
                     </span>
                   )}
                 </div>
                 {c.role && (
-                  <p className="text-xs text-[#475569]">{c.role}</p>
+                  <p className="text-xs text-slate-500">{c.role}</p>
                 )}
                 <div className="mt-1 flex items-center gap-4">
                   {c.email && (
-                    <span className="flex items-center gap-1 text-xs text-[#94A3B8]">
+                    <span className="flex items-center gap-1 text-xs text-slate-500">
                       <Mail className="h-3 w-3" /> {c.email}
                     </span>
                   )}
                   {c.phone && (
-                    <span className="flex items-center gap-1 text-xs text-[#94A3B8]">
+                    <span className="flex items-center gap-1 text-xs text-slate-500">
                       <Phone className="h-3 w-3" /> {c.phone}
                     </span>
                   )}
@@ -187,22 +187,22 @@ export function ContactsSection({ clientId, contacts }: Props) {
                   className={cn(
                     'rounded-md p-1.5 text-xs transition-colors',
                     c.has_portal_access
-                      ? 'bg-[#10B981]/10 text-[#10B981] hover:bg-[#10B981]/20'
-                      : 'text-[#475569] hover:bg-[#1C2537] hover:text-[#94A3B8]'
+                      ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-600'
                   )}
                 >
                   <Globe className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => openEdit(c)}
-                  className="rounded-md p-1.5 text-[#475569] transition-colors hover:bg-[#1C2537] hover:text-[#94A3B8]"
+                  className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-600"
                 >
                   <Edit2 className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => handleDelete(c.id)}
                   disabled={isPending}
-                  className="rounded-md p-1.5 text-[#475569] transition-colors hover:bg-[#EF4444]/10 hover:text-[#EF4444]"
+                  className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -220,7 +220,7 @@ export function ContactsSection({ clientId, contacts }: Props) {
       >
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
           {error && (
-            <div className="rounded-md bg-[#EF4444]/10 border border-[#EF4444]/20 px-4 py-2 text-sm text-[#EF4444]">
+            <div className="rounded-md bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-600">
               {error}
             </div>
           )}
@@ -263,9 +263,9 @@ export function ContactsSection({ clientId, contacts }: Props) {
               type="checkbox"
               checked={form.is_primary}
               onChange={(e) => set('is_primary', e.target.checked)}
-              className="rounded border-[#1F2D45] bg-[#0A0F1E] text-[#3B82F6]"
+              className="rounded border-slate-200 bg-white text-blue-600"
             />
-            <span className="text-sm text-[#CBD5E1]">Primary contact</span>
+            <span className="text-sm text-slate-600">Primary contact</span>
           </label>
           <div className="flex gap-3 pt-2">
             <Button type="submit" disabled={isPending} className="flex-1">

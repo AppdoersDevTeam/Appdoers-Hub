@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { updateProfileAction, changePasswordAction } from '@/lib/actions/team'
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 
 interface Props {
   user: {
@@ -32,8 +32,8 @@ function Section({
   return (
     <div className="hub-card space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-[#F1F5F9]">{title}</h2>
-        {subtitle && <p className="text-xs text-[#475569]">{subtitle}</p>}
+        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+        {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
       </div>
       {children}
     </div>
@@ -117,10 +117,10 @@ export function ProfileEditor({ user }: Props) {
           <img
             src={user.avatar_url}
             alt={user.full_name}
-            className="h-16 w-16 rounded-full object-cover border-2 border-[#1F2D45]"
+            className="h-16 w-16 rounded-full object-cover border-2 border-slate-200"
           />
         ) : (
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#1F2D45] text-xl font-bold text-[#94A3B8]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-xl font-bold text-slate-500">
             {user.full_name
               .split(' ')
               .map((n) => n[0])
@@ -130,9 +130,9 @@ export function ProfileEditor({ user }: Props) {
           </div>
         )}
         <div>
-          <p className="text-lg font-semibold text-[#F1F5F9]">{user.full_name}</p>
-          <p className="text-sm text-[#475569]">{user.email}</p>
-          <span className="mt-1 inline-block rounded-full bg-[#3B82F6]/10 px-2.5 py-0.5 text-xs font-medium text-[#3B82F6]">
+          <p className="text-lg font-semibold text-slate-900">{user.full_name}</p>
+          <p className="text-sm text-slate-500">{user.email}</p>
+          <span className="mt-1 inline-block rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-600">
             {roleLabels[user.role] ?? user.role}
           </span>
         </div>
@@ -157,7 +157,7 @@ export function ProfileEditor({ user }: Props) {
           <div>
             <label className={labelClass}>Email</label>
             <Input value={user.email} disabled className="opacity-50 cursor-not-allowed" />
-            <p className="mt-1 text-xs text-[#475569]">
+            <p className="mt-1 text-xs text-slate-500">
               Contact a director to change your email.
             </p>
           </div>
@@ -194,14 +194,14 @@ export function ProfileEditor({ user }: Props) {
         </div>
 
         {profileError && (
-          <p className="text-sm text-[#EF4444]">{profileError}</p>
+          <p className="text-sm text-red-600">{profileError}</p>
         )}
         <div className="flex items-center gap-3">
           <Button onClick={saveProfile} disabled={isPending} size="sm">
             {isPending ? 'Saving…' : 'Save Profile'}
           </Button>
           {profileSaved && (
-            <span className="text-xs text-[#10B981]">✓ Saved</span>
+            <span className="text-xs text-emerald-600">✓ Saved</span>
           )}
         </div>
       </Section>
@@ -240,7 +240,7 @@ export function ProfileEditor({ user }: Props) {
         </div>
 
         {passwordError && (
-          <p className="text-sm text-[#EF4444]">{passwordError}</p>
+          <p className="text-sm text-red-600">{passwordError}</p>
         )}
         <div className="flex items-center gap-3">
           <Button
@@ -251,7 +251,7 @@ export function ProfileEditor({ user }: Props) {
             {isPending ? 'Updating…' : 'Update Password'}
           </Button>
           {passwordSaved && (
-            <span className="text-xs text-[#10B981]">✓ Password updated</span>
+            <span className="text-xs text-emerald-600">✓ Password updated</span>
           )}
         </div>
       </Section>

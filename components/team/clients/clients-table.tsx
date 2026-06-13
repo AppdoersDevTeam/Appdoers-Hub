@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import Link from 'next/link'
@@ -20,20 +20,14 @@ type ClientRow = {
   updated_at: string
 }
 
-const planLabels: Record<string, string> = {
-  launch: 'Launch',
-  growth: 'Growth',
-  growth_annual: 'Growth Annual',
-  scale: 'Scale',
-  founders_special: 'Founders Special',
-  community: 'Community',
-  none: '—',
-}
+import { PLAN_LABELS } from '@/lib/constants/plans'
+
+const planLabels: Record<string, string> = PLAN_LABELS
 
 const statusConfig: Record<string, { label: string; cls: string }> = {
-  active: { label: 'Active', cls: 'bg-[#10B981]/10 text-[#10B981]' },
-  inactive: { label: 'Inactive', cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' },
-  churned: { label: 'Churned', cls: 'bg-[#EF4444]/10 text-[#EF4444]' },
+  active: { label: 'Active', cls: 'bg-emerald-50 text-emerald-700' },
+  inactive: { label: 'Inactive', cls: 'bg-slate-100 text-slate-500' },
+  churned: { label: 'Churned', cls: 'bg-red-50 text-red-700' },
 }
 
 export function ClientsTable({ clients }: { clients: ClientRow[] }) {
@@ -54,14 +48,14 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
   })
 
   const selectClass =
-    'rounded-md border border-[#1F2D45] bg-[#111827] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
+    'rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
   return (
     <>
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#475569]" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -101,7 +95,7 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1F2D45]">
+              <tr className="border-b border-slate-200">
                 {[
                   'Company',
                   'Primary Contact',
@@ -113,19 +107,19 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                 ].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]"
+                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500"
                   >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1F2D45]">
+            <tbody className="divide-y divide-slate-200">
               {filtered.length === 0 ? (
                 <tr>
                   <td
                     colSpan={7}
-                    className="px-4 py-10 text-center text-[#475569]"
+                    className="px-4 py-10 text-center text-slate-500"
                   >
                     {clients.length === 0
                       ? 'No clients yet. Add your first client to get started.'
@@ -138,26 +132,26 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                   return (
                     <tr
                       key={c.id}
-                      className="hover:bg-[#1C2537] transition-colors"
+                      className="hover:bg-slate-50 transition-colors"
                     >
-                      <td className="px-4 py-3 font-medium text-[#F1F5F9]">
+                      <td className="px-4 py-3 font-medium text-slate-900">
                         <Link
                           href={`/app/clients/${c.id}`}
-                          className="hover:text-[#3B82F6] transition-colors"
+                          className="hover:text-blue-600 transition-colors"
                         >
                           {c.company_name}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-[#CBD5E1]">
+                      <td className="px-4 py-3 text-slate-600">
                         {c.primary_contact}
                       </td>
-                      <td className="px-4 py-3 text-[#CBD5E1]">
+                      <td className="px-4 py-3 text-slate-600">
                         {planLabels[c.subscription_plan] ?? c.subscription_plan}
                       </td>
-                      <td className="px-4 py-3 text-[#CBD5E1]">
+                      <td className="px-4 py-3 text-slate-600">
                         {formatCurrency(c.monthly_fee)}
                       </td>
-                      <td className="px-4 py-3 text-center text-[#CBD5E1]">
+                      <td className="px-4 py-3 text-center text-slate-600">
                         {c.active_projects}
                       </td>
                       <td className="px-4 py-3">
@@ -170,7 +164,7 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                           {st.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-[#475569]">
+                      <td className="px-4 py-3 text-slate-500">
                         {formatRelativeTime(c.updated_at)}
                       </td>
                     </tr>

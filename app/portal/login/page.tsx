@@ -50,7 +50,7 @@ export default function PortalLoginPage() {
     <div className="theme-portal flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#3B82F6] shadow-lg shadow-blue-500/20">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-500/20">
             <span className="text-xl font-bold text-white">A</span>
           </div>
           <h1 className="mt-4 text-xl font-semibold text-slate-900">Appdoers Hub</h1>
@@ -103,7 +103,7 @@ export default function PortalLoginPage() {
 
         <p className="mt-6 text-center text-xs text-slate-400">
           Are you from the Appdoers team?{' '}
-          <a href="/app/login" className="text-[#3B82F6] hover:underline">
+          <a href="/app/login" className="text-blue-600 hover:underline">
             Team login →
           </a>
         </p>

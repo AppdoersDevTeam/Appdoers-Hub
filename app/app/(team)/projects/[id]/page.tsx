@@ -27,12 +27,12 @@ const phaseLabel: Record<string, string> = {
 }
 
 const clientStatusConfig: Record<string, { label: string; cls: string }> = {
-  new: { label: 'New', cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' },
-  in_progress: { label: 'In Progress', cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' },
-  awaiting_appdoers: { label: 'Awaiting Appdoers', cls: 'bg-[#F59E0B]/10 text-[#F59E0B]' },
-  awaiting_client: { label: 'Awaiting Client', cls: 'bg-[#F97316]/10 text-[#F97316]' },
-  completed: { label: 'Completed', cls: 'bg-[#10B981]/10 text-[#10B981]' },
-  on_hold: { label: 'On Hold', cls: 'bg-[#EF4444]/10 text-[#EF4444]' },
+  new: { label: 'New', cls: 'bg-slate-100 text-slate-500' },
+  in_progress: { label: 'In Progress', cls: 'bg-blue-50 text-blue-700' },
+  awaiting_appdoers: { label: 'Awaiting Appdoers', cls: 'bg-amber-50 text-amber-700' },
+  awaiting_client: { label: 'Awaiting Client', cls: 'bg-orange-50 text-orange-700' },
+  completed: { label: 'Completed', cls: 'bg-emerald-50 text-emerald-700' },
+  on_hold: { label: 'On Hold', cls: 'bg-red-50 text-red-700' },
 }
 
 interface Props {
@@ -66,7 +66,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
 
   return (
     <div className="space-y-6">
-      <Link href="/app/projects" className="inline-flex items-center gap-1.5 text-sm text-[#94A3B8] hover:text-[#F1F5F9] transition-colors">
+      <Link href="/app/projects" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
         <ArrowLeft className="h-4 w-4" /> All Projects
       </Link>
 
@@ -81,7 +81,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-[#1F2D45]">
+      <div className="border-b border-slate-200">
         <nav className="flex gap-0.5">
           {TABS.map(({ key, label }) => (
             <Link
@@ -89,7 +89,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
               href={`/app/projects/${id}?tab=${key}`}
               className={cn(
                 'px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
-                tab === key ? 'border-[#3B82F6] text-[#3B82F6]' : 'border-transparent text-[#94A3B8] hover:text-[#F1F5F9]'
+                tab === key ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-900'
               )}
             >
               {label}
@@ -101,9 +101,9 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
       {tab === 'overview' && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 hub-card space-y-4">
-            <h3 className="text-sm font-semibold text-[#F1F5F9]">Project Details</h3>
+            <h3 className="text-sm font-semibold text-slate-900">Project Details</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <InfoRow label="Client" value={<Link href={`/app/clients/${project.client_id}`} className="text-[#3B82F6] hover:underline">{clientName}</Link>} />
+              <InfoRow label="Client" value={<Link href={`/app/clients/${project.client_id}`} className="text-blue-600 hover:underline">{clientName}</Link>} />
               <InfoRow label="Type" value={<span className="capitalize">{project.type}</span>} />
               <InfoRow label="Current Phase" value={phaseLabel[project.current_phase] ?? project.current_phase} />
               <InfoRow label="Status" value={project.status} />
@@ -115,14 +115,14 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
               <InfoRow label="Estimated Hours" value={project.estimated_hours ? `${project.estimated_hours}h` : '—'} />
             </div>
             {project.description && (
-              <div className="border-t border-[#1F2D45] pt-4">
-                <p className="text-xs text-[#475569]">Description</p>
-                <p className="mt-1 text-sm text-[#CBD5E1]">{project.description}</p>
+              <div className="border-t border-slate-200 pt-4">
+                <p className="text-xs text-slate-500">Description</p>
+                <p className="mt-1 text-sm text-slate-600">{project.description}</p>
               </div>
             )}
           </div>
           <div className="hub-card space-y-3 text-sm">
-            <h3 className="text-sm font-semibold text-[#F1F5F9]">Phase Progress</h3>
+            <h3 className="text-sm font-semibold text-slate-900">Phase Progress</h3>
             {['discovery', 'design', 'development', 'review_qa', 'launch', 'maintenance'].map((p) => {
               const phaseIndex = ['discovery', 'design', 'development', 'review_qa', 'launch', 'maintenance'].indexOf(p)
               const currentIndex = ['discovery', 'design', 'development', 'review_qa', 'launch', 'maintenance'].indexOf(project.current_phase)
@@ -130,8 +130,8 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
               const active = phaseIndex === currentIndex
               return (
                 <div key={p} className="flex items-center gap-2">
-                  <div className={cn('h-2 w-2 rounded-full flex-shrink-0', done ? 'bg-[#10B981]' : active ? 'bg-[#3B82F6]' : 'bg-[#1F2D45]')} />
-                  <span className={cn('text-xs', done ? 'text-[#10B981]' : active ? 'text-[#3B82F6] font-medium' : 'text-[#475569]')}>
+                  <div className={cn('h-2 w-2 rounded-full flex-shrink-0', done ? 'bg-emerald-500' : active ? 'bg-blue-600' : 'bg-slate-100')} />
+                  <span className={cn('text-xs', done ? 'text-emerald-600' : active ? 'text-blue-600 font-medium' : 'text-slate-500')}>
                     {phaseLabel[p]}
                     {active && ' ← current'}
                   </span>
@@ -197,8 +197,8 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs text-[#475569]">{label}</p>
-      <p className="mt-0.5 text-[#CBD5E1]">{value}</p>
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="mt-0.5 text-slate-600">{value}</p>
     </div>
   )
 }

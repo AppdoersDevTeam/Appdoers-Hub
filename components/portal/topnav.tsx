@@ -37,7 +37,7 @@ export function PortalTopNav({ clientName }: TopNavProps) {
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <Link href="/portal/projects" className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#3B82F6]">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-600">
             <span className="text-xs font-bold text-white">A</span>
           </div>
           <span className="text-sm font-semibold text-slate-900">Appdoers Hub</span>

@@ -52,14 +52,14 @@ export function Sidebar({ hiddenHrefs = [] }: Props) {
     pathname === href || (href !== '/app/dashboard' && pathname.startsWith(href))
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-[#1F2D45] bg-[#111827]">
+    <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-slate-200 bg-white">
       {/* Logo */}
-      <div className="flex h-14 items-center border-b border-[#1F2D45] px-4">
+      <div className="flex h-14 items-center border-b border-slate-200 px-4">
         <Link href="/app/dashboard" className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#3B82F6]">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-600">
             <span className="text-xs font-bold text-white">A</span>
           </div>
-          <span className="text-sm font-semibold text-[#F1F5F9]">Appdoers Hub</span>
+          <span className="text-sm font-semibold text-slate-900">Appdoers Hub</span>
         </Link>
       </div>
 
@@ -73,8 +73,8 @@ export function Sidebar({ hiddenHrefs = [] }: Props) {
                 className={cn(
                   'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                   isActive(href)
-                    ? 'bg-[#3B82F6]/10 text-[#3B82F6]'
-                    : 'text-[#94A3B8] hover:bg-[#1C2537] hover:text-[#F1F5F9]'
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />
@@ -86,7 +86,7 @@ export function Sidebar({ hiddenHrefs = [] }: Props) {
       </nav>
 
       {/* Bottom — always-visible items + version */}
-      <div className="border-t border-[#1F2D45] px-3 py-3 space-y-0.5">
+      <div className="border-t border-slate-200 px-3 py-3 space-y-0.5">
         {bottomItems.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
@@ -94,15 +94,15 @@ export function Sidebar({ hiddenHrefs = [] }: Props) {
             className={cn(
               'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
               isActive(href)
-                ? 'bg-[#3B82F6]/10 text-[#3B82F6]'
-                : 'text-[#94A3B8] hover:bg-[#1C2537] hover:text-[#F1F5F9]'
+                ? 'bg-blue-50 text-blue-600'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />
             {label}
           </Link>
         ))}
-        <p className="px-3 pt-2 text-xs text-[#475569]">Appdoers Hub v0.1</p>
+        <p className="px-3 pt-2 text-xs text-slate-400">Appdoers Hub v0.1</p>
       </div>
     </aside>
   )

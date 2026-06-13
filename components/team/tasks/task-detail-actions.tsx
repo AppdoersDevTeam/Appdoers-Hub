@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -55,7 +55,7 @@ export function TaskDetailActions({ taskId, projectId, currentStatus }: Props) {
       <button
         onClick={remove}
         disabled={isPending}
-        className="rounded-md p-2 text-[#475569] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors"
+        className="rounded-md p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
         title="Delete task"
       >
         <Trash2 className="h-4 w-4" />

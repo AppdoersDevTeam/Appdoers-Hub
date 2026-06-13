@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
@@ -11,11 +11,11 @@ import { formatDate, formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 
 const statusConfig: Record<string, { label: string; cls: string }> = {
-  draft: { label: 'Draft', cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' },
-  sent: { label: 'Sent', cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' },
-  overdue: { label: 'Overdue', cls: 'bg-[#EF4444]/10 text-[#EF4444]' },
-  paid: { label: 'Paid', cls: 'bg-[#10B981]/10 text-[#10B981]' },
-  cancelled: { label: 'Cancelled', cls: 'bg-[#475569]/10 text-[#475569]' },
+  draft: { label: 'Draft', cls: 'bg-slate-100 text-slate-500' },
+  sent: { label: 'Sent', cls: 'bg-blue-50 text-blue-700' },
+  overdue: { label: 'Overdue', cls: 'bg-red-50 text-red-700' },
+  paid: { label: 'Paid', cls: 'bg-emerald-50 text-emerald-700' },
+  cancelled: { label: 'Cancelled', cls: 'bg-slate-100 text-slate-500' },
 }
 
 interface InvoiceRow {
@@ -35,8 +35,8 @@ interface InvoiceRow {
   is_overdue: boolean
 }
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
-const selectClass = 'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
+const selectClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
 export function InvoicesTable({
   invoices,
@@ -98,16 +98,16 @@ export function InvoicesTable({
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4">
         <div className="hub-card">
-          <p className="text-xs text-[#475569]">Outstanding</p>
-          <p className="mt-1 text-2xl font-bold text-[#F1F5F9]">{formatCurrency(totalOutstanding)}</p>
+          <p className="text-xs text-slate-500">Outstanding</p>
+          <p className="mt-1 text-2xl font-bold text-slate-900">{formatCurrency(totalOutstanding)}</p>
         </div>
-        <div className={cn('hub-card', totalOverdue > 0 && 'border-[#EF4444]/30')}>
-          <p className="text-xs text-[#475569]">Overdue</p>
-          <p className={cn('mt-1 text-2xl font-bold', totalOverdue > 0 ? 'text-[#EF4444]' : 'text-[#F1F5F9]')}>{formatCurrency(totalOverdue)}</p>
+        <div className={cn('hub-card', totalOverdue > 0 && 'border-red-200')}>
+          <p className="text-xs text-slate-500">Overdue</p>
+          <p className={cn('mt-1 text-2xl font-bold', totalOverdue > 0 ? 'text-red-600' : 'text-slate-900')}>{formatCurrency(totalOverdue)}</p>
         </div>
         <div className="hub-card">
-          <p className="text-xs text-[#475569]">Paid This Month</p>
-          <p className="mt-1 text-2xl font-bold text-[#10B981]">{formatCurrency(totalPaidThisMonth)}</p>
+          <p className="text-xs text-slate-500">Paid This Month</p>
+          <p className="mt-1 text-2xl font-bold text-emerald-600">{formatCurrency(totalPaidThisMonth)}</p>
         </div>
       </div>
 
@@ -142,33 +142,33 @@ export function InvoicesTable({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#1F2D45]">
+              <tr className="border-b border-slate-200">
                 {['Invoice #', 'Client', 'Project', 'Status', 'Issue Date', 'Due Date', 'Total (incl. GST)', 'Paid'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[#475569]">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1F2D45]">
+            <tbody className="divide-y divide-slate-200">
               {filtered.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-10 text-center text-[#475569]">No invoices found.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500">No invoices found.</td></tr>
               ) : (
                 filtered.map((inv) => {
                   const displayStatus = inv.is_overdue && inv.status === 'sent' ? 'overdue' : inv.status
                   const st = statusConfig[displayStatus] ?? statusConfig.draft
                   return (
-                    <tr key={inv.id} className={cn('hover:bg-[#1C2537] transition-colors', inv.is_overdue && 'border-l-2 border-l-[#EF4444]')}>
-                      <td className="px-4 py-3 font-medium text-[#F1F5F9]">
-                        <Link href={`/app/invoices/${inv.id}`} className="hover:text-[#3B82F6] transition-colors font-mono">{inv.invoice_number}</Link>
+                    <tr key={inv.id} className={cn('hover:bg-slate-50 transition-colors', inv.is_overdue && 'border-l-2 border-l-[#EF4444]')}>
+                      <td className="px-4 py-3 font-medium text-slate-900">
+                        <Link href={`/app/invoices/${inv.id}`} className="hover:text-blue-600 transition-colors font-mono">{inv.invoice_number}</Link>
                       </td>
-                      <td className="px-4 py-3 text-[#CBD5E1]">{inv.client_name}</td>
-                      <td className="px-4 py-3 text-[#475569]">{inv.project_name ?? '—'}</td>
+                      <td className="px-4 py-3 text-slate-600">{inv.client_name}</td>
+                      <td className="px-4 py-3 text-slate-500">{inv.project_name ?? '—'}</td>
                       <td className="px-4 py-3">
                         <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>{st.label}</span>
                       </td>
-                      <td className="px-4 py-3 text-[#475569]">{formatDate(inv.issue_date)}</td>
-                      <td className={cn('px-4 py-3', inv.is_overdue ? 'text-[#EF4444] font-medium' : 'text-[#475569]')}>{formatDate(inv.due_date)}</td>
-                      <td className="px-4 py-3 font-medium text-[#F1F5F9]">{formatCurrency(inv.total)}</td>
-                      <td className="px-4 py-3 text-[#475569]">{inv.paid_at ? formatDate(inv.paid_at) : '—'}</td>
+                      <td className="px-4 py-3 text-slate-500">{formatDate(inv.issue_date)}</td>
+                      <td className={cn('px-4 py-3', inv.is_overdue ? 'text-red-600 font-medium' : 'text-slate-500')}>{formatDate(inv.due_date)}</td>
+                      <td className="px-4 py-3 font-medium text-slate-900">{formatCurrency(inv.total)}</td>
+                      <td className="px-4 py-3 text-slate-500">{inv.paid_at ? formatDate(inv.paid_at) : '—'}</td>
                     </tr>
                   )
                 })
@@ -181,7 +181,7 @@ export function InvoicesTable({
       {/* New Invoice slide-over */}
       <SlideOver open={showNew} onClose={() => setShowNew(false)} title="New Invoice" subtitle="Create a blank invoice to add line items">
         <form onSubmit={handleCreate} className="space-y-5 px-6 py-5">
-          {error && <div className="rounded-md border border-[#EF4444]/20 bg-[#EF4444]/10 px-4 py-2 text-sm text-[#EF4444]">{error}</div>}
+          {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
           <div>
             <label className={labelClass}>Client *</label>
             <select className={selectClass} value={form.client_id} onChange={(e) => setForm(f => ({ ...f, client_id: e.target.value }))} required>

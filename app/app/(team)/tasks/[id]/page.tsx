@@ -9,26 +9,26 @@ import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 
 const typeConfig: Record<string, { label: string; cls: string }> = {
-  feature:  { label: 'Feature',  cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' },
-  bug:      { label: 'Bug',      cls: 'bg-[#EF4444]/10 text-[#EF4444]' },
-  revision: { label: 'Revision', cls: 'bg-[#F59E0B]/10 text-[#F59E0B]' },
-  content:  { label: 'Content',  cls: 'bg-[#10B981]/10 text-[#10B981]' },
-  design:   { label: 'Design',   cls: 'bg-[#8B5CF6]/10 text-[#8B5CF6]' },
-  admin:    { label: 'Admin',    cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' },
+  feature:  { label: 'Feature',  cls: 'bg-blue-50 text-blue-700' },
+  bug:      { label: 'Bug',      cls: 'bg-red-50 text-red-700' },
+  revision: { label: 'Revision', cls: 'bg-amber-50 text-amber-700' },
+  content:  { label: 'Content',  cls: 'bg-emerald-50 text-emerald-700' },
+  design:   { label: 'Design',   cls: 'bg-purple-50 text-purple-700' },
+  admin:    { label: 'Admin',    cls: 'bg-slate-100 text-slate-500' },
 }
 
 const priorityConfig: Record<string, { label: string; cls: string }> = {
-  p0: { label: 'P0', cls: 'bg-[#EF4444]/20 text-[#EF4444] font-bold' },
-  p1: { label: 'P1', cls: 'bg-[#F97316]/10 text-[#F97316]' },
-  p2: { label: 'P2', cls: 'bg-[#F59E0B]/10 text-[#F59E0B]' },
-  p3: { label: 'P3', cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' },
+  p0: { label: 'P0', cls: 'bg-red-100 text-red-700 font-bold' },
+  p1: { label: 'P1', cls: 'bg-orange-50 text-orange-700' },
+  p2: { label: 'P2', cls: 'bg-amber-50 text-amber-700' },
+  p3: { label: 'P3', cls: 'bg-slate-100 text-slate-500' },
 }
 
 const statusConfig: Record<string, { label: string; cls: string }> = {
-  open:            { label: 'Open',            cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' },
-  in_progress:     { label: 'In Progress',     cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' },
-  awaiting_review: { label: 'Awaiting Review', cls: 'bg-[#F59E0B]/10 text-[#F59E0B]' },
-  closed:          { label: 'Closed',          cls: 'bg-[#10B981]/10 text-[#10B981]' },
+  open:            { label: 'Open',            cls: 'bg-slate-100 text-slate-500' },
+  in_progress:     { label: 'In Progress',     cls: 'bg-blue-50 text-blue-700' },
+  awaiting_review: { label: 'Awaiting Review', cls: 'bg-amber-50 text-amber-700' },
+  closed:          { label: 'Closed',          cls: 'bg-emerald-50 text-emerald-700' },
 }
 
 interface Props {
@@ -77,7 +77,7 @@ export default async function TaskDetailPage({ params }: Props) {
     <div className="space-y-6">
       <Link
         href="/app/tasks"
-        className="inline-flex items-center gap-1.5 text-sm text-[#94A3B8] hover:text-[#F1F5F9] transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" /> All Tasks
       </Link>
@@ -99,25 +99,25 @@ export default async function TaskDetailPage({ params }: Props) {
             <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 xl:grid-cols-1">
               <InfoRow label="Project">
                 {project
-                  ? <Link href={`/app/projects/${project.id}`} className="text-[#3B82F6] hover:underline">{project.name}</Link>
+                  ? <Link href={`/app/projects/${project.id}`} className="text-blue-600 hover:underline">{project.name}</Link>
                   : '—'}
               </InfoRow>
               <InfoRow label="Client">
                 {project?.client_id
-                  ? <Link href={`/app/clients/${project.client_id}`} className="text-[#3B82F6] hover:underline">{clientName}</Link>
+                  ? <Link href={`/app/clients/${project.client_id}`} className="text-blue-600 hover:underline">{clientName}</Link>
                   : '—'}
               </InfoRow>
-              <InfoRow label="Assigned To"><span className="text-[#CBD5E1]">{assignedName}</span></InfoRow>
-              <InfoRow label="Created By"><span className="text-[#CBD5E1]">{creatorName}</span></InfoRow>
-              <InfoRow label="Due Date"><span className="text-[#CBD5E1]">{task.due_date ? formatNzDate(task.due_date) : '—'}</span></InfoRow>
-              <InfoRow label="Created"><span className="text-[#CBD5E1]">{formatNzDate(task.created_at)}</span></InfoRow>
-              <InfoRow label="Last Updated"><span className="text-[#CBD5E1]">{lastUpdatedAt}</span></InfoRow>
+              <InfoRow label="Assigned To"><span className="text-slate-600">{assignedName}</span></InfoRow>
+              <InfoRow label="Created By"><span className="text-slate-600">{creatorName}</span></InfoRow>
+              <InfoRow label="Due Date"><span className="text-slate-600">{task.due_date ? formatNzDate(task.due_date) : '—'}</span></InfoRow>
+              <InfoRow label="Created"><span className="text-slate-600">{formatNzDate(task.created_at)}</span></InfoRow>
+              <InfoRow label="Last Updated"><span className="text-slate-600">{lastUpdatedAt}</span></InfoRow>
             </div>
 
             {task.description && (
-              <div className="border-t border-[#1F2D45] pt-4">
-                <p className="text-xs text-[#475569] mb-2">Description</p>
-                <p className="text-sm text-[#CBD5E1] whitespace-pre-wrap leading-relaxed">{task.description}</p>
+              <div className="border-t border-slate-200 pt-4">
+                <p className="text-xs text-slate-500 mb-2">Description</p>
+                <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{task.description}</p>
               </div>
             )}
           </div>
@@ -128,25 +128,25 @@ export default async function TaskDetailPage({ params }: Props) {
 
           <div className="hub-card space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#F8FAFC]">Activity</h3>
-              <span className="text-xs text-[#64748B]">{activity?.length ?? 0} items</span>
+              <h3 className="text-sm font-semibold text-slate-900">Activity</h3>
+              <span className="text-xs text-slate-500">{activity?.length ?? 0} items</span>
             </div>
 
             {!activity || activity.length === 0 ? (
-              <p className="text-sm text-[#64748B]">No activity updates yet.</p>
+              <p className="text-sm text-slate-500">No activity updates yet.</p>
             ) : (
               <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
                 {activity.map((item) => {
                   const actorName = getActorName(item.action, item.actor as { full_name?: string } | null)
                   const when = `${formatRelativeTime(item.created_at)} • ${formatNzDateTime(item.created_at)}`
                   return (
-                    <div key={item.id} className="rounded-lg border border-[#1F2D45] p-3">
-                      <p className="text-sm text-[#E2E8F0] whitespace-pre-wrap leading-relaxed">{item.description}</p>
+                    <div key={item.id} className="rounded-lg border border-slate-200 p-3">
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{item.description}</p>
                       <div className="mt-2 flex items-center justify-between gap-3">
-                        <p className="text-xs text-[#475569]">
+                        <p className="text-xs text-slate-500">
                           {formatActionLabel(item.action)} by {actorName}
                         </p>
-                        <span className="text-xs text-[#64748B]">{when}</span>
+                        <span className="text-xs text-slate-500">{when}</span>
                       </div>
                     </div>
                   )
@@ -163,7 +163,7 @@ export default async function TaskDetailPage({ params }: Props) {
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs text-[#475569]">{label}</p>
+      <p className="text-xs text-slate-500">{label}</p>
       <div className="mt-0.5">{children}</div>
     </div>
   )

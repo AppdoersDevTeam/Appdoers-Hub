@@ -1,24 +1,24 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { updateClientAction } from '@/lib/actions/clients'
+import { FALLBACK_PLANS } from '@/lib/constants/plans'
+
 interface PlanOption {
   value: string
   label: string
   fee: number
+  setup?: number
 }
 
-const FALLBACK_PLANS: PlanOption[] = [
-  { value: 'launch', label: 'Launch', fee: 49 },
-  { value: 'growth', label: 'Growth', fee: 79 },
-  { value: 'growth_annual', label: 'Growth Annual', fee: 66 },
-  { value: 'scale', label: 'Scale', fee: 149 },
-  { value: 'founders_special', label: 'Founders Special', fee: 99 },
-  { value: 'community', label: 'Community', fee: 0 },
-  { value: 'none', label: 'No Plan', fee: 0 },
-]
+const FALLBACK_PLAN_OPTIONS: PlanOption[] = FALLBACK_PLANS.map((p) => ({
+  value: p.value,
+  label: p.label,
+  fee: p.fee,
+  setup: p.setup,
+}))
 
 interface ClientRecord {
   id: string
@@ -33,12 +33,12 @@ interface ClientRecord {
   status: string
 }
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 const selectClass =
-  'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]'
+  'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
 
 export function ClientEditForm({ client, plans }: { client: ClientRecord; plans?: PlanOption[] }) {
-  const PLANS = plans && plans.length > 0 ? plans : FALLBACK_PLANS
+  const PLANS = plans && plans.length > 0 ? plans : FALLBACK_PLAN_OPTIONS
   const [isPending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -94,15 +94,15 @@ export function ClientEditForm({ client, plans }: { client: ClientRecord; plans?
 
   return (
     <div className="hub-card space-y-4">
-      <h3 className="text-sm font-semibold text-[#F1F5F9]">Edit Client</h3>
+      <h3 className="text-sm font-semibold text-slate-900">Edit Client</h3>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-md bg-[#EF4444]/10 border border-[#EF4444]/20 px-3 py-2 text-sm text-[#EF4444]">
+          <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
             {error}
           </div>
         )}
         {success && (
-          <div className="rounded-md bg-[#10B981]/10 border border-[#10B981]/20 px-3 py-2 text-sm text-[#10B981]">
+          <div className="rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-600">
             Saved!
           </div>
         )}
@@ -125,6 +125,7 @@ export function ClientEditForm({ client, plans }: { client: ClientRecord; plans?
                 ...prev,
                 subscription_plan: plan,
                 monthly_fee: found?.fee ?? prev.monthly_fee,
+                setup_fee: found?.setup ?? prev.setup_fee,
               }))
             }}
           >

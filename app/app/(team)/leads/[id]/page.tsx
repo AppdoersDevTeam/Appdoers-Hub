@@ -9,13 +9,13 @@ import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 
 const statusConfig: Record<string, { label: string; cls: string }> = {
-  new: { label: 'New', cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' },
-  contacted: { label: 'Contacted', cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' },
-  qualified: { label: 'Qualified', cls: 'bg-[#F59E0B]/10 text-[#F59E0B]' },
-  proposal_sent: { label: 'Proposal Sent', cls: 'bg-[#8B5CF6]/10 text-[#8B5CF6]' },
-  negotiating: { label: 'Negotiating', cls: 'bg-[#F97316]/10 text-[#F97316]' },
-  won: { label: 'Won', cls: 'bg-[#10B981]/10 text-[#10B981]' },
-  lost: { label: 'Lost', cls: 'bg-[#EF4444]/10 text-[#EF4444]' },
+  new: { label: 'New', cls: 'bg-slate-100 text-slate-500' },
+  contacted: { label: 'Contacted', cls: 'bg-blue-50 text-blue-700' },
+  qualified: { label: 'Qualified', cls: 'bg-amber-50 text-amber-700' },
+  proposal_sent: { label: 'Proposal Sent', cls: 'bg-purple-50 text-purple-700' },
+  negotiating: { label: 'Negotiating', cls: 'bg-orange-50 text-orange-700' },
+  won: { label: 'Won', cls: 'bg-emerald-50 text-emerald-700' },
+  lost: { label: 'Lost', cls: 'bg-red-50 text-red-700' },
 }
 
 const sourceLabels: Record<string, string> = {
@@ -28,10 +28,10 @@ const sourceLabels: Record<string, string> = {
 }
 
 const noteTypeConfig: Record<string, { label: string; cls: string }> = {
-  general: { label: 'Note', cls: 'bg-[#94A3B8]/10 text-[#94A3B8]' },
-  call: { label: 'Call', cls: 'bg-[#3B82F6]/10 text-[#3B82F6]' },
-  meeting: { label: 'Meeting', cls: 'bg-[#F59E0B]/10 text-[#F59E0B]' },
-  email: { label: 'Email', cls: 'bg-[#8B5CF6]/10 text-[#8B5CF6]' },
+  general: { label: 'Note', cls: 'bg-slate-100 text-slate-500' },
+  call: { label: 'Call', cls: 'bg-blue-50 text-blue-700' },
+  meeting: { label: 'Meeting', cls: 'bg-amber-50 text-amber-700' },
+  email: { label: 'Email', cls: 'bg-purple-50 text-purple-700' },
 }
 
 interface Props {
@@ -69,7 +69,7 @@ export default async function LeadDetailPage({ params }: Props) {
     <div className="space-y-6">
       <Link
         href="/app/leads"
-        className="inline-flex items-center gap-1.5 text-sm text-[#94A3B8] hover:text-[#F1F5F9] transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" /> All Leads
       </Link>
@@ -94,7 +94,7 @@ export default async function LeadDetailPage({ params }: Props) {
         <div className="space-y-6 lg:col-span-2">
           {/* Details */}
           <div className="hub-card">
-            <h3 className="mb-4 text-sm font-semibold text-[#F1F5F9]">
+            <h3 className="mb-4 text-sm font-semibold text-slate-900">
               Lead Details
             </h3>
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
@@ -133,18 +133,18 @@ export default async function LeadDetailPage({ params }: Props) {
                   />
                   {lead.lost_notes && (
                     <div className="col-span-2">
-                      <p className="text-xs text-[#475569]">Lost Notes</p>
-                      <p className="mt-0.5 text-[#CBD5E1]">{lead.lost_notes}</p>
+                      <p className="text-xs text-slate-500">Lost Notes</p>
+                      <p className="mt-0.5 text-slate-600">{lead.lost_notes}</p>
                     </div>
                   )}
                 </>
               )}
               {lead.converted_client_id && (
                 <div className="col-span-2">
-                  <p className="text-xs text-[#475569]">Converted Client</p>
+                  <p className="text-xs text-slate-500">Converted Client</p>
                   <Link
                     href={`/app/clients/${lead.converted_client_id}`}
-                    className="mt-0.5 text-[#3B82F6] hover:underline"
+                    className="mt-0.5 text-blue-600 hover:underline"
                   >
                     View Client Record →
                   </Link>
@@ -155,12 +155,12 @@ export default async function LeadDetailPage({ params }: Props) {
 
           {/* Notes */}
           <div className="hub-card">
-            <h3 className="mb-4 text-sm font-semibold text-[#F1F5F9]">
+            <h3 className="mb-4 text-sm font-semibold text-slate-900">
               Notes
             </h3>
             <LeadNotes leadId={id} />
             {(notes ?? []).length > 0 && (
-              <div className="mt-4 divide-y divide-[#1F2D45]">
+              <div className="mt-4 divide-y divide-slate-200">
                 {(notes ?? []).map((note: Record<string, unknown>) => {
                   const nt =
                     noteTypeConfig[note.type as string] ??
@@ -176,13 +176,13 @@ export default async function LeadDetailPage({ params }: Props) {
                         >
                           {nt.label}
                         </span>
-                        <span className="text-xs text-[#475569]">
+                        <span className="text-xs text-slate-500">
                           {(note.team_users as { full_name?: string } | null)
                             ?.full_name ?? 'Team'}{' '}
                           · {formatRelativeTime(note.created_at as string)}
                         </span>
                       </div>
-                      <p className="text-sm text-[#CBD5E1] whitespace-pre-wrap">
+                      <p className="text-sm text-slate-600 whitespace-pre-wrap">
                         {note.content as string}
                       </p>
                     </div>
@@ -191,7 +191,7 @@ export default async function LeadDetailPage({ params }: Props) {
               </div>
             )}
             {(notes ?? []).length === 0 && (
-              <p className="mt-4 text-sm text-[#475569]">
+              <p className="mt-4 text-sm text-slate-500">
                 No notes yet. Add a call log, meeting note, or general update.
               </p>
             )}
@@ -202,34 +202,34 @@ export default async function LeadDetailPage({ params }: Props) {
         <div className="space-y-4">
           {/* Financials */}
           <div className="hub-card space-y-3 text-sm">
-            <h3 className="text-sm font-semibold text-[#F1F5F9]">
+            <h3 className="text-sm font-semibold text-slate-900">
               Financials
             </h3>
             <div>
-              <p className="text-xs text-[#475569]">Est. Setup Fee</p>
-              <p className="mt-0.5 font-medium text-[#F1F5F9]">
+              <p className="text-xs text-slate-500">Est. Setup Fee</p>
+              <p className="mt-0.5 font-medium text-slate-900">
                 {lead.estimated_setup_fee
                   ? formatCurrency(lead.estimated_setup_fee)
                   : '—'}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#475569]">Est. Monthly</p>
-              <p className="mt-0.5 font-medium text-[#F1F5F9]">
+              <p className="text-xs text-slate-500">Est. Monthly</p>
+              <p className="mt-0.5 font-medium text-slate-900">
                 {lead.estimated_monthly
                   ? formatCurrency(lead.estimated_monthly)
                   : '—'}
               </p>
             </div>
             <div>
-              <p className="text-xs text-[#475569]">Est. Total Value</p>
-              <p className="mt-0.5 text-xl font-semibold text-[#3B82F6]">
+              <p className="text-xs text-slate-500">Est. Total Value</p>
+              <p className="mt-0.5 text-xl font-semibold text-blue-600">
                 {lead.estimated_value
                   ? formatCurrency(lead.estimated_value)
                   : '—'}
               </p>
               {lead.estimated_monthly && (
-                <p className="text-xs text-[#475569]">
+                <p className="text-xs text-slate-500">
                   setup + monthly × 12
                 </p>
               )}
@@ -252,8 +252,8 @@ export default async function LeadDetailPage({ params }: Props) {
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs text-[#475569]">{label}</p>
-      <p className="mt-0.5 text-[#CBD5E1]">{value}</p>
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="mt-0.5 text-slate-600">{value}</p>
     </div>
   )
 }

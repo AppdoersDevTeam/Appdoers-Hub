@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { ChevronRight, CheckCircle, Clock, Circle } from 'lucide-react'
@@ -39,8 +39,8 @@ const phaseLabel: Record<ProjectPhase, string> = {
   maintenance: 'Maintenance',
 }
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
-const selectClass = 'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
+const selectClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
 export function PhasesTab({ projectId, currentPhase, phases, teamMembers }: Props) {
   const [isPending, startTransition] = useTransition()
@@ -98,19 +98,19 @@ export function PhasesTab({ projectId, currentPhase, phases, teamMembers }: Prop
   return (
     <div className="space-y-4">
       {error && (
-        <div className="rounded-md border border-[#EF4444]/20 bg-[#EF4444]/10 px-4 py-2 text-sm text-[#EF4444]">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
           {error}
         </div>
       )}
 
       {/* Advance button */}
       {!isLastPhase && (
-        <div className="flex items-center justify-between rounded-lg border border-[#3B82F6]/20 bg-[#3B82F6]/5 px-4 py-3">
+        <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-3">
           <div>
-            <p className="text-sm font-medium text-[#F1F5F9]">
-              Current phase: <span className="text-[#3B82F6]">{phaseLabel[currentPhase]}</span>
+            <p className="text-sm font-medium text-slate-900">
+              Current phase: <span className="text-blue-600">{phaseLabel[currentPhase]}</span>
             </p>
-            <p className="text-xs text-[#94A3B8]">
+            <p className="text-xs text-slate-500">
               Next: {phaseLabel[PHASE_ORDER[PHASE_ORDER.indexOf(currentPhase) + 1]]}
             </p>
           </div>
@@ -134,41 +134,41 @@ export function PhasesTab({ projectId, currentPhase, phases, teamMembers }: Prop
               className={cn(
                 'rounded-lg border p-4 transition-colors',
                 isActive
-                  ? 'border-[#3B82F6]/40 bg-[#3B82F6]/5'
+                  ? 'border-blue-300 bg-blue-50/50'
                   : isDone
-                  ? 'border-[#10B981]/20 bg-[#10B981]/5'
-                  : 'border-[#1F2D45] bg-[#111827]'
+                  ? 'border-emerald-200 bg-emerald-50/50'
+                  : 'border-slate-200 bg-white'
               )}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="flex-shrink-0">
                     {isDone ? (
-                      <CheckCircle className="h-5 w-5 text-[#10B981]" />
+                      <CheckCircle className="h-5 w-5 text-emerald-600" />
                     ) : isActive ? (
-                      <Clock className="h-5 w-5 text-[#3B82F6]" />
+                      <Clock className="h-5 w-5 text-blue-600" />
                     ) : (
-                      <Circle className="h-5 w-5 text-[#475569]" />
+                      <Circle className="h-5 w-5 text-slate-500" />
                     )}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-[#475569]">
+                      <span className="text-xs font-medium text-slate-500">
                         {idx + 1}.
                       </span>
                       <span className={cn('text-sm font-semibold',
-                        isActive ? 'text-[#3B82F6]' : isDone ? 'text-[#10B981]' : 'text-[#F1F5F9]'
+                        isActive ? 'text-blue-600' : isDone ? 'text-emerald-600' : 'text-slate-900'
                       )}>
                         {phaseLabel[phaseName]}
                       </span>
                       {isActive && (
-                        <span className="rounded-full bg-[#3B82F6] px-2 py-0.5 text-xs font-medium text-white">
+                        <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">
                           Active
                         </span>
                       )}
                     </div>
                     {phase && !isEditing && (
-                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#475569]">
+                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                         {phase.assigned_to && (
                           <span>
                             Assigned: {teamMembers.find(m => m.id === phase.assigned_to)?.full_name ?? '—'}
@@ -178,7 +178,7 @@ export function PhasesTab({ projectId, currentPhase, phases, teamMembers }: Prop
                         {phase.start_date && <span>Start: {phase.start_date}</span>}
                         {phase.end_date && <span>End: {phase.end_date}</span>}
                         {phase.notes && (
-                          <span className="text-[#94A3B8] italic">{phase.notes}</span>
+                          <span className="text-slate-500 italic">{phase.notes}</span>
                         )}
                       </div>
                     )}
@@ -197,7 +197,7 @@ export function PhasesTab({ projectId, currentPhase, phases, teamMembers }: Prop
 
               {/* Edit form */}
               {isEditing && phase && (
-                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#1F2D45] pt-4">
+                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-200 pt-4">
                   <div>
                     <label className={labelClass}>Status</label>
                     <select
@@ -248,7 +248,7 @@ export function PhasesTab({ projectId, currentPhase, phases, teamMembers }: Prop
                   <div className="col-span-2">
                     <label className={labelClass}>Notes</label>
                     <textarea
-                      className="w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] placeholder-[#475569] focus:border-[#3B82F6] focus:outline-none resize-none"
+                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none resize-none"
                       rows={2}
                       value={editForm.notes}
                       onChange={(e) => setEditForm(f => ({ ...f, notes: e.target.value }))}

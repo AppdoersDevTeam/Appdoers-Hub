@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
@@ -13,8 +13,8 @@ import {
 
 const ALL_CHANNELS = ALL_SLACK_CHANNELS
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
-const sectionTitle = 'text-sm font-semibold text-[#F1F5F9] mb-4'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
+const sectionTitle = 'text-sm font-semibold text-slate-900 mb-4'
 
 interface SettingRow {
   key: string
@@ -40,7 +40,7 @@ function SaveBar({ isPending, saved, onSave }: { isPending: boolean; saved: bool
       <Button onClick={onSave} disabled={isPending} size="sm">
         {isPending ? 'Saving…' : 'Save Changes'}
       </Button>
-      {saved && <span className="text-xs text-[#10B981]">✓ Saved</span>}
+      {saved && <span className="text-xs text-emerald-600">✓ Saved</span>}
     </div>
   )
 }
@@ -173,7 +173,7 @@ export function SettingsEditor({ settings }: Props) {
               value={billing.invoice_footer}
               onChange={e => setBilling(b => ({ ...b, invoice_footer: e.target.value }))}
               rows={2}
-              className="w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] placeholder:text-[#475569] focus:border-[#3B82F6] focus:outline-none resize-none"
+              className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none resize-none"
               placeholder="Thank you for your business! Please pay within 14 days."
             />
           </div>
@@ -183,28 +183,28 @@ export function SettingsEditor({ settings }: Props) {
 
       {/* Slack */}
       <Section title="Slack Channels">
-        <p className="text-xs text-[#475569]">
+        <p className="text-xs text-slate-500">
           Configure a separate Slack incoming webhook for each notification type. Leave blank to use the{' '}
-          <strong className="text-[#94A3B8]">General</strong> channel as a fallback, or set{' '}
-          <strong className="text-[#94A3B8]">General</strong> as your single catch-all webhook.
-          Create webhooks at <span className="font-mono text-[#3B82F6]">api.slack.com/apps</span>.
+          <strong className="text-slate-500">General</strong> channel as a fallback, or set{' '}
+          <strong className="text-slate-500">General</strong> as your single catch-all webhook.
+          Create webhooks at <span className="font-mono text-blue-600">api.slack.com/apps</span>.
         </p>
         <div className="space-y-4">
           {ALL_CHANNELS.map((ch) => (
-            <div key={ch} className="rounded-md border border-[#1F2D45] bg-[#0D1526] p-4">
+            <div key={ch} className="rounded-md border border-slate-200 bg-slate-50 p-4">
               <div className="mb-2 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-[#F1F5F9]">{SLACK_CHANNEL_LABELS[ch]}</p>
-                  <p className="text-xs text-[#475569]">{SLACK_CHANNEL_DESCRIPTIONS[ch]}</p>
+                  <p className="text-sm font-medium text-slate-900">{SLACK_CHANNEL_LABELS[ch]}</p>
+                  <p className="text-xs text-slate-500">{SLACK_CHANNEL_DESCRIPTIONS[ch]}</p>
                 </div>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={channels[ch].enabled}
                     onChange={e => setChannels(prev => ({ ...prev, [ch]: { ...prev[ch], enabled: e.target.checked } }))}
-                    className="h-4 w-4 rounded border-[#1F2D45] bg-[#0A0F1E] accent-[#3B82F6]"
+                    className="h-4 w-4 rounded border-slate-200 bg-white accent-blue-600"
                   />
-                  <span className="text-xs text-[#94A3B8]">Enabled</span>
+                  <span className="text-xs text-slate-500">Enabled</span>
                 </label>
               </div>
               <Input

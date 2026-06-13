@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -7,25 +7,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClientAction } from '@/lib/actions/clients'
 import type { SubscriptionPlan } from '@/lib/types/database'
+import { FALLBACK_PLANS, PLAN_LABELS } from '@/lib/constants/plans'
 
-const PLANS: { value: SubscriptionPlan; label: string; fee: number }[] = [
-  { value: 'launch', label: 'Launch — $49/mo', fee: 49 },
-  { value: 'growth', label: 'Growth — $79/mo', fee: 79 },
-  { value: 'growth_annual', label: 'Growth Annual — $66/mo', fee: 66 },
-  { value: 'scale', label: 'Scale — $149/mo', fee: 149 },
-  { value: 'founders_special', label: 'Founders Special — $99/mo', fee: 99 },
-  { value: 'community', label: 'Community — $0/mo', fee: 0 },
-  { value: 'none', label: 'No Plan', fee: 0 },
-]
+const PLANS: { value: SubscriptionPlan; label: string; fee: number; setup: number }[] = FALLBACK_PLANS
 
 interface Props {
   open: boolean
   onClose: () => void
 }
 
-const labelClass = 'block text-xs font-medium text-[#94A3B8] mb-1'
+const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 const selectClass =
-  'w-full rounded-md border border-[#1F2D45] bg-[#0A0F1E] px-3 py-2 text-sm text-[#F1F5F9] focus:border-[#3B82F6] focus:outline-none focus:ring-1 focus:ring-[#3B82F6]'
+  'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
 
 export function NewClientSlideOver({ open, onClose }: Props) {
   const router = useRouter()
@@ -53,6 +46,7 @@ export function NewClientSlideOver({ open, onClose }: Props) {
       ...prev,
       subscription_plan: plan,
       monthly_fee: found?.fee ?? prev.monthly_fee,
+      setup_fee: found?.setup ?? prev.setup_fee,
     }))
   }
 
@@ -88,7 +82,7 @@ export function NewClientSlideOver({ open, onClose }: Props) {
     <SlideOver open={open} onClose={onClose} title="New Client" width="lg">
       <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
         {error && (
-          <div className="rounded-md bg-[#EF4444]/10 border border-[#EF4444]/20 px-4 py-3 text-sm text-[#EF4444]">
+          <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
             {error}
           </div>
         )}
