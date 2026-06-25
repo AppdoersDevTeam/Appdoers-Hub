@@ -12,7 +12,8 @@ export default async function ProjectsPage() {
         id, client_id, name, type, current_phase, client_status, status,
         start_date, target_launch_date, estimated_hours,
         clients(company_name),
-        time_entries(hours)
+        tasks(time_spent),
+        time_entries(hours, task_id)
       `)
       .order('created_at', { ascending: false }),
     supabase
@@ -23,10 +24,14 @@ export default async function ProjectsPage() {
   ])
 
   const rows = (projects ?? []).map((p) => {
-    const loggedHours = (p.time_entries as { hours: number }[] ?? []).reduce(
-      (sum, t) => sum + (Number(t.hours) || 0),
+    const taskHours = (p.tasks as { time_spent: number }[] ?? []).reduce(
+      (sum, t) => sum + (Number(t.time_spent) || 0),
       0
     )
+    const orphanHours = (p.time_entries as { hours: number; task_id: string | null }[] ?? [])
+      .filter((entry) => !entry.task_id)
+      .reduce((sum, entry) => sum + (Number(entry.hours) || 0), 0)
+    const loggedHours = parseFloat((taskHours + orphanHours).toFixed(1))
     return {
       id: p.id,
       name: p.name,

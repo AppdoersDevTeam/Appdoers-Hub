@@ -25,6 +25,7 @@ type TaskRow = {
   client_name: string
   assigned_to_name: string | null
   due_date: string | null
+  time_spent: number
   updated_at: string
 }
 
@@ -81,7 +82,7 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
 
   const selectClass = 'rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
-  const cols = ['Title', 'Type', 'Priority', ...(showProjectCol ? ['Project', 'Client'] : []), 'Assigned To', 'Due Date', 'Status', '']
+  const cols = ['Title', 'Type', 'Priority', ...(showProjectCol ? ['Project', 'Client'] : []), 'Assigned To', 'Due Date', 'Time', 'Status', '']
 
   return (
     <>
@@ -154,6 +155,9 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
                       )}
                       <td className="px-4 py-3 text-slate-600">{t.assigned_to_name ?? '—'}</td>
                       <td className="px-4 py-3 text-slate-600">{t.due_date ? formatDate(t.due_date) : '—'}</td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {t.time_spent > 0 ? `${t.time_spent.toFixed(1)}h` : '—'}
+                      </td>
                       <td className="px-4 py-3">
                         <TaskStatusSelect
                           taskId={t.id}

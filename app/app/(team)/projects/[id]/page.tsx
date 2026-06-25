@@ -164,6 +164,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
             client_name: clientName,
             assigned_to_name: (t.team_users as { full_name?: string } | null)?.full_name ?? null,
             due_date: t.due_date,
+            time_spent: Number(t.time_spent ?? 0),
             updated_at: t.updated_at,
           }))}
           projects={[{ id: project.id, name: project.name }]}

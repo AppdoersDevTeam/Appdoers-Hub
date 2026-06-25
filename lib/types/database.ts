@@ -168,6 +168,7 @@ export interface Task {
   workflow_stage: WorkflowStage
   assigned_to: string | null
   due_date: string | null
+  time_spent: number
   created_by: string | null
   created_at: string
   updated_at: string

@@ -87,6 +87,7 @@ export default async function TaskDetailPage({ params }: Props) {
             workflowStage={task.workflow_stage as WorkflowStage}
             assignedTo={task.assigned_to}
             dueDate={task.due_date}
+            timeSpent={Number(task.time_spent ?? 0)}
             createdAt={task.created_at}
             updatedAt={task.updated_at}
             createdByName={creatorName}

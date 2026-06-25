@@ -4,6 +4,8 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { CURSOR_STAGES, hashApiToken, stageToTaskStatus } from '@/lib/cursor-workflow'
 import { formatTicket, getJoinedClientName, ticketSelect } from '@/lib/cursor-ticket-format'
 import { sendToChannel } from '@/lib/slack'
+import { getTaskHoursLogged, logCursorTaskTime } from '@/lib/cursor-time'
+import { setTaskTimeSpent } from '@/lib/task-time'
 
 const updateTicketSchema = z.object({
   project_id: z.string().uuid().optional(),
@@ -16,6 +18,11 @@ const updateTicketSchema = z.object({
   note: z.string().min(1).optional(),
   claim: z.boolean().optional(),
   agent_name: z.string().min(1).optional(),
+  hours: z.number().positive().max(24).optional(),
+  time_spent: z.number().min(0).max(9999).optional(),
+  time_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  time_description: z.string().optional(),
+  is_billable: z.boolean().optional(),
 })
 
 type ProjectSummary = {
@@ -73,7 +80,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { data, error } = await auth.service.from('tasks').select(ticketSelect).eq('id', id).single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 404 })
-  return NextResponse.json({ ticket: formatTicket(data as Record<string, unknown>) })
+
+  const hoursLogged = await getTaskHoursLogged(auth.service, id)
+  return NextResponse.json({
+    ticket: {
+      ...formatTicket(data as Record<string, unknown>),
+      hours_logged: hoursLogged,
+    },
+  })
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -234,6 +248,52 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     ])
   }
 
+  if (payload.time_spent !== undefined && task?.project_id) {
+    const timeResult = await setTaskTimeSpent(auth.service, {
+      taskId: id,
+      projectId: task.project_id,
+      teamUserId: auth.teamUserId,
+      newTotal: payload.time_spent,
+      description: `Time spent set to ${payload.time_spent}h via API`,
+    })
+
+    if (timeResult.error) {
+      return NextResponse.json({ error: timeResult.error }, { status: 500 })
+    }
+
+    await auth.service.from('activity_log').insert({
+      entity_type: 'task',
+      entity_id: id,
+      client_id: project.client_id,
+      action: 'cursor_time_logged',
+      description: `Set time spent to ${payload.time_spent}h on ${task?.title ?? 'Task'}`,
+      performed_by: auth.teamUserId,
+    })
+  } else if (payload.hours !== undefined && task?.project_id) {
+    const timeResult = await logCursorTaskTime(auth.service, {
+      taskId: id,
+      projectId: task.project_id,
+      teamUserId: auth.teamUserId,
+      hours: payload.hours,
+      date: payload.time_date,
+      description: payload.time_description ?? payload.note ?? `Work on: ${task.title ?? 'Task'}`,
+      isBillable: payload.is_billable,
+    })
+
+    if ('error' in timeResult) {
+      return NextResponse.json({ error: timeResult.error }, { status: 500 })
+    }
+
+    await auth.service.from('activity_log').insert({
+      entity_type: 'task',
+      entity_id: id,
+      client_id: project.client_id,
+      action: 'cursor_time_logged',
+      description: `Logged ${payload.hours}h on ${task?.title ?? 'Task'}`,
+      performed_by: auth.teamUserId,
+    })
+  }
+
   if (nextProject) {
     await sendToChannel('tasks', `📁 Ticket project updated: ${task?.title ?? 'Task'}`, [
       {
@@ -247,6 +307,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const { data: updated } = await auth.service.from('tasks').select(ticketSelect).eq('id', id).single()
+  const hoursLogged = await getTaskHoursLogged(auth.service, id)
 
-  return NextResponse.json({ ticket: formatTicket(updated as Record<string, unknown>) })
+  return NextResponse.json({
+    ticket: {
+      ...formatTicket(updated as Record<string, unknown>),
+      hours_logged: hoursLogged,
+    },
+  })
 }

@@ -125,7 +125,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
       const ids = projectIds.map((p) => p.id)
       const { data } = await supabase
         .from('tasks')
-        .select('id, title, type, priority, status, project_id, due_date, updated_at, team_users!assigned_to(full_name), projects(name)')
+        .select('id, title, type, priority, status, project_id, time_spent, due_date, updated_at, team_users!assigned_to(full_name), projects(name)')
         .in('project_id', ids)
         .order('created_at', { ascending: false })
       clientTasks = data
@@ -332,6 +332,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
             client_name: client.company_name,
             assigned_to_name: (t.team_users as { full_name?: string } | null)?.full_name ?? null,
             due_date: t.due_date,
+            time_spent: Number(t.time_spent ?? 0),
             updated_at: t.updated_at,
           }))}
           projects={(clientProjects ?? []).map((p) => ({ id: p.id, name: p.name }))}

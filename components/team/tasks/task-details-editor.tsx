@@ -33,6 +33,7 @@ interface TaskDetailsEditorProps {
   workflowStage: WorkflowStage
   assignedTo: string | null
   dueDate: string | null
+  timeSpent: number
   createdAt: string
   updatedAt: string
   createdByName: string
@@ -57,6 +58,7 @@ export function TaskDetailsEditor({
   workflowStage,
   assignedTo,
   dueDate,
+  timeSpent,
   createdAt,
   updatedAt,
   createdByName,
@@ -81,6 +83,7 @@ export function TaskDetailsEditor({
     projectId,
     assignedTo: assignedTo ?? '',
     dueDate: dueDate ?? '',
+    timeSpent: String(timeSpent ?? 0),
   })
 
   const clients = useMemo(() => {
@@ -144,6 +147,12 @@ export function TaskDetailsEditor({
       return
     }
 
+    const parsedTimeSpent = parseFloat(form.timeSpent)
+    if (Number.isNaN(parsedTimeSpent) || parsedTimeSpent < 0) {
+      setError('Time spent must be 0 or greater')
+      return
+    }
+
     startTransition(async () => {
       const result = await updateTaskDetailsAction(taskId, projectId, {
         title: form.title.trim(),
@@ -155,6 +164,7 @@ export function TaskDetailsEditor({
         project_id: form.projectId,
         assigned_to: form.assignedTo || null,
         due_date: form.dueDate || null,
+        time_spent: parsedTimeSpent,
       })
 
       if (!result.success) {
@@ -320,6 +330,21 @@ export function TaskDetailsEditor({
           <label className={labelClass}>Due Date</label>
           <Input type="date" value={form.dueDate} onChange={(e) => set('dueDate', e.target.value)} />
         </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Time spent (hours)</label>
+        <Input
+          type="number"
+          min="0"
+          step="0.25"
+          value={form.timeSpent}
+          onChange={(e) => set('timeSpent', e.target.value)}
+          placeholder="0"
+        />
+        <p className="mt-1 text-xs text-slate-500">
+          Total hours on this task. Updates contribute to project totals and monthly recaps.
+        </p>
       </div>
 
       <div>

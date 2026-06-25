@@ -7,6 +7,7 @@ import { sendToChannel } from '@/lib/slack'
 import type { TaskStatus, TaskType, TaskPriority, WorkflowStage } from '@/lib/types/database'
 import { stageToTaskStatus } from '@/lib/cursor-workflow'
 import { WORKFLOW_STAGE_CONFIG, TASK_STATUS_CONFIG } from '@/lib/tasks/constants'
+import { setTaskTimeSpent } from '@/lib/task-time'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -40,6 +41,7 @@ export interface UpdateTaskDetailsInput {
   project_id?: string
   assigned_to?: string | null
   due_date?: string | null
+  time_spent?: number
 }
 
 export async function createTaskAction(
@@ -141,16 +143,19 @@ export async function updateTaskDetailsAction(
 ): Promise<ActionResult<{ projectId: string }>> {
   try {
     const supabase = await createSupabaseClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
     const { data: existing } = await supabase
       .from('tasks')
-      .select('title, project_id, status, workflow_stage')
+      .select('title, project_id, status, workflow_stage, time_spent')
       .eq('id', id)
       .single()
 
     if (!existing) return { success: false, error: 'Task not found' }
 
-    const updateData: Record<string, string | null> = {
+    const updateData: Record<string, string | number | null> = {
       updated_at: new Date().toISOString(),
     }
 
@@ -170,6 +175,17 @@ export async function updateTaskDetailsAction(
     }
 
     const nextProjectId = input.project_id ?? existing.project_id
+
+    if (input.time_spent !== undefined && user) {
+      const timeResult = await setTaskTimeSpent(supabase, {
+        taskId: id,
+        projectId: nextProjectId,
+        teamUserId: user.id,
+        newTotal: input.time_spent,
+        description: `Time spent set to ${input.time_spent}h on ${existing.title}`,
+      })
+      if (timeResult.error) return { success: false, error: timeResult.error }
+    }
 
     const { error } = await supabase.from('tasks').update(updateData).eq('id', id)
     if (error) return { success: false, error: error.message }
@@ -229,6 +245,7 @@ export async function updateTaskDetailsAction(
     }
     if (input.assigned_to !== undefined) changes.push('assignee updated')
     if (input.due_date !== undefined) changes.push('due date updated')
+    if (input.time_spent !== undefined) changes.push(`time spent → ${input.time_spent}h`)
 
     if (changes.length > 0 && !(input.project_id && input.project_id !== previousProjectId)) {
       await logActivity({

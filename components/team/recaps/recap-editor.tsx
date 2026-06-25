@@ -62,8 +62,9 @@ export function RecapEditor({
       workCompleted: RecapWorkItem[]
       introText: string
       comingNext: string
+      performanceNotes: string
     },
-    options?: { refreshIntro?: boolean; refreshComingNext?: boolean }
+    options?: { refreshIntro?: boolean; refreshComingNext?: boolean; refreshPerformance?: boolean }
   ) => {
     setWorkItems(data.workCompleted)
     setGenerateMsg(
@@ -74,6 +75,9 @@ export function RecapEditor({
     }
     if (options?.refreshComingNext || !comingNext.trim()) {
       setComingNext(data.comingNext)
+    }
+    if (options?.refreshPerformance || !performanceNotes.trim()) {
+      setPerformanceNotes(data.performanceNotes)
     }
   }
 
@@ -116,7 +120,11 @@ export function RecapEditor({
     })
   }
 
-  const handleAutoGenerate = (options?: { refreshIntro?: boolean; refreshComingNext?: boolean }) => {
+  const handleAutoGenerate = (options?: {
+    refreshIntro?: boolean
+    refreshComingNext?: boolean
+    refreshPerformance?: boolean
+  }) => {
     setGenerateMsg(null)
     startTransition(async () => {
       const result = await generateRecapDataAction(clientId, recap.month, recap.year, { contactName })
@@ -160,7 +168,13 @@ export function RecapEditor({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleAutoGenerate({ refreshIntro: true, refreshComingNext: true })}
+                onClick={() =>
+                  handleAutoGenerate({
+                    refreshIntro: true,
+                    refreshComingNext: true,
+                    refreshPerformance: true,
+                  })
+                }
                 disabled={isPending}
               >
                 <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Auto-fill from Data

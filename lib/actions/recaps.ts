@@ -30,6 +30,7 @@ export interface GeneratedRecapData {
   workCompleted: RecapWorkItem[]
   introText: string
   comingNext: string
+  performanceNotes: string
 }
 
 const MONTH_NAMES = [
@@ -93,6 +94,22 @@ function buildComingNextText(
   return ''
 }
 
+function buildPerformanceNotes(hoursByProject: Map<string, number>, hoursLogged: number): string {
+  if (hoursLogged <= 0) return ''
+
+  const lines = [...hoursByProject.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, hours]) => `• ${name}: ${hours.toFixed(1)} hours`)
+
+  return `Time invested this month (${hoursLogged.toFixed(1)}h total):\n\n${lines.join('\n')}`
+}
+
+function formatTaskWorkLabel(title: string, hours: number | null, projectName?: string | null): string {
+  const hoursLabel = hours !== null && hours > 0 ? ` — ${hours.toFixed(1)}h` : ''
+  const projectSuffix = projectName ? ` (${projectName})` : ''
+  return `${title}${hoursLabel}${projectSuffix}`
+}
+
 // ─── Auto-generate recap data from DB ────────────────────────────────────────
 
 export async function generateRecapDataAction(
@@ -123,6 +140,7 @@ export async function generateRecapDataAction(
           workCompleted: [],
           introText: buildIntroText(periodLabel, 0, 0, options?.contactName),
           comingNext: '',
+          performanceNotes: '',
         },
       }
     }
@@ -145,7 +163,7 @@ export async function generateRecapDataAction(
 
       supabase
         .from('tasks')
-        .select('id, title, type, project_id, projects(name)')
+        .select('id, title, type, time_spent, project_id, projects(name)')
         .in('project_id', projectIds)
         .neq('status', 'open')
         .gte('updated_at', startDate)
@@ -163,7 +181,7 @@ export async function generateRecapDataAction(
 
       supabase
         .from('time_entries')
-        .select('hours, task_id, description')
+        .select('hours, task_id, description, project_id, projects(name)')
         .in('project_id', projectIds)
         .gte('date', startDate)
         .lte('date', endDate),
@@ -181,15 +199,59 @@ export async function generateRecapDataAction(
       (timeEntries ?? []).reduce((sum, e) => sum + Number(e.hours), 0).toFixed(1)
     )
 
+    const hoursByTask = new Map<string, number>()
+    const hoursByProject = new Map<string, number>()
+
+    for (const entry of timeEntries ?? []) {
+      const hours = Number(entry.hours)
+      const taskId = entry.task_id as string | null
+      if (taskId) {
+        hoursByTask.set(taskId, (hoursByTask.get(taskId) ?? 0) + hours)
+      }
+
+      const projectName =
+        (entry.projects as { name?: string } | null)?.name ??
+        projectNames.find((_, i) => projectIds[i] === entry.project_id) ??
+        'General'
+      hoursByProject.set(projectName, (hoursByProject.get(projectName) ?? 0) + hours)
+    }
+
     const tasksCompleted = closedTasks?.length ?? 0
     const workCompleted: RecapWorkItem[] = []
+    const seenTaskIds = new Set<string>()
     const seenDescriptions = new Set<string>()
 
-    const addWorkItem = (description: string, category: string) => {
-      const key = description.trim().toLowerCase()
-      if (!key || seenDescriptions.has(key)) return
-      seenDescriptions.add(key)
+    const addWorkItem = (description: string, category: string, taskId?: string) => {
+      if (taskId) {
+        if (seenTaskIds.has(taskId)) return
+        seenTaskIds.add(taskId)
+      } else {
+        const key = description.trim().toLowerCase()
+        if (!key || seenDescriptions.has(key)) return
+        seenDescriptions.add(key)
+      }
       workCompleted.push({ description: description.trim(), category })
+    }
+
+    if (hoursByTask.size > 0) {
+      const { data: timedTasks } = await supabase
+        .from('tasks')
+        .select('id, title, type, projects(name)')
+        .in('id', [...hoursByTask.keys()])
+        .order('updated_at', { ascending: false })
+
+      for (const task of timedTasks ?? []) {
+        const projectName = (task.projects as { name?: string } | null)?.name
+        addWorkItem(
+          formatTaskWorkLabel(
+            task.title as string,
+            hoursByTask.get(task.id as string) ?? null,
+            projectName
+          ),
+          taskTypeToCategory(task.type as string),
+          task.id as string
+        )
+      }
     }
 
     for (const phase of phases ?? []) {
@@ -202,39 +264,34 @@ export async function generateRecapDataAction(
     }
 
     for (const task of workedTasks ?? []) {
+      const taskId = task.id as string
+      if (seenTaskIds.has(taskId)) continue
+
       const projectName = (task.projects as { name?: string } | null)?.name
-      const title = task.title as string
+      const monthlyHours = hoursByTask.get(taskId) ?? null
+      const totalHours = Number(task.time_spent ?? 0)
+      const hours = monthlyHours ?? (totalHours > 0 ? totalHours : null)
+
       addWorkItem(
-        projectName ? `${title} (${projectName})` : title,
-        taskTypeToCategory(task.type as string)
+        formatTaskWorkLabel(task.title as string, hours, projectName),
+        taskTypeToCategory(task.type as string),
+        taskId
       )
     }
 
-    const taskIdsWithTime = new Set(
-      (timeEntries ?? [])
-        .map((e) => e.task_id as string | null)
-        .filter((id): id is string => Boolean(id))
-    )
-
-    if (taskIdsWithTime.size > 0) {
-      const { data: timedTasks } = await supabase
-        .from('tasks')
-        .select('id, title, type, projects(name)')
-        .in('id', [...taskIdsWithTime])
-
-      for (const task of timedTasks ?? []) {
-        const projectName = (task.projects as { name?: string } | null)?.name
-        const title = task.title as string
-        addWorkItem(
-          projectName ? `${title} (${projectName})` : title,
-          taskTypeToCategory(task.type as string)
-        )
-      }
-    }
-
     for (const entry of timeEntries ?? []) {
-      if (!entry.task_id && entry.description?.trim()) {
-        addWorkItem(entry.description.trim(), 'Other')
+      if (entry.task_id) continue
+
+      const hours = Number(entry.hours)
+      const description = entry.description?.trim()
+      if (description) {
+        addWorkItem(`${description} — ${hours.toFixed(1)}h`, 'Other')
+      } else {
+        const projectName = (entry.projects as { name?: string } | null)?.name
+        addWorkItem(
+          projectName ? `General project work — ${hours.toFixed(1)}h (${projectName})` : `General project work — ${hours.toFixed(1)}h`,
+          'Other'
+        )
       }
     }
 
@@ -254,6 +311,7 @@ export async function generateRecapDataAction(
         workCompleted,
         introText: buildIntroText(periodLabel, tasksCompleted, hoursLogged, options?.contactName),
         comingNext,
+        performanceNotes: buildPerformanceNotes(hoursByProject, hoursLogged),
       },
     }
   } catch (err) {

@@ -10,7 +10,7 @@ export default async function TasksPage() {
       supabase
         .from('tasks')
         .select(`
-          id, title, type, priority, status, project_id,
+          id, title, type, priority, status, project_id, time_spent,
           due_date, updated_at,
           team_users!assigned_to(full_name),
           projects(name, clients(company_name))
@@ -50,6 +50,7 @@ export default async function TasksPage() {
     assigned_to_name:
       (t.team_users as { full_name?: string } | null)?.full_name ?? null,
     due_date: t.due_date,
+    time_spent: Number(t.time_spent ?? 0),
     updated_at: t.updated_at,
   }))
 
