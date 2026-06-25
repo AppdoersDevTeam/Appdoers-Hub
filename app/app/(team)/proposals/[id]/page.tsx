@@ -18,7 +18,7 @@ export default async function ProposalBuilderPage({ params }: Props) {
       .single(),
     supabase
       .from('service_catalog')
-      .select('id, name, type, plan_key, setup_fee, monthly_fee')
+      .select('id, name, description, type, plan_key, setup_fee, monthly_fee')
       .eq('is_active', true)
       .order('sort_order'),
   ])

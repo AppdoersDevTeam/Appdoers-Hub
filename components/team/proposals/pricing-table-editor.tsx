@@ -11,6 +11,7 @@ import type { PricingItem } from './proposal-builder'
 interface Service {
   id: string
   name: string
+  description?: string | null
   type: string
   plan_key: string | null
   setup_fee: number
@@ -54,7 +55,7 @@ export function PricingTableEditor({
       id: crypto.randomUUID(),
       service_id: svc.id,
       name: svc.name,
-      description: '',
+      description: svc.description?.trim() ?? '',
       setup_fee: svc.setup_fee,
       monthly_fee: svc.monthly_fee,
     }

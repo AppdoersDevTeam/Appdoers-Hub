@@ -48,7 +48,9 @@ export async function GET(req: Request) {
 
   let query = auth.service
     .from('tasks')
-    .select('id, project_id, title, description, type, priority, status, workflow_stage, assigned_to, created_by, created_at, updated_at')
+    .select(
+      'id, project_id, title, description, type, priority, status, workflow_stage, assigned_to, created_by, created_at, updated_at, projects(name, clients(company_name))'
+    )
     .order('created_at', { ascending: false })
     .limit(Number.isNaN(limit) ? 50 : Math.min(limit, 200))
 
@@ -57,7 +59,19 @@ export async function GET(req: Request) {
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ tickets: data ?? [] })
+
+  const tickets = (data ?? []).map((ticket) => {
+    const { projects, ...rest } = ticket as typeof ticket & {
+      projects?: { name?: string; clients?: { company_name?: string } } | null
+    }
+    return {
+      ...rest,
+      project_name: projects?.name ?? null,
+      client_name: projects?.clients?.company_name ?? null,
+    }
+  })
+
+  return NextResponse.json({ tickets })
 }
 
 export async function POST(req: Request) {

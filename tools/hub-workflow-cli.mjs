@@ -1,5 +1,58 @@
 #!/usr/bin/env node
 
+import fs from 'node:fs'
+import path from 'node:path'
+import process from 'node:process'
+import { fileURLToPath } from 'node:url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const workspaceRoot = path.resolve(__dirname, '..')
+
+function parseDotEnv(content) {
+  const values = {}
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim()
+    if (!line || line.startsWith('#')) continue
+    const sep = line.indexOf('=')
+    if (sep === -1) continue
+    const key = line.slice(0, sep).trim()
+    if (!key) continue
+    let value = line.slice(sep + 1).trim()
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1)
+    }
+    values[key] = value
+  }
+  return values
+}
+
+function loadHubEnv() {
+  const candidates = [
+    path.join(workspaceRoot, '.env.local'),
+    path.join(workspaceRoot, '..', '.env.hub'),
+  ]
+
+  for (const filePath of candidates) {
+    if (!fs.existsSync(filePath)) continue
+    const loaded = parseDotEnv(fs.readFileSync(filePath, 'utf8'))
+    if (!process.env.APPDOERS_HUB_URL && loaded.APPDOERS_HUB_URL) {
+      process.env.APPDOERS_HUB_URL = loaded.APPDOERS_HUB_URL
+    }
+    if (!process.env.APPDOERS_CURSOR_TOKEN && loaded.APPDOERS_CURSOR_TOKEN) {
+      process.env.APPDOERS_CURSOR_TOKEN = loaded.APPDOERS_CURSOR_TOKEN
+    }
+    if (process.env.APPDOERS_HUB_URL && process.env.APPDOERS_CURSOR_TOKEN) {
+      break
+    }
+  }
+}
+
+loadHubEnv()
+
 const HUB_URL = (process.env.APPDOERS_HUB_URL || '').replace(/\/+$/, '')
 const HUB_TOKEN = process.env.APPDOERS_CURSOR_TOKEN || ''
 
@@ -12,6 +65,7 @@ Usage:
   node tools/hub-workflow-cli.mjs get-ticket --ticket-id <uuid>
   node tools/hub-workflow-cli.mjs create-ticket --project-id <uuid> --title "..." [--type feature] [--priority p2] [--stage pm] [--note "..."] [--assigned-to <uuid>]
   node tools/hub-workflow-cli.mjs move-ticket --ticket-id <uuid> --stage <pm|designer|developer|qa|reviewer|done> [--note "..."]
+  node tools/hub-workflow-cli.mjs update-ticket --ticket-id <uuid> [--project-id <uuid>] [--title "..."] [--description "..."] [--clear-description] [--type feature] [--priority p2] [--assigned-to <uuid>] [--clear-assigned] [--note "..."]
   node tools/hub-workflow-cli.mjs claim-ticket --ticket-id <uuid> [--agent-name "Cursor AI"] [--assigned-to <uuid>] [--note "..."]
   node tools/hub-workflow-cli.mjs note --ticket-id <uuid> --note "..."
 
@@ -41,11 +95,11 @@ function parseArgs(argv) {
   return args
 }
 
-async function hubFetch(path, init = {}) {
+async function hubFetch(pathname, init = {}) {
   if (!HUB_URL || !HUB_TOKEN) {
     throw new Error('Missing APPDOERS_HUB_URL or APPDOERS_CURSOR_TOKEN')
   }
-  const res = await fetch(`${HUB_URL}${path}`, {
+  const res = await fetch(`${HUB_URL}${pathname}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -131,6 +185,32 @@ async function run() {
       stage: String(args.stage),
       note: args.note ? String(args.note) : undefined,
     }
+    const data = await hubFetch(`/api/cursor/tickets/${args['ticket-id']}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    })
+    print(data)
+    return
+  }
+
+  if (command === 'update-ticket') {
+    if (!args['ticket-id']) throw new Error('--ticket-id is required')
+
+    const payload = {}
+    if (args['project-id']) payload.project_id = String(args['project-id'])
+    if (args.title) payload.title = String(args.title)
+    if (args['clear-description']) payload.description = null
+    else if (args.description !== undefined) payload.description = String(args.description)
+    if (args.type) payload.type = String(args.type)
+    if (args.priority) payload.priority = String(args.priority)
+    if (args['clear-assigned']) payload.assigned_to = null
+    else if (args['assigned-to']) payload.assigned_to = String(args['assigned-to'])
+    if (args.note) payload.note = String(args.note)
+
+    if (Object.keys(payload).length === 0) {
+      throw new Error('Provide at least one field to update: --project-id, --title, --description, --clear-description, --type, --priority, --assigned-to, --clear-assigned')
+    }
+
     const data = await hubFetch(`/api/cursor/tickets/${args['ticket-id']}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),

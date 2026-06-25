@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { FileText } from 'lucide-react'
+import { FileText, Download } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 
@@ -76,7 +76,16 @@ export default async function PortalProposalsPage() {
                     </div>
                   </div>
                 </div>
-                <span className={cn('rounded-full px-3 py-1 text-xs font-medium', st.cls)}>{st.label}</span>
+                <div className="flex items-center gap-3">
+                  <a
+                    href={`/api/proposals/${p.id}/export-pdf`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download PDF
+                  </a>
+                  <span className={cn('rounded-full px-3 py-1 text-xs font-medium', st.cls)}>{st.label}</span>
+                </div>
               </div>
             )
           })}

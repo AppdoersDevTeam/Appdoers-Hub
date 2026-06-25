@@ -166,9 +166,9 @@ export function ProposalBuilder({
             href={`/api/proposals/${proposal.id}/export-pdf`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-transparent px-3 py-1.5 text-sm text-slate-500 hover:border-blue-600 hover:text-slate-900 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:border-blue-400 hover:bg-blue-100 transition-colors"
           >
-            <Download className="h-3.5 w-3.5" /> PDF
+            <Download className="h-3.5 w-3.5" /> Download Quote PDF
           </a>
           <a
             href={`/api/proposals/${proposal.id}/export-docx`}

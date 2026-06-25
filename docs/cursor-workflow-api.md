@@ -53,7 +53,44 @@ Use `PATCH /api/cursor/tickets/:id`:
 }
 ```
 
-Claim pattern:
+## 6) Ticket field updates
+
+Use `PATCH /api/cursor/tickets/:id` to edit ticket metadata or reassign project/client:
+
+```json
+{
+  "project_id": "uuid",
+  "title": "Updated task title",
+  "description": "Updated description",
+  "type": "feature",
+  "priority": "p1",
+  "assigned_to": "team-user-uuid",
+  "note": "Reassigned to Ashburton Baptist Church / New Website"
+}
+```
+
+Set `"assigned_to": null` to clear assignee. Set `"description": null` to clear description.
+
+When `project_id` changes, Hub:
+- validates the target project exists
+- updates the task's project
+- rewrites existing activity log `client_id` values for that task
+- logs a `cursor_project_changed` activity entry
+
+CLI equivalent:
+
+```bash
+node tools/hub-workflow-cli.mjs update-ticket \
+  --ticket-id "<uuid>" \
+  --project-id "520e3d30-2eaf-4d09-8c72-bb5781025561" \
+  --title "Fix contact form" \
+  --description "Wire form to pastor@ashburtonbaptist.co.nz" \
+  --note "Moved from Appdoers New Website to ABC New Website"
+```
+
+List/get ticket responses now include `project_name` and `client_name` so agents can verify assignment before creating or moving work.
+
+## 7) Claim pattern
 
 ```json
 {
