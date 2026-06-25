@@ -68,6 +68,8 @@ export function TaskDetailsEditor({
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
+  const initialProject = projects.find((project) => project.id === projectId) ?? null
+
   const [form, setForm] = useState({
     title,
     description: description ?? '',
@@ -75,24 +77,35 @@ export function TaskDetailsEditor({
     priority,
     status,
     workflowStage,
+    clientId: initialProject?.client_id ?? '',
     projectId,
     assignedTo: assignedTo ?? '',
     dueDate: dueDate ?? '',
   })
 
+  const clients = useMemo(() => {
+    const byId = new Map<string, string>()
+    for (const project of projects) {
+      if (!byId.has(project.client_id)) {
+        byId.set(project.client_id, project.client_name)
+      }
+    }
+    return [...byId.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [projects])
+
+  const projectsForClient = useMemo(
+    () =>
+      projects
+        .filter((project) => project.client_id === form.clientId)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [form.clientId, projects]
+  )
+
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === form.projectId) ?? null,
     [form.projectId, projects]
-  )
-
-  const sortedProjects = useMemo(
-    () =>
-      [...projects].sort((a, b) => {
-        const clientCompare = a.client_name.localeCompare(b.client_name)
-        if (clientCompare !== 0) return clientCompare
-        return a.name.localeCompare(b.name)
-      }),
-    [projects]
   )
 
   const set = <K extends keyof typeof form>(field: K, value: (typeof form)[K]) => {
@@ -100,10 +113,30 @@ export function TaskDetailsEditor({
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
+  const handleClientChange = (clientId: string) => {
+    setSaved(false)
+    const nextProjects = projects
+      .filter((project) => project.client_id === clientId)
+      .sort((a, b) => a.name.localeCompare(b.name))
+
+    const keepCurrentProject =
+      nextProjects.some((project) => project.id === form.projectId) ? form.projectId : nextProjects[0]?.id ?? ''
+
+    setForm((prev) => ({
+      ...prev,
+      clientId,
+      projectId: keepCurrentProject,
+    }))
+  }
+
   const handleSave = () => {
     setError(null)
     if (!form.title.trim()) {
       setError('Title is required')
+      return
+    }
+    if (!form.clientId) {
+      setError('Client is required')
       return
     }
     if (!form.projectId) {
@@ -175,31 +208,48 @@ export function TaskDetailsEditor({
       </div>
 
       <div>
+        <label className={labelClass}>Client</label>
+        <select
+          className={selectClass}
+          value={form.clientId}
+          onChange={(e) => handleClientChange(e.target.value)}
+        >
+          <option value="">Select a client…</option>
+          {clients.map((client) => (
+            <option key={client.id} value={client.id}>
+              {client.name}
+            </option>
+          ))}
+        </select>
+        {selectedProject && (
+          <p className="mt-1 text-xs text-slate-500">
+            <Link href={`/app/clients/${selectedProject.client_id}`} className="text-blue-600 hover:underline">
+              View client profile
+            </Link>
+          </p>
+        )}
+      </div>
+
+      <div>
         <label className={labelClass}>Project</label>
         <select
           className={selectClass}
           value={form.projectId}
           onChange={(e) => set('projectId', e.target.value)}
+          disabled={!form.clientId || projectsForClient.length === 0}
         >
-          {sortedProjects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.client_name} — {project.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className={labelClass}>Client</label>
-        <p className="text-sm text-slate-700">
-          {selectedProject ? (
-            <Link href={`/app/clients/${selectedProject.client_id}`} className="text-blue-600 hover:underline">
-              {selectedProject.client_name}
-            </Link>
+          {!form.clientId ? (
+            <option value="">Select a client first</option>
+          ) : projectsForClient.length === 0 ? (
+            <option value="">No projects for this client</option>
           ) : (
-            '—'
+            projectsForClient.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))
           )}
-        </p>
+        </select>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
