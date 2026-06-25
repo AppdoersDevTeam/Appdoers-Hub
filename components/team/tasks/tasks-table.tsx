@@ -6,9 +6,11 @@ import { Plus, Search, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NewTaskSlideOver } from './new-task-slide-over'
-import { updateTaskStatusAction, deleteTaskAction } from '@/lib/actions/tasks'
+import { TaskStatusSelect } from './task-status-select'
+import { deleteTaskAction } from '@/lib/actions/tasks'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { formatDate } from '@/lib/utils/format'
+import { TASK_STATUS_CONFIG, TASK_STATUS_OPTIONS } from '@/lib/tasks/constants'
 import { cn } from '@/lib/utils/cn'
 import type { TeamUser } from '@/lib/types/database'
 
@@ -42,19 +44,6 @@ const priorityConfig: Record<string, { label: string; cls: string }> = {
   p3: { label: 'P3', cls: 'bg-slate-100 text-slate-500' },
 }
 
-const statusConfig: Record<string, { label: string; cls: string }> = {
-  open: { label: 'Open', cls: 'bg-slate-100 text-slate-500' },
-  in_progress: { label: 'In Progress', cls: 'bg-blue-50 text-blue-700' },
-  awaiting_review: { label: 'Awaiting Review', cls: 'bg-amber-50 text-amber-700' },
-  closed: { label: 'Closed', cls: 'bg-emerald-50 text-emerald-700' },
-}
-
-const STATUS_FLOW: Record<string, string> = {
-  open: 'in_progress',
-  in_progress: 'awaiting_review',
-  awaiting_review: 'closed',
-}
-
 interface Props {
   tasks: TaskRow[]
   projects: { id: string; name: string }[]
@@ -81,14 +70,6 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
     const matchStatus = statusFilter === 'all' || t.status === statusFilter
     return matchSearch && matchType && matchPriority && matchStatus
   })
-
-  const advanceStatus = (task: TaskRow) => {
-    const next = STATUS_FLOW[task.status]
-    if (!next) return
-    startTransition(async () => {
-      await updateTaskStatusAction(task.id, task.project_id, next as 'open' | 'in_progress' | 'awaiting_review' | 'closed')
-    })
-  }
 
   const handleDelete = () => {
     if (!deleteTarget) return
@@ -119,7 +100,7 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
         </select>
         <select className={selectClass} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="all">All Statuses</option>
-          {Object.entries(statusConfig).map(([v, { label }]) => <option key={v} value={v}>{label}</option>)}
+          {TASK_STATUS_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
         </select>
         <Button onClick={() => setShowNew(true)}>
           <Plus className="mr-1.5 h-4 w-4" /> New Task
@@ -147,9 +128,7 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
                 filtered.map((t) => {
                   const ty = typeConfig[t.type] ?? typeConfig.admin
                   const pr = priorityConfig[t.priority] ?? priorityConfig.p3
-                  const st = statusConfig[t.status] ?? statusConfig.open
                   const isOverdue = t.due_date && t.due_date < today && t.status !== 'closed'
-                  const nextStatus = STATUS_FLOW[t.status]
 
                   return (
                     <tr key={t.id} className={cn('transition-colors hover:bg-slate-50', isOverdue && 'border-l-2 border-l-[#EF4444]')}>
@@ -176,19 +155,15 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
                       <td className="px-4 py-3 text-slate-600">{t.assigned_to_name ?? '—'}</td>
                       <td className="px-4 py-3 text-slate-600">{t.due_date ? formatDate(t.due_date) : '—'}</td>
                       <td className="px-4 py-3">
-                        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>{st.label}</span>
+                        <TaskStatusSelect
+                          taskId={t.id}
+                          projectId={t.project_id}
+                          value={t.status as 'open' | 'in_progress' | 'awaiting_review' | 'closed'}
+                          compact
+                        />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {nextStatus && (
-                            <button
-                              onClick={() => advanceStatus(t)}
-                              disabled={isPending}
-                              className="text-xs text-blue-600 hover:text-blue-500 transition-colors whitespace-nowrap"
-                            >
-                              → {statusConfig[nextStatus]?.label}
-                            </button>
-                          )}
                           <button
                             onClick={() => setDeleteTarget(t)}
                             disabled={isPending}

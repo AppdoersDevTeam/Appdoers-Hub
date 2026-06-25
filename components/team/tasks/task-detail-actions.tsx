@@ -2,40 +2,22 @@
 
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { updateTaskStatusAction, deleteTaskAction } from '@/lib/actions/tasks'
 import { Trash2 } from 'lucide-react'
-
-const STATUS_FLOW: Record<string, string> = {
-  open: 'in_progress',
-  in_progress: 'awaiting_review',
-  awaiting_review: 'closed',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  in_progress: 'In Progress',
-  awaiting_review: 'Awaiting Review',
-  closed: 'Closed',
-}
+import { deleteTaskAction } from '@/lib/actions/tasks'
+import { TaskStatusSelect } from '@/components/team/tasks/task-status-select'
+import { TaskWorkflowStageSelect } from '@/components/team/tasks/task-workflow-stage-select'
+import type { TaskStatus, WorkflowStage } from '@/lib/types/database'
 
 interface Props {
   taskId: string
   projectId: string
-  currentStatus: string
+  currentStatus: TaskStatus
+  currentWorkflowStage: WorkflowStage
 }
 
-export function TaskDetailActions({ taskId, projectId, currentStatus }: Props) {
+export function TaskDetailActions({ taskId, projectId, currentStatus, currentWorkflowStage }: Props) {
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
-  const nextStatus = STATUS_FLOW[currentStatus]
-
-  const advance = () => {
-    if (!nextStatus) return
-    startTransition(async () => {
-      await updateTaskStatusAction(taskId, projectId, nextStatus as 'open' | 'in_progress' | 'awaiting_review' | 'closed')
-      router.refresh()
-    })
-  }
 
   const remove = () => {
     if (!confirm('Delete this task? This cannot be undone.')) return
@@ -46,12 +28,9 @@ export function TaskDetailActions({ taskId, projectId, currentStatus }: Props) {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      {nextStatus && (
-        <Button onClick={advance} disabled={isPending} size="sm">
-          → {STATUS_LABELS[nextStatus]}
-        </Button>
-      )}
+    <div className="flex flex-wrap items-center gap-2">
+      <TaskStatusSelect taskId={taskId} projectId={projectId} value={currentStatus} />
+      <TaskWorkflowStageSelect taskId={taskId} projectId={projectId} value={currentWorkflowStage} />
       <button
         onClick={remove}
         disabled={isPending}

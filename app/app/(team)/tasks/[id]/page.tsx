@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { TaskDetailActions } from '@/components/team/tasks/task-detail-actions'
 import { TaskNoteComposer } from '@/components/team/tasks/task-note-composer'
+import { TASK_STATUS_CONFIG } from '@/lib/tasks/constants'
+import type { TaskStatus } from '@/lib/types/database'
 import { formatRelativeTime } from '@/lib/utils/format'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
@@ -24,12 +26,6 @@ const priorityConfig: Record<string, { label: string; cls: string }> = {
   p3: { label: 'P3', cls: 'bg-slate-100 text-slate-500' },
 }
 
-const statusConfig: Record<string, { label: string; cls: string }> = {
-  open:            { label: 'Open',            cls: 'bg-slate-100 text-slate-500' },
-  in_progress:     { label: 'In Progress',     cls: 'bg-blue-50 text-blue-700' },
-  awaiting_review: { label: 'Awaiting Review', cls: 'bg-amber-50 text-amber-700' },
-  closed:          { label: 'Closed',          cls: 'bg-emerald-50 text-emerald-700' },
-}
 
 interface Props {
   params: Promise<{ id: string }>
@@ -67,7 +63,7 @@ export default async function TaskDetailPage({ params }: Props) {
 
   const ty = typeConfig[task.type] ?? typeConfig.admin
   const pr = priorityConfig[task.priority] ?? priorityConfig.p3
-  const st = statusConfig[task.status] ?? statusConfig.open
+  const st = TASK_STATUS_CONFIG[task.status as TaskStatus] ?? TASK_STATUS_CONFIG.open
 
   const lastUpdatedAt = task.updated_at
     ? `${formatNzDateTime(task.updated_at)} (${formatRelativeTime(task.updated_at)})`
@@ -84,7 +80,12 @@ export default async function TaskDetailPage({ params }: Props) {
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageHeader title={task.title} subtitle={project ? project.name : '—'} />
-        <TaskDetailActions taskId={id} projectId={task.project_id} currentStatus={task.status} />
+        <TaskDetailActions
+          taskId={id}
+          projectId={task.project_id}
+          currentStatus={task.status}
+          currentWorkflowStage={task.workflow_stage}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-12">
@@ -177,6 +178,10 @@ function formatActionLabel(action: string) {
       return 'Ticket claimed'
     case 'cursor_stage_changed':
       return 'Stage changed'
+    case 'workflow_stage_changed':
+      return 'Workflow stage changed'
+    case 'status_changed':
+      return 'Status changed'
     case 'cursor_note':
       return 'Progress note'
     case 'user_note':

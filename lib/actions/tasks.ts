@@ -4,7 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
 import { sendToChannel } from '@/lib/slack'
-import type { TaskStatus, TaskType, TaskPriority } from '@/lib/types/database'
+import type { TaskStatus, TaskType, TaskPriority, WorkflowStage } from '@/lib/types/database'
+import { stageToTaskStatus } from '@/lib/cursor-workflow'
+import { WORKFLOW_STAGE_CONFIG, TASK_STATUS_CONFIG } from '@/lib/tasks/constants'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -143,7 +145,7 @@ export async function updateTaskStatusAction(
 
     const { error } = await supabase
       .from('tasks')
-      .update({ status })
+      .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id)
 
     if (error) return { success: false, error: error.message }
@@ -156,6 +158,50 @@ export async function updateTaskStatusAction(
     })
 
     revalidatePath('/app/tasks')
+    revalidatePath(`/app/tasks/${id}`)
+    revalidatePath(`/app/projects/${projectId}`)
+    return { success: true, data: undefined }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
+
+export async function updateTaskWorkflowStageAction(
+  id: string,
+  projectId: string,
+  workflowStage: WorkflowStage
+): Promise<ActionResult<undefined>> {
+  try {
+    const supabase = await createSupabaseClient()
+
+    const { data: task } = await supabase
+      .from('tasks')
+      .select('title')
+      .eq('id', id)
+      .single()
+
+    const status = stageToTaskStatus(workflowStage)
+
+    const { error } = await supabase
+      .from('tasks')
+      .update({
+        workflow_stage: workflowStage,
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+
+    if (error) return { success: false, error: error.message }
+
+    await logActivity({
+      entityType: 'task',
+      entityId: id,
+      action: 'workflow_stage_changed',
+      description: `Task "${task?.title}" → ${WORKFLOW_STAGE_CONFIG[workflowStage].label} (${TASK_STATUS_CONFIG[status].label})`,
+    })
+
+    revalidatePath('/app/tasks')
+    revalidatePath(`/app/tasks/${id}`)
     revalidatePath(`/app/projects/${projectId}`)
     return { success: true, data: undefined }
   } catch (err) {
