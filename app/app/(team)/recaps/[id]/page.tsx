@@ -12,7 +12,7 @@ export default async function RecapDetailPage({ params }: Props) {
 
   const { data: recap } = await supabase
     .from('monthly_recaps')
-    .select('*, clients(id, company_name)')
+    .select('*, clients(id, company_name, contact_name)')
     .eq('id', id)
     .single()
 
@@ -23,6 +23,7 @@ export default async function RecapDetailPage({ params }: Props) {
       recap={recap}
       clientName={(recap.clients as { company_name?: string } | null)?.company_name ?? '—'}
       clientId={(recap.clients as { id?: string } | null)?.id ?? recap.client_id}
+      contactName={(recap.clients as { contact_name?: string } | null)?.contact_name}
     />
   )
 }

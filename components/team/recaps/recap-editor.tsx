@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Plus, Trash2, Send, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -35,10 +35,12 @@ export function RecapEditor({
   recap,
   clientName,
   clientId,
+  contactName,
 }: {
   recap: Recap
   clientName: string
   clientId: string
+  contactName?: string | null
 }) {
   const [isPending, startTransition] = useTransition()
   const [introText, setIntroText] = useState(recap.intro_text ?? '')
@@ -49,8 +51,31 @@ export function RecapEditor({
   const [sendConfirm, setSendConfirm] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [generateMsg, setGenerateMsg] = useState<string | null>(null)
+  const autoFilledOnMount = useRef(false)
 
   const periodLabel = `${MONTHS[recap.month - 1]} ${recap.year}`
+
+  const applyGeneratedData = (
+    data: {
+      tasksCompleted: number
+      hoursLogged: number
+      workCompleted: RecapWorkItem[]
+      introText: string
+      comingNext: string
+    },
+    options?: { refreshIntro?: boolean; refreshComingNext?: boolean }
+  ) => {
+    setWorkItems(data.workCompleted)
+    setGenerateMsg(
+      `Auto-filled ${data.workCompleted.length} work items · ${data.tasksCompleted} tasks closed · ${data.hoursLogged}h logged this month`
+    )
+    if (options?.refreshIntro || !introText.trim()) {
+      setIntroText(data.introText)
+    }
+    if (options?.refreshComingNext || !comingNext.trim()) {
+      setComingNext(data.comingNext)
+    }
+  }
 
   const addWorkItem = () => setWorkItems(prev => [...prev, { description: '', category: 'Development' }])
   const removeWorkItem = (i: number) => setWorkItems(prev => prev.filter((_, idx) => idx !== i))
@@ -91,33 +116,28 @@ export function RecapEditor({
     })
   }
 
-  const handleAutoGenerate = () => {
+  const handleAutoGenerate = (options?: { refreshIntro?: boolean; refreshComingNext?: boolean }) => {
     setGenerateMsg(null)
     startTransition(async () => {
-      const result = await generateRecapDataAction(clientId, recap.month, recap.year)
+      const result = await generateRecapDataAction(clientId, recap.month, recap.year, { contactName })
       if (!result.success) { setError(result.error); return }
-
-      const { tasksCompleted, hoursLogged, phasesCompleted, recentTasks } = result.data
-      const generated: RecapWorkItem[] = recentTasks.map(t => ({
-        description: t.title,
-        category: t.type === 'design' ? 'Design' : t.type === 'content' ? 'Content' : 'Development',
-      }))
-
-      if (phasesCompleted.length > 0) {
-        generated.unshift(...phasesCompleted.map(p => ({
-          description: `Completed ${p.replace('_', ' ')} phase`,
-          category: 'Development',
-        })))
-      }
-
-      setWorkItems(generated)
-      setGenerateMsg(`Auto-filled ${generated.length} work items · ${tasksCompleted} tasks closed · ${hoursLogged}h logged this month`)
-
-      if (!introText) {
-        setIntroText(`Hi there,\n\nHere's your monthly progress update for ${periodLabel}. It was a productive month — we completed ${tasksCompleted} task${tasksCompleted !== 1 ? 's' : ''} and logged ${hoursLogged} hours of work on your project.`)
-      }
+      applyGeneratedData(result.data, options)
     })
   }
+
+  useEffect(() => {
+    if (autoFilledOnMount.current || isSent) return
+
+    const isEmptyDraft =
+      !(recap.intro_text ?? '').trim() &&
+      (recap.work_completed ?? []).length === 0 &&
+      !(recap.coming_next ?? '').trim()
+
+    if (!isEmptyDraft) return
+
+    autoFilledOnMount.current = true
+    handleAutoGenerate()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-6">
@@ -137,7 +157,12 @@ export function RecapEditor({
         <div className="flex items-center gap-2">
           {!isSent && (
             <>
-              <Button size="sm" variant="outline" onClick={handleAutoGenerate} disabled={isPending}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleAutoGenerate({ refreshIntro: true, refreshComingNext: true })}
+                disabled={isPending}
+              >
                 <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Auto-fill from Data
               </Button>
               <Button size="sm" variant="outline" onClick={handleSave} disabled={isPending}>Save Draft</Button>
