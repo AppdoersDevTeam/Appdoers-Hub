@@ -25,3 +25,19 @@ export const WORKFLOW_STAGE_OPTIONS = Object.entries(WORKFLOW_STAGE_CONFIG).map(
   value: value as WorkflowStage,
   label,
 }))
+
+export const TASK_TYPE_OPTIONS = [
+  { value: 'feature', label: 'Feature' },
+  { value: 'bug', label: 'Bug' },
+  { value: 'revision', label: 'Revision' },
+  { value: 'content', label: 'Content' },
+  { value: 'design', label: 'Design' },
+  { value: 'admin', label: 'Admin' },
+] as const
+
+export const TASK_PRIORITY_OPTIONS = [
+  { value: 'p0', label: 'P0 — Critical' },
+  { value: 'p1', label: 'P1 — High' },
+  { value: 'p2', label: 'P2 — Medium' },
+  { value: 'p3', label: 'P3 — Low' },
+] as const

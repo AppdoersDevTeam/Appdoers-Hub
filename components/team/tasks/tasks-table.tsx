@@ -10,7 +10,7 @@ import { TaskStatusSelect } from './task-status-select'
 import { deleteTaskAction } from '@/lib/actions/tasks'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { formatDate } from '@/lib/utils/format'
-import { TASK_STATUS_CONFIG, TASK_STATUS_OPTIONS } from '@/lib/tasks/constants'
+import { TASK_STATUS_OPTIONS } from '@/lib/tasks/constants'
 import { cn } from '@/lib/utils/cn'
 import type { TeamUser } from '@/lib/types/database'
 

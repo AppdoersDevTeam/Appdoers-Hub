@@ -1,31 +1,11 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { PageHeader } from '@/components/ui/page-header'
-import { TaskDetailActions } from '@/components/team/tasks/task-detail-actions'
+import { TaskDetailsEditor } from '@/components/team/tasks/task-details-editor'
 import { TaskNoteComposer } from '@/components/team/tasks/task-note-composer'
-import { TASK_STATUS_CONFIG } from '@/lib/tasks/constants'
-import type { TaskStatus } from '@/lib/types/database'
 import { formatRelativeTime } from '@/lib/utils/format'
 import { ArrowLeft } from 'lucide-react'
-import { cn } from '@/lib/utils/cn'
-
-const typeConfig: Record<string, { label: string; cls: string }> = {
-  feature:  { label: 'Feature',  cls: 'bg-blue-50 text-blue-700' },
-  bug:      { label: 'Bug',      cls: 'bg-red-50 text-red-700' },
-  revision: { label: 'Revision', cls: 'bg-amber-50 text-amber-700' },
-  content:  { label: 'Content',  cls: 'bg-emerald-50 text-emerald-700' },
-  design:   { label: 'Design',   cls: 'bg-purple-50 text-purple-700' },
-  admin:    { label: 'Admin',    cls: 'bg-slate-100 text-slate-500' },
-}
-
-const priorityConfig: Record<string, { label: string; cls: string }> = {
-  p0: { label: 'P0', cls: 'bg-red-100 text-red-700 font-bold' },
-  p1: { label: 'P1', cls: 'bg-orange-50 text-orange-700' },
-  p2: { label: 'P2', cls: 'bg-amber-50 text-amber-700' },
-  p3: { label: 'P3', cls: 'bg-slate-100 text-slate-500' },
-}
-
+import type { TaskPriority, TaskStatus, TaskType, WorkflowStage } from '@/lib/types/database'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -35,16 +15,28 @@ export default async function TaskDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: task } = await supabase
-    .from('tasks')
-    .select(`
-      *,
-      projects(id, name, client_id, clients(company_name)),
-      team_users!assigned_to(full_name),
-      creator:team_users!created_by(full_name)
-    `)
-    .eq('id', id)
-    .single()
+  const [{ data: task }, { data: projects }, { data: teamMembers }] = await Promise.all([
+    supabase
+      .from('tasks')
+      .select(`
+        *,
+        projects(id, name, client_id, clients(company_name)),
+        team_users!assigned_to(full_name),
+        creator:team_users!created_by(full_name)
+      `)
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('projects')
+      .select('id, name, client_id, clients(company_name)')
+      .eq('status', 'active')
+      .order('name'),
+    supabase
+      .from('team_users')
+      .select('id, full_name')
+      .eq('is_active', true)
+      .order('full_name'),
+  ])
 
   if (!task) notFound()
 
@@ -56,18 +48,22 @@ export default async function TaskDetailPage({ params }: Props) {
     .order('created_at', { ascending: false })
     .limit(30)
 
-  const project = task.projects as { id: string; name: string; client_id: string; clients: { company_name: string } | null } | null
-  const clientName = project?.clients?.company_name ?? '—'
-  const assignedName = (task.team_users as { full_name?: string } | null)?.full_name ?? '—'
+  const project = task.projects as {
+    id: string
+    name: string
+    client_id: string
+    clients: { company_name: string } | null
+  } | null
+
+  const projectOptions = (projects ?? []).map((item) => ({
+    id: item.id,
+    name: item.name,
+    client_id: item.client_id,
+    client_name:
+      ((item.clients as { company_name?: string } | null)?.company_name as string | undefined) ?? 'Unknown client',
+  }))
+
   const creatorName = (task.creator as { full_name?: string } | null)?.full_name ?? '—'
-
-  const ty = typeConfig[task.type] ?? typeConfig.admin
-  const pr = priorityConfig[task.priority] ?? priorityConfig.p3
-  const st = TASK_STATUS_CONFIG[task.status as TaskStatus] ?? TASK_STATUS_CONFIG.open
-
-  const lastUpdatedAt = task.updated_at
-    ? `${formatNzDateTime(task.updated_at)} (${formatRelativeTime(task.updated_at)})`
-    : '—'
 
   return (
     <div className="space-y-6">
@@ -78,53 +74,44 @@ export default async function TaskDetailPage({ params }: Props) {
         <ArrowLeft className="h-4 w-4" /> All Tasks
       </Link>
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageHeader title={task.title} subtitle={project ? project.name : '—'} />
-        <TaskDetailActions
-          taskId={id}
-          projectId={task.project_id}
-          currentStatus={task.status}
-          currentWorkflowStage={task.workflow_stage}
-        />
-      </div>
-
       <div className="grid gap-6 xl:grid-cols-12">
         <div className="space-y-6 xl:col-span-4">
-          <div className="hub-card space-y-5 xl:sticky xl:top-6">
-            <div className="flex flex-wrap gap-2">
-              <span className={cn('rounded-full px-3 py-1 text-xs font-medium', ty.cls)}>{ty.label}</span>
-              <span className={cn('rounded-full px-3 py-1 text-xs font-medium', pr.cls)}>{pr.label}</span>
-              <span className={cn('rounded-full px-3 py-1 text-xs font-medium', st.cls)}>{st.label}</span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 xl:grid-cols-1">
-              <InfoRow label="Project">
-                {project
-                  ? <Link href={`/app/projects/${project.id}`} className="text-blue-600 hover:underline">{project.name}</Link>
-                  : '—'}
-              </InfoRow>
-              <InfoRow label="Client">
-                {project?.client_id
-                  ? <Link href={`/app/clients/${project.client_id}`} className="text-blue-600 hover:underline">{clientName}</Link>
-                  : '—'}
-              </InfoRow>
-              <InfoRow label="Assigned To"><span className="text-slate-600">{assignedName}</span></InfoRow>
-              <InfoRow label="Created By"><span className="text-slate-600">{creatorName}</span></InfoRow>
-              <InfoRow label="Due Date"><span className="text-slate-600">{task.due_date ? formatNzDate(task.due_date) : '—'}</span></InfoRow>
-              <InfoRow label="Created"><span className="text-slate-600">{formatNzDate(task.created_at)}</span></InfoRow>
-              <InfoRow label="Last Updated"><span className="text-slate-600">{lastUpdatedAt}</span></InfoRow>
-            </div>
-
-            {task.description && (
-              <div className="border-t border-slate-200 pt-4">
-                <p className="text-xs text-slate-500 mb-2">Description</p>
-                <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{task.description}</p>
-              </div>
-            )}
-          </div>
+          <TaskDetailsEditor
+            taskId={id}
+            projectId={task.project_id}
+            title={task.title}
+            description={task.description}
+            type={task.type as TaskType}
+            priority={task.priority as TaskPriority}
+            status={task.status as TaskStatus}
+            workflowStage={task.workflow_stage as WorkflowStage}
+            assignedTo={task.assigned_to}
+            dueDate={task.due_date}
+            createdAt={task.created_at}
+            updatedAt={task.updated_at}
+            createdByName={creatorName}
+            projects={projectOptions}
+            teamMembers={teamMembers ?? []}
+          />
         </div>
 
         <div className="space-y-6 xl:col-span-8">
+          <div className="hub-card">
+            <p className="text-xs text-slate-500">Current project</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">
+              {project ? (
+                <Link href={`/app/projects/${project.id}`} className="hover:text-blue-600 transition-colors">
+                  {project.name}
+                </Link>
+              ) : (
+                '—'
+              )}
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              {project?.clients?.company_name ?? '—'} · Updated {formatRelativeTime(task.updated_at)}
+            </p>
+          </div>
+
           <TaskNoteComposer taskId={id} projectId={task.project_id} />
 
           <div className="hub-card space-y-4">
@@ -161,15 +148,6 @@ export default async function TaskDetailPage({ params }: Props) {
   )
 }
 
-function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-xs text-slate-500">{label}</p>
-      <div className="mt-0.5">{children}</div>
-    </div>
-  )
-}
-
 function formatActionLabel(action: string) {
   switch (action) {
     case 'cursor_ticket_created':
@@ -178,10 +156,15 @@ function formatActionLabel(action: string) {
       return 'Ticket claimed'
     case 'cursor_stage_changed':
       return 'Stage changed'
+    case 'cursor_project_changed':
+    case 'project_changed':
+      return 'Project changed'
     case 'workflow_stage_changed':
       return 'Workflow stage changed'
     case 'status_changed':
       return 'Status changed'
+    case 'updated':
+      return 'Details updated'
     case 'cursor_note':
       return 'Progress note'
     case 'user_note':
@@ -194,15 +177,6 @@ function formatActionLabel(action: string) {
 function getActorName(action: string, actor: { full_name?: string } | null) {
   if (action.startsWith('cursor_')) return 'Cursor AI'
   return actor?.full_name ?? 'System'
-}
-
-function formatNzDate(value: string | Date) {
-  return new Intl.DateTimeFormat('en-NZ', {
-    timeZone: 'Pacific/Auckland',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(value))
 }
 
 function formatNzDateTime(value: string | Date) {

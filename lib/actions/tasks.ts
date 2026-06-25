@@ -30,6 +30,18 @@ export interface CreateTaskInput {
   live_url?: string
 }
 
+export interface UpdateTaskDetailsInput {
+  title?: string
+  description?: string | null
+  type?: TaskType
+  priority?: TaskPriority
+  status?: TaskStatus
+  workflow_stage?: WorkflowStage
+  project_id?: string
+  assigned_to?: string | null
+  due_date?: string | null
+}
+
 export async function createTaskAction(
   input: CreateTaskInput
 ): Promise<ActionResult<{ id: string }>> {
@@ -117,13 +129,125 @@ export async function updateTaskAction(
   projectId: string,
   input: Partial<CreateTaskInput>
 ): Promise<ActionResult<undefined>> {
+  const result = await updateTaskDetailsAction(id, projectId, input)
+  if (!result.success) return result
+  return { success: true, data: undefined }
+}
+
+export async function updateTaskDetailsAction(
+  id: string,
+  previousProjectId: string,
+  input: UpdateTaskDetailsInput
+): Promise<ActionResult<{ projectId: string }>> {
   try {
     const supabase = await createSupabaseClient()
-    const { error } = await supabase.from('tasks').update(input).eq('id', id)
+
+    const { data: existing } = await supabase
+      .from('tasks')
+      .select('title, project_id, status, workflow_stage')
+      .eq('id', id)
+      .single()
+
+    if (!existing) return { success: false, error: 'Task not found' }
+
+    const updateData: Record<string, string | null> = {
+      updated_at: new Date().toISOString(),
+    }
+
+    if (input.title !== undefined) updateData.title = input.title
+    if (input.description !== undefined) updateData.description = input.description
+    if (input.type !== undefined) updateData.type = input.type
+    if (input.priority !== undefined) updateData.priority = input.priority
+    if (input.assigned_to !== undefined) updateData.assigned_to = input.assigned_to
+    if (input.due_date !== undefined) updateData.due_date = input.due_date
+    if (input.project_id !== undefined) updateData.project_id = input.project_id
+
+    if (input.workflow_stage !== undefined) {
+      updateData.workflow_stage = input.workflow_stage
+      updateData.status = input.status ?? stageToTaskStatus(input.workflow_stage)
+    } else if (input.status !== undefined) {
+      updateData.status = input.status
+    }
+
+    const nextProjectId = input.project_id ?? existing.project_id
+
+    const { error } = await supabase.from('tasks').update(updateData).eq('id', id)
     if (error) return { success: false, error: error.message }
+
+    const { data: nextProject } = await supabase
+      .from('projects')
+      .select('name, client_id, clients(company_name)')
+      .eq('id', nextProjectId)
+      .single()
+
+    const clientId = nextProject?.client_id ?? null
+    const clientName =
+      ((nextProject as { clients?: { company_name?: string } } | null)?.clients?.company_name as
+        | string
+        | undefined) ?? 'Unknown client'
+    const projectName = (nextProject as { name?: string } | null)?.name ?? 'Project'
+
+    if (input.project_id && input.project_id !== previousProjectId) {
+      const { data: previousProject } = await supabase
+        .from('projects')
+        .select('name, clients(company_name)')
+        .eq('id', previousProjectId)
+        .single()
+
+      await supabase
+        .from('activity_log')
+        .update({ client_id: clientId })
+        .eq('entity_type', 'task')
+        .eq('entity_id', id)
+
+      const previousClientName =
+        ((previousProject as { clients?: { company_name?: string } } | null)?.clients?.company_name as
+          | string
+          | undefined) ?? 'Unknown client'
+
+      await logActivity({
+        entityType: 'task',
+        entityId: id,
+        clientId,
+        action: 'project_changed',
+        description: `Moved from ${(previousProject as { name?: string } | null)?.name ?? 'Unknown project'} (${previousClientName}) to ${projectName} (${clientName})`,
+      })
+    }
+
+    const changes: string[] = []
+    if (input.title !== undefined && input.title !== existing.title) changes.push(`title updated`)
+    if (input.description !== undefined) changes.push('description updated')
+    if (input.type !== undefined) changes.push(`type → ${input.type}`)
+    if (input.priority !== undefined) changes.push(`priority → ${input.priority.toUpperCase()}`)
+    if (input.status !== undefined && input.workflow_stage === undefined) {
+      changes.push(`status → ${statusLabel[input.status]}`)
+    }
+    if (input.workflow_stage !== undefined) {
+      changes.push(
+        `workflow → ${WORKFLOW_STAGE_CONFIG[input.workflow_stage].label}`
+      )
+    }
+    if (input.assigned_to !== undefined) changes.push('assignee updated')
+    if (input.due_date !== undefined) changes.push('due date updated')
+
+    if (changes.length > 0 && !(input.project_id && input.project_id !== previousProjectId)) {
+      await logActivity({
+        entityType: 'task',
+        entityId: id,
+        clientId,
+        action: 'updated',
+        description: `Task "${input.title ?? existing.title}" updated: ${changes.join(', ')}`,
+      })
+    }
+
     revalidatePath('/app/tasks')
-    revalidatePath(`/app/projects/${projectId}`)
-    return { success: true, data: undefined }
+    revalidatePath(`/app/tasks/${id}`)
+    revalidatePath(`/app/projects/${previousProjectId}`)
+    if (nextProjectId !== previousProjectId) {
+      revalidatePath(`/app/projects/${nextProjectId}`)
+    }
+
+    return { success: true, data: { projectId: nextProjectId } }
   } catch (err) {
     return { success: false, error: String(err) }
   }
