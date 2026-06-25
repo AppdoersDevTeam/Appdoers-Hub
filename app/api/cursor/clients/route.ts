@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { hashApiToken } from '@/lib/cursor-workflow'
-import { getJoinedClientName } from '@/lib/cursor-ticket-format'
 
 async function authenticateCursorRequest(req: Request) {
   const authHeader = req.headers.get('authorization')
@@ -30,26 +29,17 @@ export async function GET(req: Request) {
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const clientId = searchParams.get('client_id')
+  const status = searchParams.get('status')
 
   let query = auth.service
-    .from('projects')
-    .select('id, client_id, name, status, current_phase, clients(company_name)')
-    .order('name', { ascending: true })
+    .from('clients')
+    .select('id, company_name, status, website, location')
+    .order('company_name', { ascending: true })
 
-  if (clientId) query = query.eq('client_id', clientId)
+  if (status) query = query.eq('status', status)
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const projects = (data ?? []).map((project) => ({
-    id: project.id,
-    client_id: project.client_id,
-    name: project.name,
-    status: project.status,
-    current_phase: project.current_phase,
-    client_name: getJoinedClientName(project.clients),
-  }))
-
-  return NextResponse.json({ projects })
+  return NextResponse.json({ clients: data ?? [] })
 }

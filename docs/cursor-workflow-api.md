@@ -20,13 +20,27 @@ Use either:
 
 ## 3) Endpoints
 
-- `GET /api/cursor/projects`
+- `GET /api/cursor/clients?status=active`
+- `GET /api/cursor/projects?client_id=<uuid>`
 - `GET /api/cursor/tickets?project_id=<uuid>&stage=<pm|designer|developer|qa|reviewer|done>&limit=50`
 - `POST /api/cursor/tickets`
 - `GET /api/cursor/tickets/:id`
 - `PATCH /api/cursor/tickets/:id`
 - `GET /api/cursor/tokens`
 - `DELETE /api/cursor/tokens/:id` (revokes token)
+
+## 3b) Session workflow (any project)
+
+At the start of each coding session, Cursor should ask which client and project to use:
+
+```bash
+node tools/hub-workflow-cli.mjs list-clients
+node tools/hub-workflow-cli.mjs list-projects --client-id "<client-uuid>"
+node tools/hub-workflow-cli.mjs set-session --client-id "<client-uuid>" --project-id "<project-uuid>"
+node tools/hub-workflow-cli.mjs show-session
+```
+
+`create-ticket` uses the session project when `--project-id` is omitted. See `hub-cursor-kit/README.md` for drop-in setup on other repos.
 
 ## 4) Ticket create payload
 

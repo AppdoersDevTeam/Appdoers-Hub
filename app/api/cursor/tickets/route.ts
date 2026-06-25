@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
 import { CURSOR_STAGES, hashApiToken, stageToTaskStatus, type CursorStage } from '@/lib/cursor-workflow'
+import { formatTicket, getJoinedClientName, ticketSelect } from '@/lib/cursor-ticket-format'
 import { sendToChannel } from '@/lib/slack'
 
 const createTicketSchema = z.object({
@@ -48,9 +49,7 @@ export async function GET(req: Request) {
 
   let query = auth.service
     .from('tasks')
-    .select(
-      'id, project_id, title, description, type, priority, status, workflow_stage, assigned_to, created_by, created_at, updated_at, projects(name, clients(company_name))'
-    )
+    .select(ticketSelect)
     .order('created_at', { ascending: false })
     .limit(Number.isNaN(limit) ? 50 : Math.min(limit, 200))
 
@@ -60,16 +59,7 @@ export async function GET(req: Request) {
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const tickets = (data ?? []).map((ticket) => {
-    const { projects, ...rest } = ticket as typeof ticket & {
-      projects?: { name?: string; clients?: { company_name?: string } } | null
-    }
-    return {
-      ...rest,
-      project_name: projects?.name ?? null,
-      client_name: projects?.clients?.company_name ?? null,
-    }
-  })
+  const tickets = (data ?? []).map((ticket) => formatTicket(ticket as Record<string, unknown>))
 
   return NextResponse.json({ tickets })
 }
@@ -110,10 +100,7 @@ export async function POST(req: Request) {
     .eq('id', payload.project_id)
     .single()
   const projectName = (project as { name?: string } | null)?.name ?? 'Project'
-  const clientName =
-    ((project as { clients?: { company_name?: string } } | null)?.clients?.company_name as
-      | string
-      | undefined) ?? 'Unknown client'
+  const clientName = getJoinedClientName((project as { clients?: unknown } | null)?.clients) ?? 'Unknown client'
 
   await auth.service.from('activity_log').insert({
     entity_type: 'task',

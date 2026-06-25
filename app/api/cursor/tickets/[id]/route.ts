@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
 import { CURSOR_STAGES, hashApiToken, stageToTaskStatus } from '@/lib/cursor-workflow'
+import { formatTicket, getJoinedClientName, ticketSelect } from '@/lib/cursor-ticket-format'
 import { sendToChannel } from '@/lib/slack'
 
 const updateTicketSchema = z.object({
@@ -38,25 +39,7 @@ async function getProjectSummary(
   return {
     client_id: project.client_id ?? null,
     name: (project as { name?: string }).name ?? 'Project',
-    client_name:
-      ((project as { clients?: { company_name?: string } }).clients?.company_name as string | undefined) ??
-      'Unknown client',
-  }
-}
-
-const ticketSelect =
-  'id, project_id, title, description, type, priority, status, workflow_stage, assigned_to, created_by, created_at, updated_at, projects(name, clients(company_name))'
-
-function formatTicket(
-  ticket: Record<string, unknown> & {
-    projects?: { name?: string; clients?: { company_name?: string } } | null
-  }
-) {
-  const { projects, ...rest } = ticket
-  return {
-    ...rest,
-    project_name: projects?.name ?? null,
-    client_name: projects?.clients?.company_name ?? null,
+    client_name: getJoinedClientName((project as { clients?: unknown }).clients) ?? 'Unknown client',
   }
 }
 
@@ -90,7 +73,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { data, error } = await auth.service.from('tasks').select(ticketSelect).eq('id', id).single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 404 })
-  return NextResponse.json({ ticket: formatTicket(data) })
+  return NextResponse.json({ ticket: formatTicket(data as Record<string, unknown>) })
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -265,5 +248,5 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const { data: updated } = await auth.service.from('tasks').select(ticketSelect).eq('id', id).single()
 
-  return NextResponse.json({ ticket: formatTicket(updated) })
+  return NextResponse.json({ ticket: formatTicket(updated as Record<string, unknown>) })
 }
