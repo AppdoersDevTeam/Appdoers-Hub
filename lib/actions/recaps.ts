@@ -271,6 +271,21 @@ export async function saveRecapAction(
     const supabase = await createSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
 
+    if (!existingId) {
+      const { data: existing } = await supabase
+        .from('monthly_recaps')
+        .select('id')
+        .eq('client_id', input.client_id)
+        .eq('month', input.month)
+        .eq('year', input.year)
+        .is('project_id', null)
+        .maybeSingle()
+
+      if (existing) {
+        return { success: true, data: { id: existing.id } }
+      }
+    }
+
     let payload = {
       client_id: input.client_id,
       project_id: input.project_id ?? null,
@@ -281,38 +296,6 @@ export async function saveRecapAction(
       performance_notes: input.performance_notes,
       coming_next: input.coming_next,
       is_sent: false,
-    }
-
-    if (!existingId) {
-      const isEmpty =
-        !input.intro_text.trim() &&
-        input.work_completed.length === 0 &&
-        !input.performance_notes.trim() &&
-        !input.coming_next.trim()
-
-      if (isEmpty) {
-        const { data: client } = await supabase
-          .from('clients')
-          .select('contact_name')
-          .eq('id', input.client_id)
-          .single()
-
-        const generated = await generateRecapDataAction(
-          input.client_id,
-          input.month,
-          input.year,
-          { contactName: client?.contact_name }
-        )
-
-        if (generated.success) {
-          payload = {
-            ...payload,
-            intro_text: generated.data.introText,
-            work_completed: generated.data.workCompleted,
-            coming_next: generated.data.comingNext,
-          }
-        }
-      }
     }
 
     let id: string
@@ -390,6 +373,7 @@ export async function deleteRecapAction(recapId: string): Promise<ActionResult<u
     const { error } = await supabase.from('monthly_recaps').delete().eq('id', recapId)
     if (error) return { success: false, error: error.message }
     revalidatePath('/app/recaps')
+    revalidatePath(`/app/recaps/${recapId}`)
     return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: String(err) }
