@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import type { ProposalSection } from '@/lib/proposals/proposal-pdf-document'
 import type { ServiceCatalogEntry } from '@/lib/proposals/service-guide'
+import { fetchClientDisplayInfo } from '@/lib/clients/fetch-client-display'
 import { renderPdfRoute } from '@/lib/pdf/render-route'
 import { requireTeamAccess } from '@/lib/supabase/route-access'
 
@@ -16,32 +17,28 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { data: proposal, error } = await access.db
     .from('proposals')
-    .select('*, clients(company_name, contact_name, contact_email)')
+    .select('*')
     .eq('id', id)
     .maybeSingle()
 
   if (error) {
     console.error('Proposal PDF fetch error:', error.message)
-    return Response.json({ error: 'Failed to load proposal' }, { status: 500 })
+    return Response.json({ error: 'Failed to load proposal', detail: error.message }, { status: 500 })
   }
 
   if (!proposal) {
     return Response.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const { data: catalog } = await access.db
-    .from('service_catalog')
-    .select('id, name, description, type, plan_key, setup_fee, monthly_fee')
-    .eq('is_active', true)
-    .order('sort_order')
+  const [{ data: catalog }, clientInfo] = await Promise.all([
+    access.db
+      .from('service_catalog')
+      .select('id, name, description, type, plan_key, setup_fee, monthly_fee')
+      .eq('is_active', true)
+      .order('sort_order'),
+    fetchClientDisplayInfo(access.db, proposal.client_id as string),
+  ])
 
-  const client = proposal.clients as {
-    company_name?: string
-    contact_name?: string | null
-    contact_email?: string | null
-  } | null
-
-  const clientName = client?.company_name ?? 'Client'
   const sections: ProposalSection[] = proposal.sections ?? []
   const catalogEntries: ServiceCatalogEntry[] = (catalog ?? []).map((s) => ({
     id: s.id,
@@ -55,8 +52,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const pdfProps = {
     title: proposal.title,
-    clientName,
-    contactName: client?.contact_name,
+    clientName: clientInfo.companyName,
+    contactName: clientInfo.contactName,
     sections,
     catalog: catalogEntries,
     version: proposal.version,

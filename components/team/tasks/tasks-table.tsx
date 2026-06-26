@@ -22,7 +22,9 @@ type TaskRow = {
   status: string
   project_id: string
   project_name: string
+  client_id?: string
   client_name: string
+  assigned_to?: string | null
   assigned_to_name: string | null
   due_date: string | null
   time_spent: number
@@ -48,14 +50,29 @@ const priorityConfig: Record<string, { label: string; cls: string }> = {
 interface Props {
   tasks: TaskRow[]
   projects: { id: string; name: string }[]
+  filterProjects?: { id: string; name: string; client_id: string }[]
+  clients?: { id: string; company_name: string }[]
   teamMembers: Pick<TeamUser, 'id' | 'full_name'>[]
   defaultProjectId?: string
+  defaultClientId?: string
   showProjectCol?: boolean
 }
 
-export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, showProjectCol = true }: Props) {
+export function TasksTable({
+  tasks,
+  projects,
+  filterProjects,
+  clients = [],
+  teamMembers,
+  defaultProjectId,
+  defaultClientId,
+  showProjectCol = true,
+}: Props) {
   const [isPending, startTransition] = useTransition()
   const [search, setSearch] = useState('')
+  const [clientFilter, setClientFilter] = useState(defaultClientId ?? 'all')
+  const [projectFilter, setProjectFilter] = useState(defaultProjectId ?? 'all')
+  const [assigneeFilter, setAssigneeFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('open')
@@ -63,13 +80,32 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
   const [deleteTarget, setDeleteTarget] = useState<TaskRow | null>(null)
 
   const today = new Date().toISOString().split('T')[0]
+  const showClientFilter = showProjectCol && !defaultClientId
+  const showProjectFilter = showProjectCol && !defaultProjectId
+  const projectOptions = (filterProjects ?? projects.map((p) => ({ ...p, client_id: '' })))
+    .filter((p) => clientFilter === 'all' || p.client_id === clientFilter)
+
+  const handleClientFilterChange = (value: string) => {
+    setClientFilter(value)
+    if (projectFilter !== 'all') {
+      const stillValid = (filterProjects ?? []).some(
+        (p) => p.id === projectFilter && (value === 'all' || p.client_id === value)
+      )
+      if (!stillValid) setProjectFilter('all')
+    }
+  }
 
   const filtered = tasks.filter((t) => {
     const matchSearch = t.title.toLowerCase().includes(search.toLowerCase())
+    const matchClient = !showClientFilter || clientFilter === 'all' || t.client_id === clientFilter
+    const matchProject = !showProjectFilter || projectFilter === 'all' || t.project_id === projectFilter
+    const matchAssignee =
+      assigneeFilter === 'all' ||
+      (assigneeFilter === 'unassigned' ? !t.assigned_to : t.assigned_to === assigneeFilter)
     const matchType = typeFilter === 'all' || t.type === typeFilter
     const matchPriority = priorityFilter === 'all' || t.priority === priorityFilter
     const matchStatus = statusFilter === 'all' || t.status === statusFilter
-    return matchSearch && matchType && matchPriority && matchStatus
+    return matchSearch && matchClient && matchProject && matchAssignee && matchType && matchPriority && matchStatus
   })
 
   const handleDelete = () => {
@@ -91,6 +127,29 @@ export function TasksTable({ tasks, projects, teamMembers, defaultProjectId, sho
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search tasks…" className="pl-9" />
         </div>
+        {showClientFilter && (
+          <select className={selectClass} value={clientFilter} onChange={(e) => handleClientFilterChange(e.target.value)}>
+            <option value="all">All Clients</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>{c.company_name}</option>
+            ))}
+          </select>
+        )}
+        {showProjectFilter && (
+          <select className={selectClass} value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
+            <option value="all">All Projects</option>
+            {projectOptions.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        )}
+        <select className={selectClass} value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}>
+          <option value="all">All Assignees</option>
+          <option value="unassigned">Unassigned</option>
+          {teamMembers.map((m) => (
+            <option key={m.id} value={m.id}>{m.full_name}</option>
+          ))}
+        </select>
         <select className={selectClass} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
           <option value="all">All Types</option>
           {Object.entries(typeConfig).map(([v, { label }]) => <option key={v} value={v}>{label}</option>)}

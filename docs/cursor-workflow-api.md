@@ -125,3 +125,20 @@ Stage mapping:
 - `done` -> `closed`
 
 Every create/update note writes to `activity_log` for audit history.
+
+## 8) Automatic active time tracking
+
+The Hub workflow CLI tracks **active work time** per ticket in `.hub-ticket-time.json` (gitignored).
+
+- Timer starts: `claim-ticket` or `move-ticket --stage developer`
+- Timer ticks: any ticket command (`note`, `get-ticket`, `update-ticket`, etc.)
+- Idle rule: gaps longer than **5 minutes** between CLI touches are excluded
+- Flush per request: `flush-ticket-time --ticket-id <uuid>` when implementation for a user request is complete
+- Auto-flush on stage: moving to `qa`, `reviewer`, or `done` logs unlogged active time via `POST /api/cursor/tickets/:id/time`
+
+```bash
+node tools/hub-workflow-cli.mjs show-ticket-time --ticket-id "<uuid>"
+node tools/hub-workflow-cli.mjs flush-ticket-time --ticket-id "<uuid>" --note "Completed homepage hero implementation"
+```
+
+Do **not** manually pass `hours` or `time_spent` in PATCH payloads — inflated wall-clock estimates were causing incorrect totals.

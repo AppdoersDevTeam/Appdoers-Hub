@@ -4,11 +4,18 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import {
+  createTicketTimeStore,
+  isFlushStage,
+  isWorkStage,
+  logTicketHours,
+} from './hub-ticket-time.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const workspaceRoot = path.resolve(__dirname, '..')
 const sessionFilePath = path.join(workspaceRoot, '.hub-session.json')
+const ticketTime = createTicketTimeStore(workspaceRoot)
 
 function parseDotEnv(content) {
   const values = {}
@@ -74,10 +81,15 @@ Usage:
   node tools/hub-workflow-cli.mjs update-ticket --ticket-id <uuid> [--project-id <uuid>] [--title "..."] [--description "..."] [--clear-description] [--type feature] [--priority p2] [--assigned-to <uuid>] [--clear-assigned] [--note "..."]
   node tools/hub-workflow-cli.mjs claim-ticket --ticket-id <uuid> [--agent-name "Cursor AI"] [--assigned-to <uuid>] [--note "..."]
   node tools/hub-workflow-cli.mjs note --ticket-id <uuid> --note "..."
+  node tools/hub-workflow-cli.mjs flush-ticket-time --ticket-id <uuid> [--note "..."] [--finalize]
+  node tools/hub-workflow-cli.mjs show-ticket-time [--ticket-id <uuid>]
 
 Session:
   .hub-session.json in the project root stores the active client/project for this coding session.
+  .hub-ticket-time.json tracks active work time per ticket (idle gaps over 5 minutes are excluded).
   create-ticket uses the session project when --project-id is omitted.
+  claim-ticket / move-ticket --stage developer start the active timer.
+  flush-ticket-time logs unlogged active time; move-ticket --stage qa|reviewer|done auto-flushes.
 
 Required env vars:
   APPDOERS_HUB_URL
@@ -154,6 +166,29 @@ async function resolveProjectId(explicitProjectId) {
   throw new Error(
     'No project selected. Run set-session after asking the user which client and project to use, or pass --project-id.'
   )
+}
+
+function touchTicketTime(ticketId) {
+  if (!ticketId) return null
+  return ticketTime.touchTicket(String(ticketId))
+}
+
+async function flushTicketTime(ticketId, { finalize = false, description } = {}) {
+  const id = String(ticketId)
+  const prepared = ticketTime.prepareFlush(id, { finalize })
+  if (prepared.hours <= 0) {
+    return { time_logged: null, ...prepared }
+  }
+
+  const timeResult = await logTicketHours(hubFetch, id, prepared.hours, description)
+  return {
+    time_logged: {
+      ticket_id: id,
+      hours: prepared.hours,
+      ...timeResult,
+    },
+    ...prepared,
+  }
 }
 
 async function run() {
@@ -245,8 +280,43 @@ async function run() {
 
   if (command === 'get-ticket') {
     if (!args['ticket-id']) throw new Error('--ticket-id is required')
+    touchTicketTime(args['ticket-id'])
     const data = await hubFetch(`/api/cursor/tickets/${args['ticket-id']}`)
     print(data)
+    return
+  }
+
+  if (command === 'show-ticket-time') {
+    const ticketId = args['ticket-id'] ?? ticketTime.getActiveTicketId()
+    if (!ticketId) {
+      print({
+        active_ticket_id: null,
+        ticket_time: null,
+        message: 'No active ticket timer. Start with claim-ticket or move-ticket --stage developer.',
+      })
+      return
+    }
+    const snapshot = ticketTime.getTicketTime(String(ticketId))
+    print({
+      active_ticket_id: ticketTime.getActiveTicketId(),
+      ticket_time: snapshot,
+      message: snapshot
+        ? 'Ticket time snapshot (idle gaps over 5 minutes excluded).'
+        : 'No tracked time for this ticket yet. Start with claim-ticket or move-ticket --stage developer.',
+    })
+    return
+  }
+
+  if (command === 'flush-ticket-time') {
+    if (!args['ticket-id']) throw new Error('--ticket-id is required')
+    const description = args.note
+      ? String(args.note)
+      : 'Cursor active work (auto-logged at request completion)'
+    const result = await flushTicketTime(args['ticket-id'], {
+      finalize: Boolean(args.finalize),
+      description,
+    })
+    print(result)
     return
   }
 
@@ -274,15 +344,30 @@ async function run() {
   if (command === 'move-ticket') {
     if (!args['ticket-id']) throw new Error('--ticket-id is required')
     if (!args.stage) throw new Error('--stage is required')
+    const ticketId = String(args['ticket-id'])
+    const stage = String(args.stage)
+    let timeFlush = null
+
+    if (isFlushStage(stage)) {
+      timeFlush = await flushTicketTime(ticketId, {
+        finalize: true,
+        description: `Cursor active work (auto-logged on move to ${stage})`,
+      })
+    } else if (isWorkStage(stage)) {
+      ticketTime.startTicket(ticketId)
+    } else {
+      touchTicketTime(ticketId)
+    }
+
     const payload = {
-      stage: String(args.stage),
+      stage,
       note: args.note ? String(args.note) : undefined,
     }
-    const data = await hubFetch(`/api/cursor/tickets/${args['ticket-id']}`, {
+    const data = await hubFetch(`/api/cursor/tickets/${ticketId}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     })
-    print(data)
+    print(timeFlush ? { ...data, time_logged: timeFlush.time_logged, time_tracking: timeFlush } : data)
     return
   }
 
@@ -304,6 +389,7 @@ async function run() {
       throw new Error('Provide at least one field to update: --project-id, --title, --description, --clear-description, --type, --priority, --assigned-to, --clear-assigned')
     }
 
+    touchTicketTime(args['ticket-id'])
     const data = await hubFetch(`/api/cursor/tickets/${args['ticket-id']}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
@@ -314,6 +400,8 @@ async function run() {
 
   if (command === 'claim-ticket') {
     if (!args['ticket-id']) throw new Error('--ticket-id is required')
+    const ticketId = String(args['ticket-id'])
+    const timer = ticketTime.startTicket(ticketId)
     const agentName = args['agent-name'] ? String(args['agent-name']) : 'Cursor AI'
     const claimNote = args.note
       ? String(args.note)
@@ -324,17 +412,18 @@ async function run() {
       note: claimNote,
       assigned_to: args['assigned-to'] ? String(args['assigned-to']) : undefined,
     }
-    const data = await hubFetch(`/api/cursor/tickets/${args['ticket-id']}`, {
+    const data = await hubFetch(`/api/cursor/tickets/${ticketId}`, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     })
-    print(data)
+    print({ ...data, time_tracking: { started: true, ...timer } })
     return
   }
 
   if (command === 'note') {
     if (!args['ticket-id']) throw new Error('--ticket-id is required')
     if (!args.note) throw new Error('--note is required')
+    touchTicketTime(args['ticket-id'])
     const payload = { note: String(args.note) }
     const data = await hubFetch(`/api/cursor/tickets/${args['ticket-id']}`, {
       method: 'PATCH',

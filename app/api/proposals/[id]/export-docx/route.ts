@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { fetchClientDisplayInfo } from '@/lib/clients/fetch-client-display'
+import { requireTeamAccess } from '@/lib/supabase/route-access'
 import {
   Document,
   Packer,
@@ -133,23 +134,31 @@ function buildDocx(title: string, clientName: string, sections: Section[]) {
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
+  const access = await requireTeamAccess()
+  if (!access.ok) {
+    return NextResponse.json({ error: access.message }, { status: access.status })
+  }
 
-  const { data: proposal } = await supabase
+  const { data: proposal, error } = await access.db
     .from('proposals')
-    .select('*, clients(company_name)')
+    .select('*')
     .eq('id', id)
-    .single()
+    .maybeSingle()
+
+  if (error) {
+    console.error('Proposal DOCX fetch error:', error.message)
+    return NextResponse.json({ error: 'Failed to load proposal', detail: error.message }, { status: 500 })
+  }
 
   if (!proposal) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const clientName = (proposal.clients as { company_name?: string } | null)?.company_name ?? 'Client'
+  const clientInfo = await fetchClientDisplayInfo(access.db, proposal.client_id as string)
   const sections: Section[] = proposal.sections ?? []
 
   try {
-    const doc = buildDocx(proposal.title, clientName, sections)
+    const doc = buildDocx(proposal.title, clientInfo.companyName, sections)
     const buffer = await Packer.toBuffer(doc)
     const filename = `${proposal.title.replace(/[^a-z0-9]/gi, '_')}_v${proposal.version}.docx`
 

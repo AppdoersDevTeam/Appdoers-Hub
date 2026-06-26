@@ -29,8 +29,11 @@ Before creating tickets or making code edits for a new request, ensure the activ
 
 ## Portable setup (any repo)
 
-Copy from `hub-cursor-kit/` in Appdoers Hub repo, or ensure this repo has:
+Copy from `hub-cursor-kit/` in Appdoers CRM repo, or ensure this repo has:
 
 - `tools/hub-workflow-cli.mjs`
+- `tools/hub-ticket-time.mjs`
 - `.env.local` with `APPDOERS_HUB_URL` and `APPDOERS_CURSOR_TOKEN`
-- This rule file under `.cursor/rules/`
+- Rule files under `.cursor/rules/`
+
+Run `hub-cursor-kit/install.ps1` from the kit to copy everything into a new project.

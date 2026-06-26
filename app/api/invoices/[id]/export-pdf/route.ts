@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { fetchClientDisplayInfo } from '@/lib/clients/fetch-client-display'
 import { type BillingInfo, type CompanyInfo } from '@/lib/invoices/invoice-pdf-document'
 import { normalizeInvoiceLines } from '@/lib/invoices/normalize'
 import { renderPdfRoute } from '@/lib/pdf/render-route'
@@ -47,21 +48,18 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return Response.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const [{ data: client }, { data: project }] = await Promise.all([
-    db
-      .from('clients')
-      .select('company_name, contact_name, contact_email')
-      .eq('id', invoice.client_id)
-      .maybeSingle(),
+  const [{ data: clientRow }, { data: project }, clientInfo] = await Promise.all([
+    db.from('clients').select('id, company_name').eq('id', invoice.client_id).maybeSingle(),
     invoice.project_id
       ? db.from('projects').select('name').eq('id', invoice.project_id).maybeSingle()
       : Promise.resolve({ data: null }),
+    fetchClientDisplayInfo(db, invoice.client_id as string),
   ])
 
   const company = { ...DEFAULT_COMPANY, ...((companySetting?.value as Partial<CompanyInfo> | null) ?? {}) }
   const billing = { ...DEFAULT_BILLING, ...((billingSetting?.value as Partial<BillingInfo> | null) ?? {}) }
   const lines = normalizeInvoiceLines(invoice.lines)
-  const clientName = client?.company_name ?? 'Client'
+  const clientName = clientRow?.company_name ?? clientInfo.companyName
 
   const pdfProps = {
     invoiceNumber: invoice.invoice_number,
@@ -77,8 +75,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     paidAt: invoice.paid_at,
     paymentReference: invoice.payment_reference,
     clientName,
-    contactName: client?.contact_name ?? null,
-    contactEmail: client?.contact_email ?? null,
+    contactName: clientInfo.contactName,
+    contactEmail: clientInfo.contactEmail,
     projectName: project?.name ?? null,
     company,
     billing,

@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { InvoiceEditor } from '@/components/team/invoices/invoice-editor'
+import { fetchClientDisplayInfo } from '@/lib/clients/fetch-client-display'
 import { requireTeamAccess } from '@/lib/supabase/route-access'
 
 interface Props {
@@ -27,13 +28,14 @@ export default async function InvoiceDetailPage({ params }: Props) {
 
   if (!invoice) notFound()
 
-  const [{ data: client }, { data: project }, { data: clients }, { data: projects }] =
+  const [{ data: clientRow }, clientInfo, { data: project }, { data: clients }, { data: projects }] =
     await Promise.all([
       access.db
         .from('clients')
-        .select('id, company_name, contact_name, contact_email')
+        .select('id, company_name')
         .eq('id', invoice.client_id)
         .maybeSingle(),
+      fetchClientDisplayInfo(access.db, invoice.client_id as string),
       invoice.project_id
         ? access.db
             .from('projects')
@@ -44,6 +46,14 @@ export default async function InvoiceDetailPage({ params }: Props) {
       access.db.from('clients').select('id, company_name').eq('status', 'active').order('company_name'),
       access.db.from('projects').select('id, name, client_id').order('name'),
     ])
+
+  const client = clientRow
+    ? {
+        ...clientRow,
+        contact_name: clientInfo.contactName,
+        contact_email: clientInfo.contactEmail,
+      }
+    : null
 
   return (
     <InvoiceEditor

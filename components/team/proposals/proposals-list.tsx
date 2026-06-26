@@ -68,6 +68,7 @@ export function ProposalsList({
         return
       }
       router.push(`/app/proposals/${result.data.id}`)
+      router.refresh()
     })
   }
 
