@@ -20,8 +20,11 @@ export interface CreateClientInput {
   website?: string
   location?: string
   subscription_plan: string
+  contract_months?: number | null
+  plan_service_id?: string | null
   monthly_fee: number
   setup_fee: number
+  setup_upfront?: number
   payment_terms: number
   status: 'active' | 'inactive' | 'churned'
 }

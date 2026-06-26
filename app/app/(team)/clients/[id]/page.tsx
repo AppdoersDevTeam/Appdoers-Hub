@@ -61,13 +61,40 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
     .eq('client_id', id)
     .order('is_primary', { ascending: false })
 
-  const { data: catalogPlans } = await supabase
-    .from('service_catalog')
-    .select('plan_key, name, monthly_fee, setup_fee')
-    .eq('type', 'plan')
-    .eq('contract_months', 12)
-    .eq('is_active', true)
-    .order('sort_order')
+  const [{ data: catalogPlans }, { data: catalogAddons }, { data: clientServices }] = await Promise.all([
+    supabase
+      .from('service_catalog')
+      .select('id, name, type, plan_key, setup_fee, monthly_fee, min_upfront, contract_months')
+      .eq('type', 'plan')
+      .eq('is_active', true)
+      .order('sort_order'),
+    supabase
+      .from('service_catalog')
+      .select('id, name, type, plan_key, setup_fee, monthly_fee, min_upfront, contract_months')
+      .eq('type', 'addon')
+      .eq('is_active', true)
+      .order('sort_order'),
+    supabase
+      .from('client_services')
+      .select('service_catalog_id, quantity, monthly_fee, setup_fee')
+      .eq('client_id', id),
+  ])
+
+  const selectedPlan = catalogPlans?.find((p) => p.id === client.plan_service_id)
+  const resolvedPlanServiceId =
+    client.plan_service_id ??
+    (client.subscription_plan !== 'none'
+      ? catalogPlans?.find(
+          (p) =>
+            p.plan_key === client.subscription_plan &&
+            p.contract_months === (client.contract_months ?? 12)
+        )?.id ?? null
+      : null)
+  const planDisplayName =
+    selectedPlan?.name ??
+    catalogPlans?.find((p) => p.id === resolvedPlanServiceId)?.name ??
+    planLabels[client.subscription_plan] ??
+    client.subscription_plan
 
   // Fetch notes only when on notes tab
   const { data: clientNotes } = tab === 'notes'
@@ -156,7 +183,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
 
       <PageHeader
         title={client.company_name}
-        subtitle={planLabels[client.subscription_plan] ?? client.subscription_plan}
+        subtitle={planDisplayName}
       />
 
       {/* Tabs */}
@@ -237,22 +264,55 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
               <div className="space-y-3 text-sm">
                 <div>
                   <p className="text-xs text-slate-500">Subscription Plan</p>
-                  <p className="mt-0.5 font-medium text-slate-900">
-                    {planLabels[client.subscription_plan]}
-                  </p>
+                  <p className="mt-0.5 font-medium text-slate-900">{planDisplayName}</p>
+                  {client.contract_months && (
+                    <p className="text-xs text-slate-500">{client.contract_months}-month contract</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-xs text-slate-500">Monthly Fee (MRR)</p>
                   <p className="mt-0.5 text-xl font-semibold text-emerald-600">
-                    {formatCurrency(client.monthly_fee)}
+                    {formatCurrency(Number(client.monthly_fee) + (clientServices ?? []).reduce((s, r) => s + Number(r.monthly_fee), 0))}
                   </p>
+                  {(clientServices ?? []).length > 0 && (
+                    <p className="text-xs text-slate-500">
+                      Plan {formatCurrency(client.monthly_fee)} + add-ons{' '}
+                      {formatCurrency((clientServices ?? []).reduce((s, r) => s + Number(r.monthly_fee), 0))}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Setup Fee</p>
+                  <p className="text-xs text-slate-500">Setup Fee (total)</p>
                   <p className="mt-0.5 font-medium text-slate-900">
-                    {formatCurrency(client.setup_fee)}
+                    {formatCurrency(Number(client.setup_fee) + (clientServices ?? []).reduce((s, r) => s + Number(r.setup_fee), 0))}
                   </p>
                 </div>
+                {Number(client.setup_upfront) > 0 && (
+                  <div>
+                    <p className="text-xs text-slate-500">Due Upfront</p>
+                    <p className="mt-0.5 font-medium text-slate-900">
+                      {formatCurrency(client.setup_upfront)}
+                    </p>
+                  </div>
+                )}
+                {(clientServices ?? []).length > 0 && (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Add-ons</p>
+                    <ul className="space-y-1 text-sm text-slate-600">
+                      {(clientServices ?? []).map((cs) => {
+                        const svc = catalogAddons?.find((a) => a.id === cs.service_catalog_id)
+                        return (
+                          <li key={cs.service_catalog_id}>
+                            {svc?.name ?? 'Add-on'}
+                            {cs.quantity > 1 && ` × ${cs.quantity}`}
+                            {' — '}
+                            {formatCurrency(cs.monthly_fee)}/mo
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )}
                 {client.subscription_start_date && (
                   <div>
                     <p className="text-xs text-slate-500">Subscription Start</p>
@@ -266,12 +326,39 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
 
             {/* Edit Form */}
             <ClientEditForm
-              client={client}
-              plans={(catalogPlans ?? []).map(p => ({
-                value: p.plan_key ?? p.name.toLowerCase().replace(/\s+/g, '_'),
-                label: p.name,
-                fee: Number(p.monthly_fee),
-                setup: Number(p.setup_fee),
+              client={{
+                ...client,
+                contract_months: client.contract_months ?? null,
+                plan_service_id: resolvedPlanServiceId,
+                setup_upfront: Number(client.setup_upfront ?? 0),
+                monthly_fee: Number(client.monthly_fee),
+                setup_fee: Number(client.setup_fee),
+              }}
+              catalogPlans={(catalogPlans ?? []).map((p) => ({
+                id: p.id,
+                name: p.name,
+                type: 'plan' as const,
+                plan_key: p.plan_key,
+                setup_fee: Number(p.setup_fee),
+                monthly_fee: Number(p.monthly_fee),
+                min_upfront: p.min_upfront != null ? Number(p.min_upfront) : null,
+                contract_months: p.contract_months,
+              }))}
+              catalogAddons={(catalogAddons ?? []).map((p) => ({
+                id: p.id,
+                name: p.name,
+                type: 'addon' as const,
+                plan_key: p.plan_key,
+                setup_fee: Number(p.setup_fee),
+                monthly_fee: Number(p.monthly_fee),
+                min_upfront: p.min_upfront != null ? Number(p.min_upfront) : null,
+                contract_months: p.contract_months,
+              }))}
+              clientServices={(clientServices ?? []).map((cs) => ({
+                service_catalog_id: cs.service_catalog_id,
+                quantity: cs.quantity,
+                monthly_fee: Number(cs.monthly_fee),
+                setup_fee: Number(cs.setup_fee),
               }))}
             />
           </div>

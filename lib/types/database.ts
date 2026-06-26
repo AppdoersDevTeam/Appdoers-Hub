@@ -96,8 +96,11 @@ export interface Client {
   subscription_plan: SubscriptionPlan
   subscription_start_date: string | null
   subscription_end_date: string | null
+  contract_months: number | null
+  plan_service_id: string | null
   monthly_fee: number
   setup_fee: number
+  setup_upfront: number
   payment_terms: number
   status: 'active' | 'inactive' | 'churned'
   created_at: string
