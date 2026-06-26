@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { Menu, X, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { AppdoersLogo } from '@/components/brand/appdoers-logo'
 import { cn } from '@/lib/utils/cn'
 
 const navItems = [
@@ -37,9 +38,7 @@ export function PortalTopNav({ clientName }: TopNavProps) {
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <Link href="/portal/projects" className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-600">
-            <span className="text-xs font-bold text-white">A</span>
-          </div>
+          <AppdoersLogo variant="icon" />
           <span className="text-sm font-semibold text-slate-900">Appdoers Hub</span>
         </Link>
 

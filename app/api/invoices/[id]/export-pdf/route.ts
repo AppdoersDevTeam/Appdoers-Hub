@@ -1,27 +1,17 @@
 import { NextRequest } from 'next/server'
 import { fetchClientDisplayInfo } from '@/lib/clients/fetch-client-display'
-import { type BillingInfo, type CompanyInfo } from '@/lib/invoices/invoice-pdf-document'
+import type { InvoicePDFProps } from '@/lib/invoices/invoice-pdf-document'
 import { normalizeInvoiceLines } from '@/lib/invoices/normalize'
+import {
+  APPDOERS_BILLING_DEFAULTS,
+  mergeCompanySettings,
+  normalizeBillingSettings,
+} from '@/lib/pdf/company-defaults'
 import { renderPdfRoute } from '@/lib/pdf/render-route'
 import { requireInvoiceAccess } from '@/lib/supabase/route-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-const DEFAULT_COMPANY: CompanyInfo = {
-  name: 'Appdoers',
-  email: 'hello@appdoers.co.nz',
-  phone: '+64 22 5060 870',
-  address: '',
-  website: 'https://www.appdoers.co.nz',
-}
-
-const DEFAULT_BILLING: BillingInfo = {
-  gst_rate: 0.15,
-  bank_name: '',
-  bank_account: '',
-  bank_reference_prefix: 'INV',
-}
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -56,12 +46,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     fetchClientDisplayInfo(db, invoice.client_id as string),
   ])
 
-  const company = { ...DEFAULT_COMPANY, ...((companySetting?.value as Partial<CompanyInfo> | null) ?? {}) }
-  const billing = { ...DEFAULT_BILLING, ...((billingSetting?.value as Partial<BillingInfo> | null) ?? {}) }
+  const company = mergeCompanySettings(companySetting?.value as Record<string, unknown> | null)
+  const billing = {
+    ...APPDOERS_BILLING_DEFAULTS,
+    ...normalizeBillingSettings(billingSetting?.value as Record<string, unknown> | null),
+  }
   const lines = normalizeInvoiceLines(invoice.lines)
   const clientName = clientRow?.company_name ?? clientInfo.companyName
 
-  const pdfProps = {
+  const pdfProps: InvoicePDFProps = {
     invoiceNumber: invoice.invoice_number,
     status: invoice.status,
     issueDate: invoice.issue_date,

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { AppdoersLogo } from '@/components/brand/appdoers-logo'
 
 export default function TeamLoginPage() {
   const router = useRouter()
@@ -35,9 +36,7 @@ export default function TeamLoginPage() {
     <div className="theme-team flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-500/20">
-            <span className="text-xl font-bold text-white">A</span>
-          </div>
+          <AppdoersLogo variant="full" />
           <h1 className="mt-4 text-xl font-semibold text-slate-900">Appdoers Hub</h1>
           <p className="mt-1 text-sm text-slate-500">Team access</p>
         </div>

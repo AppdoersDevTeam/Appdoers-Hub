@@ -17,6 +17,7 @@ import {
   CreditCard,
   UserCircle,
 } from 'lucide-react'
+import { AppdoersLogo } from '@/components/brand/appdoers-logo'
 import { cn } from '@/lib/utils/cn'
 
 const navItems = [
@@ -56,9 +57,7 @@ export function Sidebar({ hiddenHrefs = [] }: Props) {
       {/* Logo */}
       <div className="flex h-14 items-center border-b border-slate-200 px-4">
         <Link href="/app/dashboard" className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-600">
-            <span className="text-xs font-bold text-white">A</span>
-          </div>
+          <AppdoersLogo variant="icon" />
           <span className="text-sm font-semibold text-slate-900">Appdoers Hub</span>
         </Link>
       </div>
