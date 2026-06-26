@@ -28,10 +28,10 @@ powershell -ExecutionPolicy Bypass -File "Appdoers CRM\hub-cursor-kit\install.ps
 
 Each team member needs their own token so time logs to the correct person.
 
-1. Sign into Appdoers Hub
-2. Go to **Settings → Cursor API tokens** (or create via Hub UI)
-3. Create a token named after your machine (e.g. "Sara Laptop Cursor")
-4. Copy the token once and add to `.env.local` in the project (or shared parent `.env.hub`):
+1. Sign into [Appdoers Hub](https://appdoers-hub-two.vercel.app)
+2. Go to **My Account** (sidebar) → **Cursor setup**
+3. Enter a name and click **Generate Cursor token**
+4. Click **Copy .env block** and save to `Appdoers Work\.env.hub` on your computer:
 
 ```env
 APPDOERS_HUB_URL=https://appdoers-hub-two.vercel.app
@@ -43,6 +43,8 @@ APPDOERS_CURSOR_TOKEN=apd_your_token_here
 ```bash
 node tools/hub-workflow-cli.mjs verify-setup
 ```
+
+Team guide: `TEAM_CURSOR_SETUP.md` at the workspace root.
 
 For monorepo-wide setup, use `tools/setup-hub-workflow.ps1` at the workspace root (creates `.env.hub`).
 

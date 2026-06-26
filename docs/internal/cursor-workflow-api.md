@@ -5,7 +5,7 @@
 ## Auth
 
 - `Authorization: Bearer <token>` or `x-appdoers-api-token: <token>`
-- Tokens are created per team member in Hub Settings (UI) or `POST /api/cursor/tokens` (authenticated Hub session)
+- Tokens are created per team member in Hub → **My Account** → **Cursor setup**, or `POST /api/cursor/tokens` (authenticated Hub session)
 
 ## Endpoints
 

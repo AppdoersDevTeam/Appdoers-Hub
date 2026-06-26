@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { ProfileEditor } from '@/components/team/account/profile-editor'
+import { CursorSetupPanel } from '@/components/team/account/cursor-setup-panel'
+import { listMyCursorTokensAction } from '@/lib/actions/cursor-tokens'
 
 export default async function AccountPage() {
   const supabase = await createClient()
@@ -19,12 +21,21 @@ export default async function AccountPage() {
 
   if (!teamUser) redirect('/login')
 
+  const tokensResult = await listMyCursorTokensAction()
+  const tokens = tokensResult.success ? tokensResult.data : []
+
+  const hubUrl =
+    process.env.APPDOERS_HUB_URL?.replace(/\/+$/, '') ??
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, '') ??
+    'https://appdoers-hub-two.vercel.app'
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="My Account"
-        subtitle="Manage your profile and password"
+        subtitle="Profile, password, and Cursor connection"
       />
+      <CursorSetupPanel tokens={tokens} hubUrl={hubUrl} />
       <ProfileEditor
         user={{
           id: teamUser.id as string,

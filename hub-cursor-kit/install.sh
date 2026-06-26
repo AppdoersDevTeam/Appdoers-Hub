@@ -58,6 +58,6 @@ fi
 
 echo ""
 echo "Next steps:"
-echo "  1. Create a Cursor API token in Hub Settings (one per team member)"
-echo "  2. Set APPDOERS_CURSOR_TOKEN in .env.local or parent .env.hub"
+echo "  1. Hub → My Account → Cursor setup → Generate token"
+echo "  2. Copy .env block into Appdoers Work/.env.hub"
 echo "  3. Open a new Cursor agent chat — it will ask for client, project, and team member"
