@@ -54,9 +54,9 @@ export type ProposalStatus = 'draft' | 'sent' | 'approved' | 'declined' | 'expir
 
 export type ContractStatus = 'draft' | 'sent' | 'signed' | 'superseded'
 
-export type InvoiceType = 'setup' | 'monthly' | 'adhoc'
+export type InvoiceType = 'setup' | 'monthly' | 'adhoc' | 'retainer' | 'time_billing'
 
-export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'void'
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'void' | 'cancelled'
 
 export type SubscriptionPlan =
   | 'basic'

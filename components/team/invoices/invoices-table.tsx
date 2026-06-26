@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -51,6 +52,7 @@ export function InvoicesTable({
   totalOverdue: number
   totalPaidThisMonth: number
 }) {
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [showNew, setShowNew] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -89,7 +91,8 @@ export function InvoicesTable({
       })
       if (!result.success) { setError(result.error); return }
       setShowNew(false)
-      window.location.href = `/app/invoices/${result.data.id}`
+      router.push(`/app/invoices/${result.data.id}`)
+      router.refresh()
     })
   }
 

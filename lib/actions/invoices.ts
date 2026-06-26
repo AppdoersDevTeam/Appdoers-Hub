@@ -65,6 +65,9 @@ export async function createInvoiceAction(
       .single()
 
     if (error) return { success: false, error: error.message }
+    if (!data?.id) {
+      return { success: false, error: 'Invoice could not be created. Please try again.' }
+    }
 
     await logActivity({
       entityType: 'invoice',
@@ -293,6 +296,9 @@ export async function createInvoiceFromTimeAction(
       .single()
 
     if (error) return { success: false, error: error.message }
+    if (!data?.id) {
+      return { success: false, error: 'Invoice could not be created. Please try again.' }
+    }
 
     // Mark time entries as invoiced
     await supabase

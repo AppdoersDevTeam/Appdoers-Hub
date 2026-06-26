@@ -10,23 +10,37 @@ export default async function InvoiceDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: invoice }, { data: clients }, { data: projects }] = await Promise.all([
-    supabase
-      .from('invoices')
-      .select('*, clients(id, company_name, contact_name, contact_email), projects(id, name)')
-      .eq('id', id)
-      .single(),
-    supabase.from('clients').select('id, company_name').eq('status', 'active').order('company_name'),
-    supabase.from('projects').select('id, name, client_id').order('name'),
-  ])
+  const { data: invoice, error: invoiceError } = await supabase
+    .from('invoices')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
 
-  if (!invoice) notFound()
+  if (invoiceError || !invoice) notFound()
+
+  const [{ data: client }, { data: project }, { data: clients }, { data: projects }] =
+    await Promise.all([
+      supabase
+        .from('clients')
+        .select('id, company_name, contact_name, contact_email')
+        .eq('id', invoice.client_id)
+        .maybeSingle(),
+      invoice.project_id
+        ? supabase
+            .from('projects')
+            .select('id, name')
+            .eq('id', invoice.project_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from('clients').select('id, company_name').eq('status', 'active').order('company_name'),
+      supabase.from('projects').select('id, name, client_id').order('name'),
+    ])
 
   return (
     <InvoiceEditor
       invoice={invoice}
-      client={invoice.clients as { id: string; company_name: string; contact_name: string | null; contact_email: string | null } | null}
-      project={invoice.projects as { id: string; name: string } | null}
+      client={client}
+      project={project}
       allClients={clients ?? []}
       allProjects={projects ?? []}
     />
