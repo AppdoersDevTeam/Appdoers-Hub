@@ -1,34 +1,47 @@
 # Hub Cursor Kit
 
-Drop-in Hub workflow for any Cursor project: auto-create tickets, follow PM → Developer → QA → Reviewer stages, and log active work time.
+Drop-in Hub workflow for any Cursor project. **Agents use the CLI only.**
 
-**Team PDF:** [`Cursor-Team-Setup.pdf`](Cursor-Team-Setup.pdf) · **Team guide:** [`TEAM_CURSOR_SETUP.md`](TEAM_CURSOR_SETUP.md)
+**Team PDF:** [`Cursor-Team-Setup.pdf`](Cursor-Team-Setup.pdf)
 
-**Agents use the CLI only** — never call Hub HTTP endpoints directly.
+---
 
-## Team setup (each laptop, once)
+## New project (one paste, zero interaction)
+
+From the **project root** (after laptop token is set up once):
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/AppdoersDevTeam/Appdoers-Hub/master/hub-cursor-kit/install-project.ps1 -OutFile $env:TEMP\hub-install.ps1; & $env:TEMP\hub-install.ps1"
+```
+
+**Monorepo shortcut** (no download):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "..\Appdoers CRM\hub-cursor-kit\install-project.ps1"
+```
+
+From `Appdoers Work` root, install into another folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "tools\add-hub-to-project.ps1" -ProjectPath "AppdoersWebsite"
+```
+
+Then open that folder in Cursor → new Agent chat.
+
+---
+
+## New laptop (once per person)
 
 1. Hub → **My Account** → **Cursor setup** → Generate token
-2. From your `Appdoers Work` folder:
+2. Run once:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File "Appdoers CRM\hub-cursor-kit\setup-my-cursor-token.ps1"
 ```
 
-3. Paste token — saved to `%USERPROFILE%\.appdoers\hub.env` on **your laptop only**
-4. Never edit again. Same repo + shared Cursor Pro login is fine.
+Token saves to `%USERPROFILE%\.appdoers\hub.env` — never edit again on this laptop.
 
-## Quick install (per project folder)
-
-```powershell
-powershell -ExecutionPolicy Bypass -File "Appdoers CRM\hub-cursor-kit\install.ps1" -TargetProject "C:\path\to\your-project"
-```
-
-## Session flow (every new agent chat)
-
-1. `whoami` — confirm your identity
-2. Pick **client** and **project**
-3. Agent creates tickets and logs time automatically
+---
 
 ## What gets installed
 
@@ -36,31 +49,23 @@ powershell -ExecutionPolicy Bypass -File "Appdoers CRM\hub-cursor-kit\install.ps
 |------|--------|
 | `hub-workflow-cli.mjs` | `tools/` |
 | `hub-ticket-time.mjs` | `tools/` |
-| Four `.cursor/rules/*.mdc` files | `.cursor/rules/` |
+| Four `.mdc` rule files | `.cursor/rules/` |
 
-Token file: `%USERPROFILE%\.appdoers\hub.env` (not in git)
+Token is **not** in the project — it lives in your laptop profile env file.
 
-## CLI commands
+---
 
-| Command | Purpose |
-|---------|---------|
-| `whoami` | Show token owner |
-| `verify-setup` | Smoke test |
-| `set-session` | Save client, project, team member |
-| `create-ticket` / `claim-ticket` / `move-ticket` | Workflow |
-| `flush-ticket-time` | Log active time |
+## CLI quick reference
 
-Run `node tools/hub-workflow-cli.mjs help` for full usage.
+`whoami` · `verify-setup` · `set-session` · `create-ticket` · `claim-ticket` · `move-ticket` · `flush-ticket-time`
 
-## Troubleshooting
+```bash
+node tools/hub-workflow-cli.mjs help
+```
 
-| Problem | Fix |
-|---------|-----|
-| Missing token | Run `setup-my-cursor-token.ps1` |
-| Wrong person on time | Use your own token on your laptop |
-| Agent skips session prompt | Open project folder in Cursor; check rules installed |
+---
 
-## Maintaining the kit
+## Maintainers
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File "hub-cursor-kit\sync-kit.ps1"
