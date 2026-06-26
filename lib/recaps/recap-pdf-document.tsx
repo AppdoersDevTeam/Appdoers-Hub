@@ -10,7 +10,6 @@ import {
   PDF_SLATE_700,
   PDF_SLATE_900,
 } from '@/lib/pdf/brand'
-import { PdfPageFooter, PdfPlainText } from '@/lib/pdf/primitives'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -94,6 +93,13 @@ const styles = StyleSheet.create({
     color: PDF_SLATE_700,
     marginBottom: 6,
   },
+  emptyState: {
+    fontSize: 10.5,
+    lineHeight: 1.6,
+    color: PDF_SLATE_400,
+    fontStyle: 'italic',
+    marginBottom: 20,
+  },
   categoryBlock: {
     marginBottom: 14,
   },
@@ -143,6 +149,7 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     lineHeight: 1.7,
     color: '#1e3a8a',
+    marginBottom: 6,
   },
   statsRow: {
     flexDirection: 'row',
@@ -173,6 +180,27 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     color: PDF_SLATE_900,
   },
+  footer: {
+    position: 'absolute',
+    bottom: 24,
+    left: 48,
+    right: 48,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: PDF_BORDER,
+    borderTopStyle: 'solid',
+    paddingTop: 8,
+  },
+  footerText: {
+    fontSize: 8,
+    color: PDF_SLATE_400,
+  },
+  pageNumber: {
+    fontSize: 8,
+    color: PDF_SLATE_400,
+  },
 })
 
 function formatSentDate(sentAt: string | null): string | null {
@@ -184,7 +212,21 @@ function formatSentDate(sentAt: string | null): string | null {
   })
 }
 
-function WorkByCategory({ items }: { items: RecapWorkItem[] }) {
+function textParagraphs(
+  text: string,
+  style: { fontSize: number; lineHeight: number; color: string; marginBottom?: number }
+) {
+  return text
+    .split(/\n\n+/)
+    .filter((p) => p.trim())
+    .map((paragraph, i) => (
+      <Text key={`p-${i}`} style={[style, i > 0 ? { marginTop: 8 } : {}]}>
+        {paragraph}
+      </Text>
+    ))
+}
+
+function workByCategory(items: RecapWorkItem[]) {
   const byCategory = items.reduce<Record<string, RecapWorkItem[]>>((acc, item) => {
     const cat = item.category || 'Other'
     if (!acc[cat]) acc[cat] = []
@@ -192,30 +234,26 @@ function WorkByCategory({ items }: { items: RecapWorkItem[] }) {
     return acc
   }, {})
 
-  return (
-    <View>
-      {Object.keys(byCategory)
-        .sort()
-        .map((category) => {
-          const colors = CATEGORY_STYLES[category] ?? CATEGORY_STYLES.Other
-          const categoryItems = byCategory[category]
+  return Object.keys(byCategory)
+    .sort()
+    .map((category) => {
+      const colors = CATEGORY_STYLES[category] ?? CATEGORY_STYLES.Other
+      const categoryItems = byCategory[category]
 
-          return (
-            <View key={category} style={styles.categoryBlock}>
-              <View style={[styles.categoryBadge, { backgroundColor: colors.bg }]}>
-                <Text style={[styles.categoryBadgeText, { color: colors.text }]}>{category}</Text>
-              </View>
-              {categoryItems.map((item, i) => (
-                <View key={i} style={styles.bulletRow}>
-                  <Text style={styles.bulletDot}>•</Text>
-                  <Text style={styles.bulletText}>{item.description}</Text>
-                </View>
-              ))}
+      return (
+        <View key={category} style={styles.categoryBlock}>
+          <View style={[styles.categoryBadge, { backgroundColor: colors.bg }]}>
+            <Text style={[styles.categoryBadgeText, { color: colors.text }]}>{category}</Text>
+          </View>
+          {categoryItems.map((item, i) => (
+            <View key={`${category}-${i}`} style={styles.bulletRow}>
+              <Text style={styles.bulletDot}>•</Text>
+              <Text style={styles.bulletText}>{item.description}</Text>
             </View>
-          )
-        })}
-    </View>
-  )
+          ))}
+        </View>
+      )
+    })
 }
 
 export interface RecapPDFProps {
@@ -244,6 +282,11 @@ export function RecapPDFDocument({
   const sentLabel = formatSentDate(sentAt)
   const workItems = workCompleted
   const categories = new Set(workItems.map((w) => w.category || 'Other'))
+  const hasIntro = Boolean(introText?.trim())
+  const hasWork = workItems.length > 0
+  const hasPerformance = Boolean(performanceNotes?.trim())
+  const hasComingNext = Boolean(comingNext?.trim())
+  const hasBody = hasIntro || hasWork || hasPerformance || hasComingNext
 
   return (
     <Document
@@ -263,7 +306,14 @@ export function RecapPDFDocument({
         </View>
 
         <View style={styles.body}>
-          {workItems.length > 0 && (
+          {!hasBody ? (
+            <Text style={styles.emptyState}>
+              No report content has been saved yet. Add an introduction, work items, or notes in
+              the recap editor, click Save, then export again.
+            </Text>
+          ) : null}
+
+          {hasWork ? (
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>Work Items</Text>
@@ -273,51 +323,66 @@ export function RecapPDFDocument({
                 <Text style={styles.statLabel}>Categories</Text>
                 <Text style={styles.statValue}>{String(categories.size)}</Text>
               </View>
-              <View style={[styles.statCard, styles.statCardLast, { backgroundColor: PDF_BRAND_LIGHT, borderColor: '#93c5fd' }]}>
+              <View
+                style={[
+                  styles.statCard,
+                  styles.statCardLast,
+                  { backgroundColor: PDF_BRAND_LIGHT, borderColor: '#93c5fd' },
+                ]}
+              >
                 <Text style={styles.statLabel}>Reporting Period</Text>
-                <Text style={[styles.statValue, { fontSize: 12, color: PDF_BRAND_DARK }]}>{periodLabel}</Text>
+                <Text style={[styles.statValue, { fontSize: 12, color: PDF_BRAND_DARK }]}>
+                  {periodLabel}
+                </Text>
               </View>
             </View>
-          )}
+          ) : null}
 
-          {introText?.trim() ? (
-            <View style={styles.section}>
+          {hasIntro ? (
+            <View style={styles.section} wrap>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Introduction</Text>
               </View>
-              <PdfPlainText text={introText} style={styles.paragraph} />
+              <View>{textParagraphs(introText!.trim(), styles.paragraph)}</View>
             </View>
           ) : null}
 
-          {workItems.length > 0 ? (
-            <View style={styles.section}>
+          {hasWork ? (
+            <View style={styles.section} wrap>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Work Completed This Month</Text>
               </View>
-              <WorkByCategory items={workItems} />
+              <View>{workByCategory(workItems)}</View>
             </View>
           ) : null}
 
-          {performanceNotes?.trim() ? (
-            <View style={styles.section}>
+          {hasPerformance ? (
+            <View style={styles.section} wrap>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Performance & Highlights</Text>
               </View>
-              <PdfPlainText text={performanceNotes} style={styles.paragraph} />
+              <View>{textParagraphs(performanceNotes!.trim(), styles.paragraph)}</View>
             </View>
           ) : null}
 
-          {comingNext?.trim() ? (
-            <View style={styles.section}>
+          {hasComingNext ? (
+            <View style={styles.section} wrap>
               <View style={styles.highlightBox}>
                 <Text style={styles.highlightTitle}>Coming Next Month</Text>
-                <PdfPlainText text={comingNext} style={styles.highlightText} />
+                <View>{textParagraphs(comingNext!.trim(), styles.highlightText)}</View>
               </View>
             </View>
           ) : null}
         </View>
 
-        <PdfPageFooter label={`Appdoers · ${periodLabel} Progress Report`} />
+        <View style={styles.footer} fixed>
+          <Text style={styles.footerText}>{`Appdoers · ${periodLabel} Progress Report`}</Text>
+          <Text style={styles.footerText}>appdoers.co.nz</Text>
+          <Text
+            style={styles.pageNumber}
+            render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+          />
+        </View>
       </Page>
     </Document>
   )

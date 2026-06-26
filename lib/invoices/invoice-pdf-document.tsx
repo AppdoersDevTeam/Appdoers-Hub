@@ -11,7 +11,6 @@ import {
   PDF_SLATE_900,
 } from '@/lib/pdf/brand'
 import { formatPdfCurrency, formatPdfDate } from '@/lib/pdf/format'
-import { PdfPageFooter, PdfPlainText } from '@/lib/pdf/primitives'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
@@ -243,6 +242,27 @@ const styles = StyleSheet.create({
     lineHeight: 1.6,
     color: '#1e3a8a',
   },
+  footer: {
+    position: 'absolute',
+    bottom: 24,
+    left: 48,
+    right: 48,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: PDF_BORDER,
+    borderTopStyle: 'solid',
+    paddingTop: 8,
+  },
+  footerText: {
+    fontSize: 8,
+    color: PDF_SLATE_400,
+  },
+  pageNumber: {
+    fontSize: 8,
+    color: PDF_SLATE_400,
+  },
 })
 
 export interface CompanyInfo {
@@ -416,7 +436,14 @@ export function InvoicePDFDocument({
           {notes?.trim() ? (
             <View style={styles.notesBox}>
               <Text style={styles.notesTitle}>Notes</Text>
-              <PdfPlainText text={notes} style={styles.notesText} />
+              {notes
+                .split(/\n\n+/)
+                .filter((p) => p.trim())
+                .map((paragraph, i) => (
+                  <Text key={i} style={[styles.notesText, i > 0 ? { marginTop: 6 } : {}]}>
+                    {paragraph}
+                  </Text>
+                ))}
             </View>
           ) : null}
 
@@ -434,7 +461,14 @@ export function InvoicePDFDocument({
           </View>
         </View>
 
-        <PdfPageFooter label={`${company.name} · Invoice ${invoiceNumber}`} />
+        <View style={styles.footer} fixed>
+          <Text style={styles.footerText}>{`${company.name} · Invoice ${invoiceNumber}`}</Text>
+          <Text style={styles.footerText}>appdoers.co.nz</Text>
+          <Text
+            style={styles.pageNumber}
+            render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+          />
+        </View>
       </Page>
     </Document>
   )
