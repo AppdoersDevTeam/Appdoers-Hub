@@ -11,7 +11,7 @@ export async function TopBar() {
   if (user) {
     const { data } = await supabase
       .from('team_users')
-      .select('full_name, role')
+      .select('full_name, role, avatar_url')
       .eq('id', user.id)
       .single()
     teamUser = data
@@ -44,9 +44,17 @@ export async function TopBar() {
           <p className="text-sm font-medium text-slate-900">{teamUser?.full_name ?? 'Team Member'}</p>
           <p className="text-xs text-slate-500">{roleLabel[teamUser?.role ?? ''] ?? 'Team'}</p>
         </div>
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
-          {initials}
-        </div>
+        {teamUser?.avatar_url ? (
+          <img
+            src={teamUser.avatar_url}
+            alt={teamUser.full_name}
+            className="h-8 w-8 rounded-full object-cover border border-slate-200"
+          />
+        ) : (
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
+            {initials}
+          </div>
+        )}
         <SignOutButton />
       </div>
     </header>
