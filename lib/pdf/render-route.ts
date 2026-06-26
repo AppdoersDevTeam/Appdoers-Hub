@@ -1,4 +1,3 @@
-import type { ReactElement } from 'react'
 import { NextResponse } from 'next/server'
 import { sanitizePdfFilename } from './format'
 
@@ -21,14 +20,4 @@ export async function renderPdfRoute(
     console.error('PDF generation error:', message, err)
     return NextResponse.json({ error: 'PDF generation failed', detail: message }, { status: 500 })
   }
-}
-
-export async function renderPdfElement(
-  element: ReactElement,
-  filename: string
-): Promise<NextResponse> {
-  return renderPdfRoute(async () => {
-    const { renderToBuffer } = await import('@react-pdf/renderer')
-    return renderToBuffer(element)
-  }, filename)
 }

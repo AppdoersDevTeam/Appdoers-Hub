@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server'
-import React from 'react'
-import { InvoicePDFDocument, type BillingInfo, type CompanyInfo } from '@/lib/invoices/invoice-pdf-document'
+import { type BillingInfo, type CompanyInfo } from '@/lib/invoices/invoice-pdf-document'
 import { normalizeInvoiceLines } from '@/lib/invoices/normalize'
-import { renderPdfElement } from '@/lib/pdf/render-route'
+import { renderPdfRoute } from '@/lib/pdf/render-route'
 import { requireInvoiceAccess } from '@/lib/supabase/route-access'
 
 export const runtime = 'nodejs'
@@ -64,27 +63,29 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const lines = normalizeInvoiceLines(invoice.lines)
   const clientName = client?.company_name ?? 'Client'
 
-  return renderPdfElement(
-    React.createElement(InvoicePDFDocument, {
-      invoiceNumber: invoice.invoice_number,
-      status: invoice.status,
-      issueDate: invoice.issue_date,
-      dueDate: invoice.due_date,
-      type: invoice.type ?? 'adhoc',
-      lines,
-      subtotal: Number(invoice.subtotal ?? 0),
-      gstAmount: Number(invoice.gst_amount ?? 0),
-      total: Number(invoice.total ?? 0),
-      notes: invoice.notes,
-      paidAt: invoice.paid_at,
-      paymentReference: invoice.payment_reference,
-      clientName,
-      contactName: client?.contact_name ?? null,
-      contactEmail: client?.contact_email ?? null,
-      projectName: project?.name ?? null,
-      company,
-      billing,
-    }),
-    `${invoice.invoice_number}_${clientName}.pdf`
-  )
+  const pdfProps = {
+    invoiceNumber: invoice.invoice_number,
+    status: invoice.status,
+    issueDate: invoice.issue_date,
+    dueDate: invoice.due_date,
+    type: invoice.type ?? 'adhoc',
+    lines,
+    subtotal: Number(invoice.subtotal ?? 0),
+    gstAmount: Number(invoice.gst_amount ?? 0),
+    total: Number(invoice.total ?? 0),
+    notes: invoice.notes,
+    paidAt: invoice.paid_at,
+    paymentReference: invoice.payment_reference,
+    clientName,
+    contactName: client?.contact_name ?? null,
+    contactEmail: client?.contact_email ?? null,
+    projectName: project?.name ?? null,
+    company,
+    billing,
+  }
+
+  return renderPdfRoute(async () => {
+    const { renderInvoicePdfToBuffer } = await import('@/lib/pdf/render-invoice-pdf')
+    return renderInvoicePdfToBuffer(pdfProps)
+  }, `${invoice.invoice_number}_${clientName}.pdf`)
 }

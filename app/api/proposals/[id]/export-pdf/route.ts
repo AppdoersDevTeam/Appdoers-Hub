@@ -1,9 +1,7 @@
 import { NextRequest } from 'next/server'
-import React from 'react'
-import { ProposalPDFDocument } from '@/lib/proposals/proposal-pdf-document'
 import type { ProposalSection } from '@/lib/proposals/proposal-pdf-document'
 import type { ServiceCatalogEntry } from '@/lib/proposals/service-guide'
-import { renderPdfElement } from '@/lib/pdf/render-route'
+import { renderPdfRoute } from '@/lib/pdf/render-route'
 import { requireTeamAccess } from '@/lib/supabase/route-access'
 
 export const runtime = 'nodejs'
@@ -55,15 +53,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     monthly_fee: Number(s.monthly_fee),
   }))
 
-  return renderPdfElement(
-    React.createElement(ProposalPDFDocument, {
-      title: proposal.title,
-      clientName,
-      contactName: client?.contact_name,
-      sections,
-      catalog: catalogEntries,
-      version: proposal.version,
-    }),
-    `${proposal.title}_Quote_v${proposal.version}.pdf`
-  )
+  const pdfProps = {
+    title: proposal.title,
+    clientName,
+    contactName: client?.contact_name,
+    sections,
+    catalog: catalogEntries,
+    version: proposal.version,
+  }
+
+  return renderPdfRoute(async () => {
+    const { renderProposalPdfToBuffer } = await import('@/lib/pdf/render-proposal-pdf')
+    return renderProposalPdfToBuffer(pdfProps)
+  }, `${proposal.title}_Quote_v${proposal.version}.pdf`)
 }
