@@ -12,6 +12,8 @@ import {
 import { ChartCard } from './chart-card'
 import type { HoursByDate } from '@/lib/dashboard/types'
 
+const CHART_MARGIN = { top: 8, right: 12, left: 4, bottom: 4 }
+
 interface Props {
   data: HoursByDate[]
   periodLabel: string
@@ -19,15 +21,17 @@ interface Props {
 
 export function HoursTrendChart({ data, periodLabel }: Props) {
   const hasData = data.some((d) => d.hours > 0)
+  const tickInterval = data.length > 14 ? Math.ceil(data.length / 7) - 1 : 0
 
   return (
     <ChartCard
       title="Hours Logged"
       subtitle={periodLabel}
       isEmpty={!hasData}
+      className="min-h-[300px]"
     >
-      <ResponsiveContainer width="100%" height={220}>
-        <AreaChart data={data} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={260}>
+        <AreaChart data={data} margin={CHART_MARGIN}>
           <defs>
             <linearGradient id="hoursGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#2563eb" stopOpacity={0.2} />
@@ -37,16 +41,18 @@ export function HoursTrendChart({ data, periodLabel }: Props) {
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fill: '#64748b' }}
+            tick={{ fontSize: 11, fill: '#64748b' }}
             tickLine={false}
             axisLine={false}
-            interval="preserveStartEnd"
+            interval={tickInterval}
+            minTickGap={24}
           />
           <YAxis
-            tick={{ fontSize: 10, fill: '#64748b' }}
+            tick={{ fontSize: 11, fill: '#64748b' }}
             tickLine={false}
             axisLine={false}
-            width={32}
+            width={44}
+            tickFormatter={(v) => `${v}h`}
           />
           <Tooltip
             contentStyle={{

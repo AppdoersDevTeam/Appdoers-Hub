@@ -13,6 +13,7 @@ import {
   Receipt,
   FolderOpen,
   BarChart2,
+  PieChart,
   Settings,
   CreditCard,
   UserCircle,
@@ -22,6 +23,7 @@ import { cn } from '@/lib/utils/cn'
 
 const navItems = [
   { href: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/app/analytics', label: 'Analytics', icon: PieChart },
   { href: '/app/clients', label: 'Clients', icon: Users },
   { href: '/app/leads', label: 'Leads', icon: TrendingUp },
   { href: '/app/projects', label: 'Projects', icon: FolderKanban },

@@ -1,4 +1,5 @@
 import React from 'react'
+import { registerPdfFonts } from '@/lib/pdf/fonts'
 import { ProposalPDFDocument } from '@/lib/proposals/proposal-pdf-document'
 import type { ProposalSection } from '@/lib/proposals/proposal-pdf-document'
 import type { ServiceCatalogEntry } from '@/lib/proposals/service-guide'
@@ -14,5 +15,6 @@ export interface ProposalPdfRenderProps {
 }
 
 export async function renderProposalPdfToBuffer(props: ProposalPdfRenderProps): Promise<Buffer> {
+  registerPdfFonts()
   return renderPdfToBuffer(React.createElement(ProposalPDFDocument, props))
 }

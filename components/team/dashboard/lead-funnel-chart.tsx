@@ -21,6 +21,7 @@ interface Props {
 
 export function LeadFunnelChart({ data }: Props) {
   const hasData = data.some((d) => d.value > 0)
+  const chartHeight = Math.max(200, data.length * 44)
 
   return (
     <ChartCard
@@ -28,17 +29,18 @@ export function LeadFunnelChart({ data }: Props) {
       subtitle="Active leads by stage"
       isEmpty={!hasData}
       emptyMessage="No active leads in pipeline"
+      className="h-full"
     >
-      <ResponsiveContainer width="100%" height={220}>
+      <ResponsiveContainer width="100%" height={chartHeight}>
         <BarChart
           data={data}
           layout="vertical"
-          margin={{ top: 4, right: 8, left: 4, bottom: 0 }}
+          margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
           <XAxis
             type="number"
-            tick={{ fontSize: 10, fill: '#64748b' }}
+            tick={{ fontSize: 11, fill: '#64748b' }}
             tickLine={false}
             axisLine={false}
             allowDecimals={false}
@@ -46,10 +48,10 @@ export function LeadFunnelChart({ data }: Props) {
           <YAxis
             type="category"
             dataKey="label"
-            tick={{ fontSize: 10, fill: '#64748b' }}
+            tick={{ fontSize: 11, fill: '#64748b' }}
             tickLine={false}
             axisLine={false}
-            width={88}
+            width={100}
           />
           <Tooltip
             contentStyle={{
@@ -62,7 +64,7 @@ export function LeadFunnelChart({ data }: Props) {
               'Count',
             ]}
           />
-          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
+          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={22}>
             {data.map((_, index) => (
               <Cell key={index} fill={BAR_COLORS[index % BAR_COLORS.length]} />
             ))}

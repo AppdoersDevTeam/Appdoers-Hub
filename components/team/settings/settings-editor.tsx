@@ -53,11 +53,13 @@ export function SettingsEditor({ settings }: Props) {
   // ── Company ──────────────────────────────────────────────
   const [company, setCompany] = useState({
     name: String(get('company').name ?? ''),
+    legal_name: String(get('company').legal_name ?? ''),
     email: String(get('company').email ?? ''),
     phone: String(get('company').phone ?? ''),
     website: String(get('company').website ?? ''),
     address: String(get('company').address ?? ''),
     gst_number: String(get('company').gst_number ?? ''),
+    nzbn: String(get('company').nzbn ?? ''),
   })
   const [companySaved, setCompanySaved] = useState(false)
 
@@ -118,11 +120,15 @@ export function SettingsEditor({ settings }: Props) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass}>Company Name</label>
-            <Input value={company.name} onChange={e => setCompany(c => ({ ...c, name: e.target.value }))} placeholder="Appdoers Ltd" />
+            <Input value={company.name} onChange={e => setCompany(c => ({ ...c, name: e.target.value }))} placeholder="Appdoers" />
+          </div>
+          <div>
+            <label className={labelClass}>Legal Name</label>
+            <Input value={company.legal_name} onChange={e => setCompany(c => ({ ...c, legal_name: e.target.value }))} placeholder="Appdoers Limited" />
           </div>
           <div>
             <label className={labelClass}>Email</label>
-            <Input type="email" value={company.email} onChange={e => setCompany(c => ({ ...c, email: e.target.value }))} placeholder="hello@appdoers.co.nz" />
+            <Input type="email" value={company.email} onChange={e => setCompany(c => ({ ...c, email: e.target.value }))} placeholder="contact@appdoers.co.nz" />
           </div>
           <div>
             <label className={labelClass}>Phone</label>
@@ -137,8 +143,12 @@ export function SettingsEditor({ settings }: Props) {
             <Input value={company.gst_number} onChange={e => setCompany(c => ({ ...c, gst_number: e.target.value }))} placeholder="123-456-789" />
           </div>
           <div>
+            <label className={labelClass}>NZBN</label>
+            <Input value={company.nzbn} onChange={e => setCompany(c => ({ ...c, nzbn: e.target.value }))} placeholder="9429052210952" />
+          </div>
+          <div className="sm:col-span-2">
             <label className={labelClass}>Address</label>
-            <Input value={company.address} onChange={e => setCompany(c => ({ ...c, address: e.target.value }))} placeholder="Auckland, New Zealand" />
+            <Input value={company.address} onChange={e => setCompany(c => ({ ...c, address: e.target.value }))} placeholder="49 Braebrook Drive, Netherby, Ashburton 7700" />
           </div>
         </div>
         <SaveBar isPending={isPending} saved={companySaved} onSave={saveCompany} />

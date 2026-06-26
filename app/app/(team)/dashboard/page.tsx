@@ -4,7 +4,8 @@ import { CreditCard } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
 import { getDashboardAnalytics } from '@/lib/dashboard/metrics'
 import { PeriodToggle } from '@/components/team/dashboard/period-toggle'
-import { KpiGrid, type KpiCardData } from '@/components/team/dashboard/kpi-grid'
+import { KpiSection, type KpiCardData } from '@/components/team/dashboard/kpi-grid'
+import { DashboardSection } from '@/components/team/dashboard/chart-card'
 import { HoursTrendChart } from '@/components/team/dashboard/hours-trend-chart'
 import { LeadFunnelChart } from '@/components/team/dashboard/lead-funnel-chart'
 import { TaskWorkflowChart } from '@/components/team/dashboard/task-workflow-chart'
@@ -43,7 +44,7 @@ export default async function DashboardPage({
   const { period: periodParam } = await searchParams
   const metrics = await getDashboardAnalytics(periodParam)
 
-  const kpiCards: KpiCardData[] = [
+  const businessKpis: KpiCardData[] = [
     {
       label: 'Pipeline Value',
       value: formatCurrency(metrics.pipelineValue),
@@ -55,7 +56,7 @@ export default async function DashboardPage({
     {
       label: 'Monthly Revenue',
       value: formatCurrency(metrics.mrrTotal),
-      sub: 'MRR across active clients',
+      sub: 'MRR from active clients',
       icon: DollarSign,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
@@ -66,11 +67,22 @@ export default async function DashboardPage({
       sub:
         metrics.onHoldProjects > 0
           ? `${metrics.onHoldProjects} on hold`
-          : 'Currently in progress',
+          : 'In progress',
       icon: FolderOpen,
       color: 'text-amber-600',
       bg: 'bg-amber-50',
     },
+    {
+      label: 'Billable WIP',
+      value: formatCurrency(metrics.billableWipValue),
+      sub: 'Uninvoiced billable time',
+      icon: Briefcase,
+      color: 'text-purple-600',
+      bg: 'bg-purple-50',
+    },
+  ]
+
+  const workKpis: KpiCardData[] = [
     {
       label: 'Open Tasks',
       value: String(metrics.openTasks),
@@ -91,7 +103,7 @@ export default async function DashboardPage({
     {
       label: 'Hours Logged',
       value: `${metrics.hoursLogged}h`,
-      sub: `${metrics.billableHoursLogged}h billable · ${metrics.periodLabel}`,
+      sub: `${metrics.billableHoursLogged}h billable`,
       icon: Clock,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
@@ -99,26 +111,15 @@ export default async function DashboardPage({
     {
       label: 'Tasks Closed',
       value: String(metrics.tasksClosed),
-      sub: `${metrics.leadsWon} won · ${metrics.leadsLost} lost · ${metrics.periodLabel}`,
+      sub: `${metrics.leadsWon} leads won · ${metrics.leadsLost} lost`,
       icon: CheckCircle2,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
     },
-    {
-      label: 'Billable WIP',
-      value: formatCurrency(metrics.billableWipValue),
-      sub:
-        metrics.paidThisPeriod > 0
-          ? `${formatCurrency(metrics.paidThisPeriod)} paid ${metrics.periodLabel.toLowerCase()}`
-          : 'Uninvoiced billable time',
-      icon: Briefcase,
-      color: 'text-purple-600',
-      bg: 'bg-purple-50',
-    },
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
           title="Dashboard"
@@ -129,16 +130,41 @@ export default async function DashboardPage({
         </Suspense>
       </div>
 
-      <KpiGrid cards={kpiCards} />
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <HoursTrendChart data={metrics.hoursByDate} periodLabel={metrics.periodLabel} />
-        <LeadFunnelChart data={metrics.leadsByStatus} />
-        <TaskWorkflowChart data={metrics.tasksByWorkflowStage} />
-        <TeamHoursChart data={metrics.hoursByMember} periodLabel={metrics.periodLabel} />
+      <div className="space-y-6">
+        <KpiSection
+          title="Business overview"
+          description="Current snapshot across revenue and delivery"
+          cards={businessKpis}
+        />
+        <KpiSection
+          title={`Work this ${metrics.period === 'week' ? 'week' : metrics.period === 'quarter' ? 'quarter' : 'month'}`}
+          description={metrics.periodLabel}
+          cards={workKpis}
+        />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <DashboardSection
+        title="Trends & breakdown"
+        description="How time, leads, and tasks are distributed"
+      >
+        <div className="space-y-4">
+          <HoursTrendChart
+            data={metrics.hoursByDate}
+            periodLabel={metrics.periodLabel}
+          />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <LeadFunnelChart data={metrics.leadsByStatus} />
+            <TaskWorkflowChart data={metrics.tasksByWorkflowStage} />
+            <TeamHoursChart
+              data={metrics.hoursByMember}
+              periodLabel={metrics.periodLabel}
+            />
+          </div>
+        </div>
+      </DashboardSection>
+
+      <DashboardSection title="Needs attention" description="Items that may need action soon">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <OverdueTasksPanel
           items={metrics.overdueTaskItems}
           totalCount={metrics.overdueTasks}
@@ -150,6 +176,7 @@ export default async function DashboardPage({
           totalCount={metrics.overdueInvoiceCount}
         />
       </div>
+      </DashboardSection>
 
       {metrics.renewingSoon.length > 0 && (
         <div className="hub-card border-l-4 border-l-amber-500">

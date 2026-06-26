@@ -14,6 +14,8 @@ export interface ServiceInput {
   plan_key?: string
   setup_fee: number
   monthly_fee: number
+  min_upfront?: number | null
+  contract_months?: number | null
   sort_order?: number
 }
 

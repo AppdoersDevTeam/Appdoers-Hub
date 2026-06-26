@@ -26,7 +26,7 @@ export function ActionPanel({
 }: Props) {
   return (
     <div
-      className={`hub-card flex flex-col ${borderAccent ? `border-l-4 ${borderAccent}` : ''}`}
+      className={`rounded-lg border border-slate-200 bg-white p-5 shadow-sm flex flex-col h-full ${borderAccent ? `border-l-4 ${borderAccent}` : ''}`}
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">

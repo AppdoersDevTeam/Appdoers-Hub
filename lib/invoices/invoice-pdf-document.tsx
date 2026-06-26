@@ -2,15 +2,27 @@ import React from 'react'
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import type { InvoiceLine } from '@/lib/invoices/types'
 import {
-  PDF_BRAND,
-  PDF_BRAND_DARK,
+  PDF_BRAND_DEEP,
+  PDF_BRAND_LIGHT,
+  PDF_BRAND_SECONDARY,
   PDF_BORDER,
   PDF_SLATE_400,
   PDF_SLATE_600,
   PDF_SLATE_700,
   PDF_SLATE_900,
 } from '@/lib/pdf/brand'
+import type { PdfBillingInfo, PdfCompanyInfo } from '@/lib/pdf/company-defaults'
 import { formatPdfCurrency, formatPdfDate } from '@/lib/pdf/format'
+import { pdfFontStyles } from '@/lib/pdf/fonts'
+import {
+  PdfLetterhead,
+  PdfPageFooter,
+  PdfPaymentBlock,
+  pdfHeaderTextStyles,
+} from '@/lib/pdf/primitives'
+
+export type CompanyInfo = PdfCompanyInfo
+export type BillingInfo = PdfBillingInfo
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
@@ -26,62 +38,10 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 56,
     paddingHorizontal: 0,
-    fontFamily: 'Helvetica',
+    ...pdfFontStyles.regular,
     fontSize: 10,
     color: PDF_SLATE_700,
     backgroundColor: '#ffffff',
-  },
-  headerBand: {
-    backgroundColor: PDF_BRAND,
-    paddingTop: 36,
-    paddingBottom: 24,
-    paddingHorizontal: 48,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  brandBlock: {},
-  brandName: {
-    fontSize: 22,
-    fontFamily: 'Helvetica-Bold',
-    color: '#ffffff',
-    marginBottom: 4,
-  },
-  brandMeta: {
-    fontSize: 9,
-    color: '#bfdbfe',
-    lineHeight: 1.5,
-  },
-  invoiceBlock: {
-    alignItems: 'flex-end',
-  },
-  invoiceEyebrow: {
-    fontSize: 8,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: '#93c5fd',
-    fontFamily: 'Helvetica-Bold',
-    marginBottom: 4,
-  },
-  invoiceNumber: {
-    fontSize: 20,
-    fontFamily: 'Helvetica-Bold',
-    color: '#ffffff',
-    marginBottom: 6,
-  },
-  statusPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  statusText: {
-    fontSize: 8.5,
-    fontFamily: 'Helvetica-Bold',
-    color: '#ffffff',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   body: {
     paddingHorizontal: 48,
@@ -103,20 +63,21 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
     color: PDF_SLATE_400,
-    fontFamily: 'Helvetica-Bold',
+    ...pdfFontStyles.bold,
     marginBottom: 6,
   },
   metaValue: {
     fontSize: 10.5,
     color: PDF_SLATE_900,
     lineHeight: 1.5,
-    fontFamily: 'Helvetica-Bold',
+    ...pdfFontStyles.bold,
   },
   metaSub: {
     fontSize: 9.5,
     color: PDF_SLATE_600,
     lineHeight: 1.5,
     marginTop: 2,
+    ...pdfFontStyles.regular,
   },
   table: {
     borderWidth: 1,
@@ -126,7 +87,7 @@ const styles = StyleSheet.create({
   },
   tableHead: {
     flexDirection: 'row',
-    backgroundColor: '#f8fafc',
+    backgroundColor: PDF_BRAND_LIGHT,
     borderBottomWidth: 1,
     borderBottomColor: PDF_BORDER,
     borderBottomStyle: 'solid',
@@ -143,7 +104,7 @@ const styles = StyleSheet.create({
   th: {
     padding: 10,
     fontSize: 8,
-    fontFamily: 'Helvetica-Bold',
+    ...pdfFontStyles.bold,
     color: PDF_SLATE_400,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
@@ -152,13 +113,14 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 10,
     color: PDF_SLATE_700,
+    ...pdfFontStyles.regular,
   },
   colDesc: { width: '46%' },
   colQty: { width: '14%', textAlign: 'right' },
   colUnit: { width: '18%', textAlign: 'right' },
   colAmount: { width: '22%', textAlign: 'right' },
   tdBold: {
-    fontFamily: 'Helvetica-Bold',
+    ...pdfFontStyles.bold,
     color: PDF_SLATE_900,
   },
   totalsWrap: {
@@ -177,10 +139,12 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 10,
     color: PDF_SLATE_600,
+    ...pdfFontStyles.regular,
   },
   totalValue: {
     fontSize: 10,
     color: PDF_SLATE_900,
+    ...pdfFontStyles.regular,
   },
   grandTotalRow: {
     flexDirection: 'row',
@@ -188,18 +152,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 10,
     borderTopWidth: 2,
-    borderTopColor: PDF_BRAND,
+    borderTopColor: PDF_BRAND_SECONDARY,
     borderTopStyle: 'solid',
   },
   grandTotalLabel: {
     fontSize: 12,
-    fontFamily: 'Helvetica-Bold',
+    ...pdfFontStyles.bold,
     color: PDF_SLATE_900,
   },
   grandTotalValue: {
     fontSize: 14,
-    fontFamily: 'Helvetica-Bold',
-    color: PDF_BRAND_DARK,
+    ...pdfFontStyles.bold,
+    color: PDF_BRAND_DEEP,
   },
   notesBox: {
     padding: 14,
@@ -211,7 +175,7 @@ const styles = StyleSheet.create({
   },
   notesTitle: {
     fontSize: 9,
-    fontFamily: 'Helvetica-Bold',
+    ...pdfFontStyles.bold,
     color: PDF_SLATE_900,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -221,64 +185,9 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     lineHeight: 1.6,
     color: PDF_SLATE_600,
-  },
-  paymentBox: {
-    padding: 14,
-    backgroundColor: '#eff6ff',
-    borderLeftWidth: 3,
-    borderLeftColor: PDF_BRAND,
-    borderLeftStyle: 'solid',
-  },
-  paymentTitle: {
-    fontSize: 9,
-    fontFamily: 'Helvetica-Bold',
-    color: PDF_BRAND_DARK,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  paymentText: {
-    fontSize: 9.5,
-    lineHeight: 1.6,
-    color: '#1e3a8a',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 24,
-    left: 48,
-    right: 48,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: PDF_BORDER,
-    borderTopStyle: 'solid',
-    paddingTop: 8,
-  },
-  footerText: {
-    fontSize: 8,
-    color: PDF_SLATE_400,
-  },
-  pageNumber: {
-    fontSize: 8,
-    color: PDF_SLATE_400,
+    ...pdfFontStyles.regular,
   },
 })
-
-export interface CompanyInfo {
-  name: string
-  email: string
-  phone: string
-  address: string
-  website: string
-}
-
-export interface BillingInfo {
-  bank_name: string
-  bank_account: string
-  bank_reference_prefix: string
-  gst_rate: number
-}
 
 export interface InvoicePDFProps {
   invoiceNumber: string
@@ -329,30 +238,23 @@ export function InvoicePDFDocument({
   return (
     <Document
       title={`Invoice ${invoiceNumber} — ${clientName}`}
-      author={company.name}
+      author={company.legalName || company.name}
       subject={`Tax invoice for ${clientName}`}
       creator="Appdoers Hub"
     >
       <Page size="A4" style={styles.page}>
-        <View style={styles.headerBand}>
-          <View style={styles.headerRow}>
-            <View style={styles.brandBlock}>
-              <Text style={styles.brandName}>{company.name}</Text>
-              <Text style={styles.brandMeta}>
-                {company.email}
-                {company.phone ? `\n${company.phone}` : ''}
-                {company.website ? `\n${company.website.replace(/^https?:\/\//, '')}` : ''}
-              </Text>
-            </View>
-            <View style={styles.invoiceBlock}>
-              <Text style={styles.invoiceEyebrow}>Tax Invoice</Text>
-              <Text style={styles.invoiceNumber}>{invoiceNumber}</Text>
-              <View style={styles.statusPill}>
-                <Text style={styles.statusText}>{statusLabel}</Text>
+        <PdfLetterhead
+          company={company}
+          right={
+            <>
+              <Text style={pdfHeaderTextStyles.eyebrow}>Tax Invoice</Text>
+              <Text style={pdfHeaderTextStyles.title}>{invoiceNumber}</Text>
+              <View style={pdfHeaderTextStyles.statusPill}>
+                <Text style={pdfHeaderTextStyles.statusText}>{statusLabel}</Text>
               </View>
-            </View>
-          </View>
-        </View>
+            </>
+          }
+        />
 
         <View style={styles.body}>
           <View style={styles.metaRow}>
@@ -371,7 +273,7 @@ export function InvoicePDFDocument({
             </View>
             <View style={[styles.metaCol, styles.metaColLast]}>
               <Text style={styles.metaLabel}>Amount Due (NZD)</Text>
-              <Text style={[styles.metaValue, { fontSize: 16, color: PDF_BRAND_DARK }]}>
+              <Text style={[styles.metaValue, { fontSize: 16, color: PDF_BRAND_DEEP }]}>
                 {formatPdfCurrency(status === 'paid' ? 0 : total)}
               </Text>
               {paidAt ? (
@@ -447,28 +349,17 @@ export function InvoicePDFDocument({
             </View>
           ) : null}
 
-          <View style={styles.paymentBox}>
-            <Text style={styles.paymentTitle}>Payment Details</Text>
-            <Text style={styles.paymentText}>
-              {billing.bank_name && billing.bank_account
-                ? `Bank: ${billing.bank_name}\nAccount: ${billing.bank_account}\n`
-                : ''}
-              Reference: {paymentRef}
-              {'\n'}
-              Please pay by the due date. All amounts in NZD and include GST where shown.
-              {company.email ? `\nQuestions: ${company.email}` : ''}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>{`${company.name} · Invoice ${invoiceNumber}`}</Text>
-          <Text style={styles.footerText}>appdoers.co.nz</Text>
-          <Text
-            style={styles.pageNumber}
-            render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+          <PdfPaymentBlock
+            billing={billing}
+            paymentRef={paymentRef}
+            companyEmail={company.email}
           />
         </View>
+
+        <PdfPageFooter
+          label={`Invoice ${invoiceNumber}`}
+          legalName={company.legalName || company.name}
+        />
       </Page>
     </Document>
   )

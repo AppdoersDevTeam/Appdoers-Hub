@@ -65,6 +65,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
     .from('service_catalog')
     .select('plan_key, name, monthly_fee, setup_fee')
     .eq('type', 'plan')
+    .eq('contract_months', 12)
     .eq('is_active', true)
     .order('sort_order')
 

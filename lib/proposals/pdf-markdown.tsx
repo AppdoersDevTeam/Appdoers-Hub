@@ -1,20 +1,74 @@
 import React from 'react'
 import { Text, View, StyleSheet, type Styles } from '@react-pdf/renderer'
+import { PDF_BRAND_LIGHT, PDF_BRAND_SECONDARY, PDF_BORDER, PDF_SLATE_700, PDF_SLATE_900 } from '@/lib/pdf/brand'
+import { pdfFontStyles } from '@/lib/pdf/fonts'
 
 const styles = StyleSheet.create({
-  paragraph: { fontSize: 10.5, lineHeight: 1.65, color: '#334155', marginBottom: 8 },
+  paragraph: {
+    fontSize: 10.5,
+    lineHeight: 1.65,
+    color: PDF_SLATE_700,
+    marginBottom: 8,
+    ...pdfFontStyles.regular,
+  },
   bulletRow: { flexDirection: 'row', marginBottom: 5, paddingLeft: 4 },
-  bulletDot: { width: 14, fontSize: 10.5, color: '#2563eb', lineHeight: 1.65 },
-  bulletText: { flex: 1, fontSize: 10.5, lineHeight: 1.65, color: '#334155' },
+  bulletDot: { width: 14, fontSize: 10.5, color: PDF_BRAND_SECONDARY, lineHeight: 1.65 },
+  bulletText: {
+    flex: 1,
+    fontSize: 10.5,
+    lineHeight: 1.65,
+    color: PDF_SLATE_700,
+    ...pdfFontStyles.regular,
+  },
   numberedRow: { flexDirection: 'row', marginBottom: 5, paddingLeft: 4 },
-  numberedIndex: { width: 18, fontSize: 10.5, color: '#2563eb', fontFamily: 'Helvetica-Bold', lineHeight: 1.65 },
-  numberedText: { flex: 1, fontSize: 10.5, lineHeight: 1.65, color: '#334155' },
-  bold: { fontFamily: 'Helvetica-Bold', color: '#0f172a' },
-  table: { marginVertical: 10, borderWidth: 1, borderColor: '#e2e8f0', borderStyle: 'solid' },
-  tableHeaderRow: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', borderBottomStyle: 'solid' },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f1f5f9', borderBottomStyle: 'solid' },
-  tableCell: { flex: 1, padding: 8, fontSize: 9.5, color: '#334155' },
-  tableCellHeader: { flex: 1, padding: 8, fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#0f172a' },
+  numberedIndex: {
+    width: 18,
+    fontSize: 10.5,
+    color: PDF_BRAND_SECONDARY,
+    lineHeight: 1.65,
+    ...pdfFontStyles.bold,
+  },
+  numberedText: {
+    flex: 1,
+    fontSize: 10.5,
+    lineHeight: 1.65,
+    color: PDF_SLATE_700,
+    ...pdfFontStyles.regular,
+  },
+  bold: { ...pdfFontStyles.bold, color: PDF_SLATE_900 },
+  table: {
+    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: PDF_BORDER,
+    borderStyle: 'solid',
+  },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    backgroundColor: PDF_BRAND_LIGHT,
+    borderBottomWidth: 1,
+    borderBottomColor: PDF_BORDER,
+    borderBottomStyle: 'solid',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    borderBottomStyle: 'solid',
+  },
+  tableCell: {
+    flex: 1,
+    padding: 8,
+    fontSize: 9.5,
+    color: PDF_SLATE_700,
+    ...pdfFontStyles.regular,
+  },
+  tableCellHeader: {
+    flex: 1,
+    padding: 8,
+    fontSize: 9.5,
+    color: PDF_SLATE_900,
+    ...pdfFontStyles.bold,
+  },
 })
 
 function renderInlineMarkdown(text: string, baseStyle: Styles[string] = styles.paragraph) {
@@ -62,7 +116,6 @@ export function MarkdownContent({ content }: { content: string }) {
       continue
     }
 
-    // Markdown table
     if (trimmed.includes('|') && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
       const headerCells = parseTableRow(trimmed)
       i += 2
@@ -97,7 +150,6 @@ export function MarkdownContent({ content }: { content: string }) {
       continue
     }
 
-    // Bullet list
     if (/^[-*]\s/.test(trimmed)) {
       const bullets: string[] = []
       while (i < lines.length && /^[-*]\s/.test(lines[i].trim())) {
@@ -121,7 +173,6 @@ export function MarkdownContent({ content }: { content: string }) {
       continue
     }
 
-    // Numbered list
     if (/^\d+\.\s/.test(trimmed)) {
       const items: string[] = []
       while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
@@ -145,7 +196,6 @@ export function MarkdownContent({ content }: { content: string }) {
       continue
     }
 
-    // Paragraph (merge consecutive non-special lines)
     const paragraphLines: string[] = [trimmed]
     i++
     while (

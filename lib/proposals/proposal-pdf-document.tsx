@@ -1,6 +1,24 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import {
+  PDF_BRAND_DEEP,
+  PDF_BRAND_LIGHT,
+  PDF_BRAND_PRIMARY,
+  PDF_BRAND_SECONDARY,
+  PDF_BORDER,
+  PDF_SLATE_400,
+  PDF_SLATE_600,
+  PDF_SLATE_700,
+  PDF_SLATE_900,
+} from '@/lib/pdf/brand'
+import { APPDOERS_COMPANY_DEFAULTS } from '@/lib/pdf/company-defaults'
+import { pdfFontStyles } from '@/lib/pdf/fonts'
 import { MarkdownContent } from './pdf-markdown'
+import {
+  PdfLetterhead,
+  PdfPageFooter,
+  pdfHeaderTextStyles,
+} from '@/lib/pdf/primitives'
 import {
   HOW_PLANS_WORK,
   PLAN_COMPARISON,
@@ -9,61 +27,251 @@ import {
   type ServiceCatalogEntry,
 } from './service-guide'
 
-const BRAND = '#2563eb'
-const BRAND_DARK = '#1e40af'
-const SLATE_900 = '#0f172a'
-const SLATE_600 = '#475569'
-const SLATE_400 = '#94a3b8'
-const BORDER = '#e2e8f0'
-
 const styles = StyleSheet.create({
-  page: { paddingTop: 48, paddingBottom: 64, paddingHorizontal: 52, fontFamily: 'Helvetica', fontSize: 10.5, color: SLATE_900, backgroundColor: '#ffffff' },
-  coverPage: { paddingTop: 80, paddingBottom: 64, paddingHorizontal: 52, fontFamily: 'Helvetica', backgroundColor: '#ffffff' },
-  coverAccent: { height: 6, backgroundColor: BRAND, marginBottom: 48 },
-  coverLogo: { width: 48, height: 48, borderRadius: 8, backgroundColor: BRAND, marginBottom: 32 },
-  coverBrand: { fontSize: 11, letterSpacing: 2, color: BRAND, textTransform: 'uppercase', marginBottom: 16, fontFamily: 'Helvetica-Bold' },
-  coverTitle: { fontSize: 30, fontFamily: 'Helvetica-Bold', color: SLATE_900, marginBottom: 12, lineHeight: 1.2 },
-  coverSubtitle: { fontSize: 14, color: SLATE_600, marginBottom: 6 },
-  coverMeta: { fontSize: 10, color: SLATE_400, marginTop: 32 },
-  coverTagline: { fontSize: 11, color: SLATE_600, marginTop: 48, lineHeight: 1.6, maxWidth: 360 },
-  sectionHeader: { marginBottom: 14, paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: BRAND, borderBottomStyle: 'solid' },
-  sectionNumber: { fontSize: 9, color: BRAND, fontFamily: 'Helvetica-Bold', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 },
-  sectionTitle: { fontSize: 18, fontFamily: 'Helvetica-Bold', color: SLATE_900 },
+  page: {
+    paddingTop: 48,
+    paddingBottom: 64,
+    paddingHorizontal: 52,
+    ...pdfFontStyles.regular,
+    fontSize: 10.5,
+    color: PDF_SLATE_900,
+    backgroundColor: '#ffffff',
+  },
+  coverPage: {
+    paddingTop: 0,
+    paddingBottom: 64,
+    paddingHorizontal: 0,
+    ...pdfFontStyles.regular,
+    backgroundColor: '#ffffff',
+  },
+  coverBody: {
+    paddingHorizontal: 52,
+    paddingTop: 36,
+  },
+  coverTitle: {
+    fontSize: 30,
+    ...pdfFontStyles.bold,
+    color: PDF_SLATE_900,
+    marginBottom: 12,
+    lineHeight: 1.2,
+  },
+  coverSubtitle: {
+    fontSize: 14,
+    color: PDF_SLATE_600,
+    marginBottom: 6,
+    ...pdfFontStyles.regular,
+  },
+  coverMeta: {
+    fontSize: 10,
+    color: PDF_SLATE_400,
+    marginTop: 24,
+    ...pdfFontStyles.regular,
+  },
+  coverTagline: {
+    fontSize: 11,
+    color: PDF_SLATE_600,
+    marginTop: 32,
+    lineHeight: 1.6,
+    maxWidth: 380,
+    ...pdfFontStyles.regular,
+  },
+  coverContact: {
+    fontSize: 9,
+    color: PDF_SLATE_400,
+    marginTop: 20,
+    lineHeight: 1.5,
+    ...pdfFontStyles.regular,
+  },
+  sectionHeader: {
+    marginBottom: 14,
+    paddingBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: PDF_BRAND_SECONDARY,
+    borderBottomStyle: 'solid',
+  },
+  sectionNumber: {
+    fontSize: 9,
+    color: PDF_BRAND_SECONDARY,
+    ...pdfFontStyles.bold,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    ...pdfFontStyles.bold,
+    color: PDF_SLATE_900,
+  },
   sectionBlock: { marginBottom: 22 },
-  introText: { fontSize: 10.5, lineHeight: 1.65, color: SLATE_600, marginBottom: 12 },
-  table: { marginTop: 8, borderWidth: 1, borderColor: BORDER, borderStyle: 'solid' },
-  tableHeader: { flexDirection: 'row', backgroundColor: '#f8fafc', borderBottomWidth: 1, borderBottomColor: BORDER, borderBottomStyle: 'solid' },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f1f5f9', borderBottomStyle: 'solid' },
-  tableFooter: { flexDirection: 'row', backgroundColor: '#eff6ff', borderTopWidth: 2, borderTopColor: BRAND, borderTopStyle: 'solid' },
+  introText: {
+    fontSize: 10.5,
+    lineHeight: 1.65,
+    color: PDF_SLATE_600,
+    marginBottom: 12,
+    ...pdfFontStyles.regular,
+  },
+  table: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: PDF_BORDER,
+    borderStyle: 'solid',
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: PDF_BRAND_LIGHT,
+    borderBottomWidth: 1,
+    borderBottomColor: PDF_BORDER,
+    borderBottomStyle: 'solid',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    borderBottomStyle: 'solid',
+  },
+  tableFooter: {
+    flexDirection: 'row',
+    backgroundColor: PDF_BRAND_LIGHT,
+    borderTopWidth: 2,
+    borderTopColor: PDF_BRAND_SECONDARY,
+    borderTopStyle: 'solid',
+  },
   cellService: { width: '22%', padding: 9, fontSize: 9.5 },
-  cellDesc: { width: '38%', padding: 9, fontSize: 9.5, color: SLATE_600 },
+  cellDesc: { width: '38%', padding: 9, fontSize: 9.5, color: PDF_SLATE_600 },
   cellMoney: { width: '20%', padding: 9, fontSize: 9.5, textAlign: 'right' },
-  cellBold: { fontFamily: 'Helvetica-Bold', color: SLATE_900 },
+  cellBold: { ...pdfFontStyles.bold, color: PDF_SLATE_900 },
   summaryRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  summaryCard: { flex: 1, padding: 12, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: BORDER, borderStyle: 'solid', borderRadius: 4 },
-  summaryCardHighlight: { flex: 1, padding: 12, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#93c5fd', borderStyle: 'solid', borderRadius: 4 },
-  summaryLabel: { fontSize: 8, color: SLATE_400, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
-  summaryValue: { fontSize: 14, fontFamily: 'Helvetica-Bold', color: SLATE_900 },
-  summaryValueBrand: { fontSize: 14, fontFamily: 'Helvetica-Bold', color: BRAND_DARK },
-  guideCard: { marginBottom: 12, padding: 12, backgroundColor: '#f8fafc', borderLeftWidth: 3, borderLeftColor: BRAND, borderLeftStyle: 'solid' },
-  guideCardTitle: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: SLATE_900, marginBottom: 4 },
-  guideCardBody: { fontSize: 9.5, lineHeight: 1.55, color: SLATE_600 },
-  planCard: { marginBottom: 14, padding: 14, borderWidth: 1, borderColor: BORDER, borderStyle: 'solid', borderRadius: 4 },
-  planName: { fontSize: 13, fontFamily: 'Helvetica-Bold', color: SLATE_900, marginBottom: 2 },
-  planTagline: { fontSize: 9.5, color: BRAND, marginBottom: 8 },
+  summaryCard: {
+    flex: 1,
+    padding: 12,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: PDF_BORDER,
+    borderStyle: 'solid',
+    borderRadius: 4,
+  },
+  summaryCardHighlight: {
+    flex: 1,
+    padding: 12,
+    backgroundColor: PDF_BRAND_LIGHT,
+    borderWidth: 1,
+    borderColor: PDF_BRAND_PRIMARY,
+    borderStyle: 'solid',
+    borderRadius: 4,
+  },
+  summaryLabel: {
+    fontSize: 8,
+    color: PDF_SLATE_400,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+    ...pdfFontStyles.bold,
+  },
+  summaryValue: {
+    fontSize: 14,
+    ...pdfFontStyles.bold,
+    color: PDF_SLATE_900,
+  },
+  summaryValueBrand: {
+    fontSize: 14,
+    ...pdfFontStyles.bold,
+    color: PDF_BRAND_DEEP,
+  },
+  guideCard: {
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: '#f8fafc',
+    borderLeftWidth: 3,
+    borderLeftColor: PDF_BRAND_SECONDARY,
+    borderLeftStyle: 'solid',
+  },
+  guideCardTitle: {
+    fontSize: 11,
+    ...pdfFontStyles.bold,
+    color: PDF_SLATE_900,
+    marginBottom: 4,
+  },
+  guideCardBody: {
+    fontSize: 9.5,
+    lineHeight: 1.55,
+    color: PDF_SLATE_600,
+    ...pdfFontStyles.regular,
+  },
+  planCard: {
+    marginBottom: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: PDF_BORDER,
+    borderStyle: 'solid',
+    borderRadius: 4,
+  },
+  planName: {
+    fontSize: 13,
+    ...pdfFontStyles.bold,
+    color: PDF_SLATE_900,
+    marginBottom: 2,
+  },
+  planTagline: {
+    fontSize: 9.5,
+    color: PDF_BRAND_SECONDARY,
+    marginBottom: 8,
+    ...pdfFontStyles.medium,
+  },
   planBullet: { flexDirection: 'row', marginBottom: 3 },
-  planBulletDot: { width: 12, fontSize: 9, color: BRAND },
-  planBulletText: { flex: 1, fontSize: 9, lineHeight: 1.5, color: SLATE_600 },
-  planNote: { fontSize: 9, color: SLATE_600, marginTop: 8, fontFamily: 'Helvetica-Bold' },
-  serviceItem: { marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', borderBottomStyle: 'solid' },
-  serviceItemName: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: SLATE_900, marginBottom: 3 },
-  serviceItemType: { fontSize: 8, color: BRAND, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
-  serviceItemDesc: { fontSize: 9.5, lineHeight: 1.55, color: SLATE_600 },
-  footer: { position: 'absolute', bottom: 28, left: 52, right: 52, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: BORDER, borderTopStyle: 'solid', paddingTop: 8 },
-  footerText: { fontSize: 8, color: SLATE_400 },
-  pageNumber: { fontSize: 8, color: SLATE_400 },
-  appendixTitle: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: SLATE_900, marginBottom: 6 },
-  appendixSubtitle: { fontSize: 10, color: SLATE_600, marginBottom: 18, lineHeight: 1.5 },
+  planBulletDot: { width: 12, fontSize: 9, color: PDF_BRAND_SECONDARY },
+  planBulletText: {
+    flex: 1,
+    fontSize: 9,
+    lineHeight: 1.5,
+    color: PDF_SLATE_600,
+    ...pdfFontStyles.regular,
+  },
+  planNote: {
+    fontSize: 9,
+    color: PDF_SLATE_600,
+    marginTop: 8,
+    ...pdfFontStyles.bold,
+  },
+  serviceItem: {
+    marginBottom: 10,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    borderBottomStyle: 'solid',
+  },
+  serviceItemName: {
+    fontSize: 11,
+    ...pdfFontStyles.bold,
+    color: PDF_SLATE_900,
+    marginBottom: 3,
+  },
+  serviceItemType: {
+    fontSize: 8,
+    color: PDF_BRAND_SECONDARY,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+    ...pdfFontStyles.bold,
+  },
+  serviceItemDesc: {
+    fontSize: 9.5,
+    lineHeight: 1.55,
+    color: PDF_SLATE_600,
+    ...pdfFontStyles.regular,
+  },
+  appendixTitle: {
+    fontSize: 20,
+    ...pdfFontStyles.bold,
+    color: PDF_SLATE_900,
+    marginBottom: 6,
+  },
+  appendixSubtitle: {
+    fontSize: 10,
+    color: PDF_SLATE_600,
+    marginBottom: 18,
+    lineHeight: 1.5,
+    ...pdfFontStyles.regular,
+  },
 })
 
 function formatCurrency(amount: number) {
@@ -91,18 +299,7 @@ interface ProposalPDFProps {
   version: number
 }
 
-function PageFooter({ label }: { label: string }) {
-  return React.createElement(
-    View,
-    { style: styles.footer, fixed: true },
-    React.createElement(Text, { style: styles.footerText }, label),
-    React.createElement(Text, { style: styles.footerText }, 'appdoers.co.nz'),
-    React.createElement(Text, {
-      style: styles.pageNumber,
-      render: ({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`,
-    })
-  )
-}
+const company = APPDOERS_COMPANY_DEFAULTS
 
 function SectionBlock({
   index,
@@ -232,10 +429,6 @@ function ServiceGuideAppendix({
   items: PricingItem[]
   catalog: ServiceCatalogEntry[]
 }) {
-  const uniqueItems = items.filter(
-    (item, index, arr) => arr.findIndex((x) => x.name === item.name) === index
-  )
-
   return React.createElement(
     Page,
     { size: 'A4', style: styles.page },
@@ -255,7 +448,7 @@ function ServiceGuideAppendix({
         React.createElement(Text, { style: styles.guideCardBody }, s.body)
       )
     ),
-    PageFooter({ label: 'Appdoers Quote' })
+    React.createElement(PdfPageFooter, { label: 'Appdoers Quote' })
   )
 }
 
@@ -279,10 +472,10 @@ function PlansComparisonAppendix() {
           )
         ),
         React.createElement(Text, { style: styles.planNote }, `Ideal for: ${plan.idealFor}`),
-        React.createElement(Text, { style: { fontSize: 9, color: SLATE_600, marginTop: 4 } }, plan.pricingNote)
+        React.createElement(Text, { style: { fontSize: 9, color: PDF_SLATE_600, marginTop: 4 } }, plan.pricingNote)
       )
     ),
-    PageFooter({ label: 'Appdoers Quote' })
+    React.createElement(PdfPageFooter, { label: 'Appdoers Quote' })
   )
 }
 
@@ -333,14 +526,14 @@ function LineItemsAppendix({
           pricingNote
             ? React.createElement(
                 Text,
-                { style: { fontSize: 9, color: SLATE_600, marginTop: 4 } },
+                { style: { fontSize: 9, color: PDF_SLATE_600, marginTop: 4 } },
                 pricingNote
               )
             : null
         ),
       ]
     }),
-    PageFooter({ label: 'Appdoers Quote' })
+    React.createElement(PdfPageFooter, { label: 'Appdoers Quote' })
   )
 }
 
@@ -365,31 +558,45 @@ export function ProposalPDFDocument({
     Document,
     {
       title,
-      author: 'Appdoers',
+      author: company.legalName,
       subject: `Quote for ${clientName}`,
       creator: 'Appdoers Hub',
     },
-    // Cover
     React.createElement(
       Page,
       { size: 'A4', style: styles.coverPage },
-      React.createElement(View, { style: styles.coverAccent }),
-      React.createElement(View, { style: styles.coverLogo }),
-      React.createElement(Text, { style: styles.coverBrand }, 'Appdoers'),
-      React.createElement(Text, { style: styles.coverTitle }, title),
-      React.createElement(Text, { style: styles.coverSubtitle }, `Prepared for ${clientName}`),
-      contactName
-        ? React.createElement(Text, { style: styles.coverSubtitle }, `Attention: ${contactName}`)
-        : null,
-      React.createElement(Text, { style: styles.coverMeta }, date),
+      React.createElement(PdfLetterhead, {
+        company,
+        showCompanyDetails: false,
+        right: React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(Text, { style: pdfHeaderTextStyles.eyebrow }, 'Quote'),
+          React.createElement(Text, { style: pdfHeaderTextStyles.title }, `v${version}`),
+          React.createElement(Text, { style: pdfHeaderTextStyles.meta }, date)
+        ),
+      }),
       React.createElement(
-        Text,
-        { style: styles.coverTagline },
-        'Websites and online tools for New Zealand organisations. This quote outlines your project scope, investment, and how our plans work.'
+        View,
+        { style: styles.coverBody },
+        React.createElement(Text, { style: styles.coverTitle }, title),
+        React.createElement(Text, { style: styles.coverSubtitle }, `Prepared for ${clientName}`),
+        contactName
+          ? React.createElement(Text, { style: styles.coverSubtitle }, `Attention: ${contactName}`)
+          : null,
+        React.createElement(
+          Text,
+          { style: styles.coverTagline },
+          `${company.tagline}. This quote outlines your project scope, investment, and how our plans work.`
+        ),
+        React.createElement(
+          Text,
+          { style: styles.coverContact },
+          `${company.legalName} · ${company.phone} · ${company.email}`
+        )
       ),
-      PageFooter({ label: footerLabel })
+      React.createElement(PdfPageFooter, { label: footerLabel })
     ),
-    // Content sections (split across pages naturally)
     React.createElement(
       Page,
       { size: 'A4', style: styles.page },
@@ -411,7 +618,7 @@ export function ProposalPDFDocument({
           children: React.createElement(MarkdownContent, { content: section.content || '' }),
         })
       }),
-      PageFooter({ label: footerLabel })
+      React.createElement(PdfPageFooter, { label: footerLabel })
     ),
     ServiceGuideAppendix({ items: investmentItems, catalog }),
     PlansComparisonAppendix(),

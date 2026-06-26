@@ -35,6 +35,8 @@ interface Service {
   plan_key: string | null
   setup_fee: number
   monthly_fee: number
+  contract_months?: number | null
+  description?: string | null
 }
 
 interface Proposal {

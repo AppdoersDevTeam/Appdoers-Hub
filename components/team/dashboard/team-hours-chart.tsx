@@ -19,6 +19,7 @@ interface Props {
 
 export function TeamHoursChart({ data, periodLabel }: Props) {
   const hasData = data.some((d) => d.value > 0)
+  const chartHeight = Math.max(200, data.length * 44)
 
   return (
     <ChartCard
@@ -26,27 +27,29 @@ export function TeamHoursChart({ data, periodLabel }: Props) {
       subtitle={periodLabel}
       isEmpty={!hasData}
       emptyMessage="No time logged this period"
+      className="h-full"
     >
-      <ResponsiveContainer width="100%" height={220}>
+      <ResponsiveContainer width="100%" height={chartHeight}>
         <BarChart
           data={data}
           layout="vertical"
-          margin={{ top: 4, right: 8, left: 4, bottom: 0 }}
+          margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
           <XAxis
             type="number"
-            tick={{ fontSize: 10, fill: '#64748b' }}
+            tick={{ fontSize: 11, fill: '#64748b' }}
             tickLine={false}
             axisLine={false}
+            tickFormatter={(v) => `${v}h`}
           />
           <YAxis
             type="category"
             dataKey="label"
-            tick={{ fontSize: 10, fill: '#64748b' }}
+            tick={{ fontSize: 11, fill: '#64748b' }}
             tickLine={false}
             axisLine={false}
-            width={72}
+            width={96}
           />
           <Tooltip
             contentStyle={{
@@ -56,7 +59,7 @@ export function TeamHoursChart({ data, periodLabel }: Props) {
             }}
             formatter={(value) => [`${Number(value ?? 0)}h`, 'Logged']}
           />
-          <Bar dataKey="value" fill="#059669" radius={[0, 4, 4, 0]} barSize={18} />
+          <Bar dataKey="value" fill="#059669" radius={[0, 4, 4, 0]} barSize={22} />
         </BarChart>
       </ResponsiveContainer>
     </ChartCard>

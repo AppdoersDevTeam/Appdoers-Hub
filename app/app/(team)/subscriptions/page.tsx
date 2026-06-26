@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/ui/page-header'
@@ -25,6 +26,8 @@ export default async function SubscriptionsPage() {
     redirect('/app/dashboard')
   }
 
+  const canViewAnalytics = can(effective, 'analytics', 'view')
+
   const { data: subscriptions } = await supabase
     .from('agency_subscriptions')
     .select('id, name, category, plan_name, billing_cycle, cost, renewal_date, status, url, notes')
@@ -33,10 +36,20 @@ export default async function SubscriptionsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Subscriptions"
-        subtitle="Tools and services Appdoers pays for"
-      />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageHeader
+          title="Subscriptions"
+          subtitle="Tools and services Appdoers pays for"
+        />
+        {canViewAnalytics && (
+          <Link
+            href="/app/analytics"
+            className="text-sm text-blue-600 hover:text-blue-700 shrink-0"
+          >
+            View full analytics →
+          </Link>
+        )}
+      </div>
       <SubscriptionsTable
         subscriptions={(subscriptions ?? []).map(s => ({
           id: s.id as string,

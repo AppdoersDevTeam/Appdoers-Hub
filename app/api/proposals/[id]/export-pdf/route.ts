@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const [{ data: catalog }, clientInfo] = await Promise.all([
     access.db
       .from('service_catalog')
-      .select('id, name, description, type, plan_key, setup_fee, monthly_fee')
+      .select('id, name, description, type, plan_key, setup_fee, monthly_fee, contract_months, min_upfront')
       .eq('is_active', true)
       .order('sort_order'),
     fetchClientDisplayInfo(access.db, proposal.client_id as string),

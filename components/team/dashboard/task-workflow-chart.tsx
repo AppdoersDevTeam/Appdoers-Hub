@@ -35,21 +35,29 @@ export function TaskWorkflowChart({ data }: Props) {
       subtitle="Workflow pipeline"
       isEmpty={!hasData}
       emptyMessage="No open tasks"
+      className="h-full"
     >
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={240}>
+        <BarChart
+          data={data}
+          margin={{ top: 8, right: 12, left: 4, bottom: 4 }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fill: '#64748b' }}
+            tick={{ fontSize: 11, fill: '#64748b' }}
             tickLine={false}
             axisLine={false}
+            interval={0}
+            angle={-20}
+            textAnchor="end"
+            height={48}
           />
           <YAxis
-            tick={{ fontSize: 10, fill: '#64748b' }}
+            tick={{ fontSize: 11, fill: '#64748b' }}
             tickLine={false}
             axisLine={false}
-            width={32}
+            width={36}
             allowDecimals={false}
           />
           <Tooltip
@@ -63,7 +71,7 @@ export function TaskWorkflowChart({ data }: Props) {
               'Open',
             ]}
           />
-          <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={28}>
+          <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={40}>
             {data.map((entry) => (
               <Cell
                 key={entry.key ?? entry.label}

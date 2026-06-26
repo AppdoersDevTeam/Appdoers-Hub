@@ -5,6 +5,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatCurrency } from '@/lib/utils/format'
+import { formatCatalogOptionLabel } from '@/lib/proposals/service-guide'
 import { cn } from '@/lib/utils/cn'
 import type { PricingItem } from './proposal-builder'
 
@@ -16,6 +17,7 @@ interface Service {
   plan_key: string | null
   setup_fee: number
   monthly_fee: number
+  contract_months?: number | null
 }
 
 interface Section {
@@ -47,6 +49,14 @@ export function PricingTableEditor({
   const [addMode, setAddMode] = useState<'catalog' | 'custom' | null>(null)
   const [selectedServiceId, setSelectedServiceId] = useState('')
   const [customItem, setCustomItem] = useState({ name: '', description: '', setup_fee: '', monthly_fee: '' })
+
+  const planServices = services.filter((s) => s.type === 'plan')
+  const emailServices = services.filter(
+    (s) => s.type === 'addon' && s.plan_key?.endsWith('_email')
+  )
+  const otherAddons = services.filter(
+    (s) => s.type === 'addon' && !s.plan_key?.endsWith('_email')
+  )
 
   const addFromCatalog = () => {
     const svc = services.find((s) => s.id === selectedServiceId)
@@ -130,14 +140,19 @@ export function PricingTableEditor({
               <label className={labelClass}>Select from Service Catalog</label>
               <select className={selectClass} value={selectedServiceId} onChange={(e) => setSelectedServiceId(e.target.value)}>
                 <option value="">Choose a service…</option>
-                <optgroup label="Plans">
-                  {services.filter(s => s.type === 'plan').map(s => (
-                    <option key={s.id} value={s.id}>{s.name} — Setup: {formatCurrency(s.setup_fee)} / Monthly: {formatCurrency(s.monthly_fee)}</option>
+                <optgroup label="Website Plans">
+                  {planServices.map((s) => (
+                    <option key={s.id} value={s.id}>{formatCatalogOptionLabel(s)}</option>
                   ))}
                 </optgroup>
-                <optgroup label="Add-ons">
-                  {services.filter(s => s.type === 'addon').map(s => (
-                    <option key={s.id} value={s.id}>{s.name} — Setup: {formatCurrency(s.setup_fee)} / Monthly: {formatCurrency(s.monthly_fee)}</option>
+                <optgroup label="Business Email">
+                  {emailServices.map((s) => (
+                    <option key={s.id} value={s.id}>{formatCatalogOptionLabel(s)}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Other Add-ons">
+                  {otherAddons.map((s) => (
+                    <option key={s.id} value={s.id}>{formatCatalogOptionLabel(s)}</option>
                   ))}
                 </optgroup>
               </select>

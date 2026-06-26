@@ -19,7 +19,7 @@ export default async function ProposalBuilderPage({ params }: Props) {
     access.db.from('proposals').select('*').eq('id', id).maybeSingle(),
     access.db
       .from('service_catalog')
-      .select('id, name, description, type, plan_key, setup_fee, monthly_fee')
+      .select('id, name, description, type, plan_key, setup_fee, monthly_fee, contract_months, min_upfront')
       .eq('is_active', true)
       .order('sort_order'),
   ])

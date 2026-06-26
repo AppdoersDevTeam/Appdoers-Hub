@@ -2,22 +2,33 @@ import React from 'react'
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import type { RecapWorkItem } from '@/lib/recaps/types'
 import {
-  PDF_BRAND,
-  PDF_BRAND_DARK,
+  PDF_BRAND_DEEP,
   PDF_BRAND_LIGHT,
+  PDF_BRAND_PRIMARY,
+  PDF_BRAND_SECONDARY,
   PDF_BORDER,
   PDF_SLATE_400,
   PDF_SLATE_700,
   PDF_SLATE_900,
 } from '@/lib/pdf/brand'
+import { APPDOERS_COMPANY_DEFAULTS } from '@/lib/pdf/company-defaults'
+import { pdfFontStyles } from '@/lib/pdf/fonts'
+import {
+  PdfLetterhead,
+  PdfPageFooter,
+  PdfSectionTitle,
+  pdfHeaderTextStyles,
+} from '@/lib/pdf/primitives'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
+const company = APPDOERS_COMPANY_DEFAULTS
+
 const CATEGORY_STYLES: Record<string, { bg: string; text: string }> = {
-  Development: { bg: '#eff6ff', text: '#1d4ed8' },
+  Development: { bg: PDF_BRAND_LIGHT, text: PDF_BRAND_SECONDARY },
   Design: { bg: '#faf5ff', text: '#7c3aed' },
   SEO: { bg: '#f0fdf4', text: '#15803d' },
   Content: { bg: '#fffbeb', text: '#b45309' },
@@ -32,66 +43,24 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 56,
     paddingHorizontal: 0,
-    fontFamily: 'Helvetica',
+    ...pdfFontStyles.regular,
     fontSize: 10.5,
     color: PDF_SLATE_700,
     backgroundColor: '#ffffff',
   },
-  headerBand: {
-    backgroundColor: PDF_BRAND,
-    paddingTop: 40,
-    paddingBottom: 28,
-    paddingHorizontal: 48,
-    marginBottom: 28,
-  },
-  headerEyebrow: {
-    fontSize: 8.5,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    color: '#bfdbfe',
-    fontFamily: 'Helvetica-Bold',
-    marginBottom: 8,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontFamily: 'Helvetica-Bold',
-    color: '#ffffff',
-    marginBottom: 6,
-    lineHeight: 1.15,
-  },
-  headerClient: {
-    fontSize: 13,
-    color: '#e0e7ff',
-    marginBottom: 4,
-  },
-  headerMeta: {
-    fontSize: 9.5,
-    color: '#93c5fd',
-    marginTop: 10,
-  },
   body: {
     paddingHorizontal: 48,
+    paddingTop: 4,
   },
   section: {
     marginBottom: 22,
-  },
-  sectionHeader: {
-    marginBottom: 10,
-    paddingBottom: 6,
-    borderBottomWidth: 2,
-    borderBottomColor: PDF_BRAND,
-    borderBottomStyle: 'solid',
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontFamily: 'Helvetica-Bold',
-    color: PDF_SLATE_900,
   },
   paragraph: {
     fontSize: 10.5,
     lineHeight: 1.7,
     color: PDF_SLATE_700,
     marginBottom: 6,
+    ...pdfFontStyles.regular,
   },
   emptyState: {
     fontSize: 10.5,
@@ -99,6 +68,7 @@ const styles = StyleSheet.create({
     color: PDF_SLATE_400,
     fontStyle: 'italic',
     marginBottom: 20,
+    ...pdfFontStyles.regular,
   },
   categoryBlock: {
     marginBottom: 14,
@@ -111,7 +81,7 @@ const styles = StyleSheet.create({
   },
   categoryBadgeText: {
     fontSize: 8.5,
-    fontFamily: 'Helvetica-Bold',
+    ...pdfFontStyles.bold,
     letterSpacing: 0.3,
   },
   bulletRow: {
@@ -122,7 +92,7 @@ const styles = StyleSheet.create({
   bulletDot: {
     width: 14,
     fontSize: 10,
-    color: PDF_BRAND,
+    color: PDF_BRAND_SECONDARY,
     lineHeight: 1.65,
   },
   bulletText: {
@@ -130,26 +100,28 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     lineHeight: 1.65,
     color: PDF_SLATE_700,
+    ...pdfFontStyles.regular,
   },
   highlightBox: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: PDF_BRAND_LIGHT,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: PDF_BRAND_PRIMARY,
     borderStyle: 'solid',
     padding: 16,
     marginTop: 4,
   },
   highlightTitle: {
     fontSize: 12,
-    fontFamily: 'Helvetica-Bold',
-    color: PDF_BRAND_DARK,
+    ...pdfFontStyles.bold,
+    color: PDF_BRAND_DEEP,
     marginBottom: 8,
   },
   highlightText: {
     fontSize: 10.5,
     lineHeight: 1.7,
-    color: '#1e3a8a',
+    color: PDF_SLATE_700,
     marginBottom: 6,
+    ...pdfFontStyles.regular,
   },
   statsRow: {
     flexDirection: 'row',
@@ -173,33 +145,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
     marginBottom: 4,
-    fontFamily: 'Helvetica-Bold',
+    ...pdfFontStyles.bold,
   },
   statValue: {
     fontSize: 16,
-    fontFamily: 'Helvetica-Bold',
+    ...pdfFontStyles.bold,
     color: PDF_SLATE_900,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 24,
-    left: 48,
-    right: 48,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: PDF_BORDER,
-    borderTopStyle: 'solid',
-    paddingTop: 8,
-  },
-  footerText: {
-    fontSize: 8,
-    color: PDF_SLATE_400,
-  },
-  pageNumber: {
-    fontSize: 8,
-    color: PDF_SLATE_400,
   },
 })
 
@@ -291,19 +242,24 @@ export function RecapPDFDocument({
   return (
     <Document
       title={`${periodLabel} Progress Report — ${clientName}`}
-      author="Appdoers"
+      author={company.legalName}
       subject={`Monthly progress report for ${clientName}`}
       creator="Appdoers Hub"
     >
       <Page size="A4" style={styles.page}>
-        <View style={styles.headerBand}>
-          <Text style={styles.headerEyebrow}>Monthly Progress Report</Text>
-          <Text style={styles.headerTitle}>{periodLabel}</Text>
-          <Text style={styles.headerClient}>{clientName}</Text>
-          <Text style={styles.headerMeta}>
+        <PdfLetterhead
+          company={company}
+          showCompanyDetails={false}
+          right={
+            <Text style={pdfHeaderTextStyles.eyebrow}>Monthly Progress Report</Text>
+          }
+        >
+          <Text style={[pdfHeaderTextStyles.title, { fontSize: 26 }]}>{periodLabel}</Text>
+          <Text style={pdfHeaderTextStyles.subtitle}>{clientName}</Text>
+          <Text style={pdfHeaderTextStyles.meta}>
             {sentLabel ? `Sent ${sentLabel}` : 'Draft — prepared by Appdoers'}
           </Text>
-        </View>
+        </PdfLetterhead>
 
         <View style={styles.body}>
           {!hasBody ? (
@@ -327,11 +283,11 @@ export function RecapPDFDocument({
                 style={[
                   styles.statCard,
                   styles.statCardLast,
-                  { backgroundColor: PDF_BRAND_LIGHT, borderColor: '#93c5fd' },
+                  { backgroundColor: PDF_BRAND_LIGHT, borderColor: PDF_BRAND_PRIMARY },
                 ]}
               >
                 <Text style={styles.statLabel}>Reporting Period</Text>
-                <Text style={[styles.statValue, { fontSize: 12, color: PDF_BRAND_DARK }]}>
+                <Text style={[styles.statValue, { fontSize: 12, color: PDF_BRAND_DEEP }]}>
                   {periodLabel}
                 </Text>
               </View>
@@ -340,27 +296,21 @@ export function RecapPDFDocument({
 
           {hasIntro ? (
             <View style={styles.section} wrap>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Introduction</Text>
-              </View>
+              <PdfSectionTitle title="Introduction" />
               <View>{textParagraphs(introText!.trim(), styles.paragraph)}</View>
             </View>
           ) : null}
 
           {hasWork ? (
             <View style={styles.section} wrap>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Work Completed This Month</Text>
-              </View>
+              <PdfSectionTitle title="Work Completed This Month" />
               <View>{workByCategory(workItems)}</View>
             </View>
           ) : null}
 
           {hasPerformance ? (
             <View style={styles.section} wrap>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Performance & Highlights</Text>
-              </View>
+              <PdfSectionTitle title="Performance & Highlights" />
               <View>{textParagraphs(performanceNotes!.trim(), styles.paragraph)}</View>
             </View>
           ) : null}
@@ -375,14 +325,7 @@ export function RecapPDFDocument({
           ) : null}
         </View>
 
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>{`Appdoers · ${periodLabel} Progress Report`}</Text>
-          <Text style={styles.footerText}>appdoers.co.nz</Text>
-          <Text
-            style={styles.pageNumber}
-            render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
-          />
-        </View>
+        <PdfPageFooter label={`${periodLabel} Progress Report`} />
       </Page>
     </Document>
   )

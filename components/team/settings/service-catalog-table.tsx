@@ -17,6 +17,8 @@ interface Service {
   plan_key: string | null
   setup_fee: number
   monthly_fee: number
+  min_upfront: number | null
+  contract_months: number | null
   is_active: boolean
   sort_order: number
 }
@@ -30,13 +32,31 @@ export function ServiceCatalogTable({ services }: { services: Service[] }) {
   const [editing, setEditing] = useState<Service | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const emptyForm = { name: '', description: '', type: 'addon' as 'plan' | 'addon', plan_key: '', setup_fee: '', monthly_fee: '' }
+  const emptyForm = {
+    name: '',
+    description: '',
+    type: 'addon' as 'plan' | 'addon',
+    plan_key: '',
+    setup_fee: '',
+    monthly_fee: '',
+    min_upfront: '',
+    contract_months: '',
+  }
   const [form, setForm] = useState(emptyForm)
 
   const openAdd = () => { setEditing(null); setForm(emptyForm); setShowForm(true) }
   const openEdit = (s: Service) => {
     setEditing(s)
-    setForm({ name: s.name, description: s.description ?? '', type: s.type as 'plan' | 'addon', plan_key: s.plan_key ?? '', setup_fee: String(s.setup_fee), monthly_fee: String(s.monthly_fee) })
+    setForm({
+      name: s.name,
+      description: s.description ?? '',
+      type: s.type as 'plan' | 'addon',
+      plan_key: s.plan_key ?? '',
+      setup_fee: String(s.setup_fee),
+      monthly_fee: String(s.monthly_fee),
+      min_upfront: s.min_upfront != null ? String(s.min_upfront) : '',
+      contract_months: s.contract_months != null ? String(s.contract_months) : '',
+    })
     setShowForm(true)
   }
 
@@ -51,6 +71,8 @@ export function ServiceCatalogTable({ services }: { services: Service[] }) {
         plan_key: form.plan_key || undefined,
         setup_fee: parseFloat(form.setup_fee) || 0,
         monthly_fee: parseFloat(form.monthly_fee) || 0,
+        min_upfront: form.min_upfront ? parseFloat(form.min_upfront) : null,
+        contract_months: form.contract_months ? parseInt(form.contract_months, 10) : null,
       }
       const result = editing
         ? await updateServiceAction(editing.id, input)
@@ -79,7 +101,7 @@ export function ServiceCatalogTable({ services }: { services: Service[] }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                {['Name', 'Type', 'Setup Fee', 'Monthly Fee', 'Status', ''].map((h) => (
+                {['Name', 'Type', 'Term', 'Setup Fee', 'Min Upfront', 'Monthly Fee', 'Status', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
                 ))}
               </tr>
@@ -98,7 +120,13 @@ export function ServiceCatalogTable({ services }: { services: Service[] }) {
                       {s.type === 'plan' ? 'Plan' : 'Add-on'}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {s.contract_months ? `${s.contract_months} mo` : '—'}
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{formatCurrency(s.setup_fee)}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {s.min_upfront != null ? formatCurrency(s.min_upfront) : '—'}
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{s.monthly_fee > 0 ? `${formatCurrency(s.monthly_fee)}/mo` : '—'}</td>
                   <td className="px-4 py-3">
                     <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium',
@@ -150,6 +178,19 @@ export function ServiceCatalogTable({ services }: { services: Service[] }) {
             <div>
               <label className={labelClass}>Monthly Fee</label>
               <Input type="number" min={0} step={0.01} value={form.monthly_fee} onChange={(e) => setForm(f => ({ ...f, monthly_fee: e.target.value }))} />
+            </div>
+            <div>
+              <label className={labelClass}>Min Upfront</label>
+              <Input type="number" min={0} step={0.01} value={form.min_upfront} onChange={(e) => setForm(f => ({ ...f, min_upfront: e.target.value }))} placeholder="Plans only" />
+            </div>
+            <div>
+              <label className={labelClass}>Contract (months)</label>
+              <select className={selectClass} value={form.contract_months} onChange={(e) => setForm(f => ({ ...f, contract_months: e.target.value }))}>
+                <option value="">None</option>
+                <option value="12">12</option>
+                <option value="24">24</option>
+                <option value="48">48</option>
+              </select>
             </div>
           </div>
           <div className="flex gap-3 pt-2">
