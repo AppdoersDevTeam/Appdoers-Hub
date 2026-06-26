@@ -1,29 +1,37 @@
 import { NextRequest } from 'next/server'
 import React from 'react'
-import { createClient } from '@/lib/supabase/server'
 import { ProposalPDFDocument } from '@/lib/proposals/proposal-pdf-document'
 import type { ProposalSection } from '@/lib/proposals/proposal-pdf-document'
 import type { ServiceCatalogEntry } from '@/lib/proposals/service-guide'
-import { renderPdfRoute } from '@/lib/pdf/render-route'
+import { renderPdfElement } from '@/lib/pdf/render-route'
+import { requireTeamAccess } from '@/lib/supabase/route-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
+  const access = await requireTeamAccess()
+  if (!access.ok) {
+    return Response.json({ error: access.message }, { status: access.status })
+  }
 
-  const { data: proposal, error } = await supabase
+  const { data: proposal, error } = await access.db
     .from('proposals')
     .select('*, clients(company_name, contact_name, contact_email)')
     .eq('id', id)
     .maybeSingle()
 
-  if (error || !proposal) {
+  if (error) {
+    console.error('Proposal PDF fetch error:', error.message)
+    return Response.json({ error: 'Failed to load proposal' }, { status: 500 })
+  }
+
+  if (!proposal) {
     return Response.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const { data: catalog } = await supabase
+  const { data: catalog } = await access.db
     .from('service_catalog')
     .select('id, name, description, type, plan_key, setup_fee, monthly_fee')
     .eq('is_active', true)
@@ -47,7 +55,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     monthly_fee: Number(s.monthly_fee),
   }))
 
-  return renderPdfRoute(
+  return renderPdfElement(
     React.createElement(ProposalPDFDocument, {
       title: proposal.title,
       clientName,

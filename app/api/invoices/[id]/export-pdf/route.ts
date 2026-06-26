@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server'
 import React from 'react'
-import { createClient } from '@/lib/supabase/server'
 import { InvoicePDFDocument, type BillingInfo, type CompanyInfo } from '@/lib/invoices/invoice-pdf-document'
 import { normalizeInvoiceLines } from '@/lib/invoices/normalize'
-import { renderPdfRoute } from '@/lib/pdf/render-route'
+import { renderPdfElement } from '@/lib/pdf/render-route'
+import { requireInvoiceAccess } from '@/lib/supabase/route-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -25,36 +25,46 @@ const DEFAULT_BILLING: BillingInfo = {
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
+  const access = await requireInvoiceAccess(id)
+  if (!access.ok) {
+    return Response.json({ error: access.message }, { status: access.status })
+  }
 
-  const [{ data: invoice, error }, { data: companySetting }, { data: billingSetting }] = await Promise.all([
-    supabase
-      .from('invoices')
-      .select(
-        'id, invoice_number, status, type, issue_date, due_date, lines, subtotal, gst_amount, total, notes, paid_at, payment_reference, clients(company_name, contact_name, contact_email), projects(name)'
-      )
-      .eq('id', id)
-      .maybeSingle(),
-    supabase.from('settings').select('value').eq('key', 'company').maybeSingle(),
-    supabase.from('settings').select('value').eq('key', 'billing').maybeSingle(),
-  ])
+  const { db } = access
 
-  if (error || !invoice) {
+  const [{ data: invoice, error: invoiceError }, { data: companySetting }, { data: billingSetting }] =
+    await Promise.all([
+      db.from('invoices').select('*').eq('id', id).maybeSingle(),
+      db.from('settings').select('value').eq('key', 'company').maybeSingle(),
+      db.from('settings').select('value').eq('key', 'billing').maybeSingle(),
+    ])
+
+  if (invoiceError) {
+    console.error('Invoice PDF fetch error:', invoiceError.message)
+    return Response.json({ error: 'Failed to load invoice' }, { status: 500 })
+  }
+
+  if (!invoice) {
     return Response.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const client = invoice.clients as {
-    company_name?: string
-    contact_name?: string | null
-    contact_email?: string | null
-  } | null
-  const project = invoice.projects as { name?: string } | null
+  const [{ data: client }, { data: project }] = await Promise.all([
+    db
+      .from('clients')
+      .select('company_name, contact_name, contact_email')
+      .eq('id', invoice.client_id)
+      .maybeSingle(),
+    invoice.project_id
+      ? db.from('projects').select('name').eq('id', invoice.project_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+
   const company = { ...DEFAULT_COMPANY, ...((companySetting?.value as Partial<CompanyInfo> | null) ?? {}) }
   const billing = { ...DEFAULT_BILLING, ...((billingSetting?.value as Partial<BillingInfo> | null) ?? {}) }
   const lines = normalizeInvoiceLines(invoice.lines)
   const clientName = client?.company_name ?? 'Client'
 
-  return renderPdfRoute(
+  return renderPdfElement(
     React.createElement(InvoicePDFDocument, {
       invoiceNumber: invoice.invoice_number,
       status: invoice.status,

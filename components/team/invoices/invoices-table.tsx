@@ -159,9 +159,22 @@ export function InvoicesTable({
                   const displayStatus = inv.is_overdue && inv.status === 'sent' ? 'overdue' : inv.status
                   const st = statusConfig[displayStatus] ?? statusConfig.draft
                   return (
-                    <tr key={inv.id} className={cn('hover:bg-slate-50 transition-colors', inv.is_overdue && 'border-l-2 border-l-[#EF4444]')}>
+                    <tr
+                      key={inv.id}
+                      className={cn(
+                        'hover:bg-slate-50 transition-colors cursor-pointer',
+                        inv.is_overdue && 'border-l-2 border-l-[#EF4444]'
+                      )}
+                      onClick={() => router.push(`/app/invoices/${inv.id}`)}
+                    >
                       <td className="px-4 py-3 font-medium text-slate-900">
-                        <Link href={`/app/invoices/${inv.id}`} className="hover:text-blue-600 transition-colors font-mono">{inv.invoice_number}</Link>
+                        <Link
+                          href={`/app/invoices/${inv.id}`}
+                          className="hover:text-blue-600 transition-colors font-mono"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {inv.invoice_number}
+                        </Link>
                       </td>
                       <td className="px-4 py-3 text-slate-600">{inv.client_name}</td>
                       <td className="px-4 py-3 text-slate-500">{inv.project_name ?? '—'}</td>

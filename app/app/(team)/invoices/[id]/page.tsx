@@ -1,6 +1,6 @@
-import { notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { notFound, redirect } from 'next/navigation'
 import { InvoiceEditor } from '@/components/team/invoices/invoice-editor'
+import { requireTeamAccess } from '@/lib/supabase/route-access'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -8,32 +8,41 @@ interface Props {
 
 export default async function InvoiceDetailPage({ params }: Props) {
   const { id } = await params
-  const supabase = await createClient()
+  const access = await requireTeamAccess()
+  if (!access.ok) {
+    if (access.status === 401) redirect('/app/login')
+    notFound()
+  }
 
-  const { data: invoice, error: invoiceError } = await supabase
+  const { data: invoice, error: invoiceError } = await access.db
     .from('invoices')
     .select('*')
     .eq('id', id)
     .maybeSingle()
 
-  if (invoiceError || !invoice) notFound()
+  if (invoiceError) {
+    console.error('Invoice detail fetch error:', invoiceError.message)
+    notFound()
+  }
+
+  if (!invoice) notFound()
 
   const [{ data: client }, { data: project }, { data: clients }, { data: projects }] =
     await Promise.all([
-      supabase
+      access.db
         .from('clients')
         .select('id, company_name, contact_name, contact_email')
         .eq('id', invoice.client_id)
         .maybeSingle(),
       invoice.project_id
-        ? supabase
+        ? access.db
             .from('projects')
             .select('id, name')
             .eq('id', invoice.project_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
-      supabase.from('clients').select('id, company_name').eq('status', 'active').order('company_name'),
-      supabase.from('projects').select('id, name, client_id').order('name'),
+      access.db.from('clients').select('id, company_name').eq('status', 'active').order('company_name'),
+      access.db.from('projects').select('id, name, client_id').order('name'),
     ])
 
   return (

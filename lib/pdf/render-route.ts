@@ -1,14 +1,13 @@
-import { NextResponse } from 'next/server'
-import { renderToBuffer } from '@react-pdf/renderer'
 import type { ReactElement } from 'react'
+import { NextResponse } from 'next/server'
 import { sanitizePdfFilename } from './format'
 
 export async function renderPdfRoute(
-  element: ReactElement,
+  render: () => Promise<Uint8Array | Buffer>,
   filename: string
 ): Promise<NextResponse> {
   try {
-    const buffer = await renderToBuffer(element)
+    const buffer = await render()
     const safeName = sanitizePdfFilename(filename)
 
     return new NextResponse(new Uint8Array(buffer), {
@@ -18,7 +17,18 @@ export async function renderPdfRoute(
       },
     })
   } catch (err) {
-    console.error('PDF generation error:', err)
-    return NextResponse.json({ error: 'PDF generation failed' }, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('PDF generation error:', message, err)
+    return NextResponse.json({ error: 'PDF generation failed', detail: message }, { status: 500 })
   }
+}
+
+export async function renderPdfElement(
+  element: ReactElement,
+  filename: string
+): Promise<NextResponse> {
+  return renderPdfRoute(async () => {
+    const { renderToBuffer } = await import('@react-pdf/renderer')
+    return renderToBuffer(element)
+  }, filename)
 }
