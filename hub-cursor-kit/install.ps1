@@ -77,6 +77,6 @@ try {
 
 Write-Host ''
 Write-Host 'Next steps:'
-Write-Host '  1. Hub → My Account → Cursor setup → Generate token'
-Write-Host '  2. Copy .env block into Appdoers Work\.env.hub (or run tools\setup-hub-workflow.ps1)'
+Write-Host '  1. Hub -> My Account -> Cursor setup -> Generate token'
+Write-Host '  2. powershell -ExecutionPolicy Bypass -File "Appdoers CRM\hub-cursor-kit\setup-my-cursor-token.ps1"'
 Write-Host '  3. Open a new Cursor agent chat — it will ask for client, project, and team member'

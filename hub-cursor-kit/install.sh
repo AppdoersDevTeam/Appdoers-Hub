@@ -58,6 +58,6 @@ fi
 
 echo ""
 echo "Next steps:"
-echo "  1. Hub → My Account → Cursor setup → Generate token"
-echo "  2. Copy .env block into Appdoers Work/.env.hub"
+echo "  1. Hub -> My Account -> Cursor setup -> Generate token"
+echo "  2. powershell -ExecutionPolicy Bypass -File \"Appdoers CRM\\hub-cursor-kit\\setup-my-cursor-token.ps1\""
 echo "  3. Open a new Cursor agent chat — it will ask for client, project, and team member"

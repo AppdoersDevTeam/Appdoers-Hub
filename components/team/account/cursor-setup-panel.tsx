@@ -23,21 +23,24 @@ function formatWhen(iso: string | null) {
 interface Props {
   tokens: CursorTokenSummary[]
   hubUrl: string
+  hubEnvPath: string
 }
 
-export function CursorSetupPanel({ tokens: initialTokens, hubUrl }: Props) {
+export function CursorSetupPanel({ tokens: initialTokens, hubUrl, hubEnvPath }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [tokenName, setTokenName] = useState('')
   const [newToken, setNewToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState<'env' | 'token' | null>(null)
+  const [copied, setCopied] = useState<'env' | 'token' | 'script' | null>(null)
 
   const envSnippet = newToken
     ? `APPDOERS_HUB_URL=${hubUrl}\nAPPDOERS_CURSOR_TOKEN=${newToken}`
     : ''
 
-  const copyText = async (text: string, kind: 'env' | 'token') => {
+  const setupScript = `powershell -ExecutionPolicy Bypass -File "Appdoers CRM\\hub-cursor-kit\\setup-my-cursor-token.ps1"`
+
+  const copyText = async (text: string, kind: 'env' | 'token' | 'script') => {
     await navigator.clipboard.writeText(text)
     setCopied(kind)
     setTimeout(() => setCopied(null), 2500)
@@ -78,30 +81,49 @@ export function CursorSetupPanel({ tokens: initialTokens, hubUrl }: Props) {
       <div>
         <h2 className="text-sm font-semibold text-slate-900">Cursor setup</h2>
         <p className="mt-1 text-xs text-slate-500">
-          Connect Cursor to Hub for tickets and time tracking. Everyone on the team uses the
-          same repo — each person still needs their own token so work logs to the right name.
+          One-time setup on <strong>your laptop</strong>. Same repo and same Cursor login for
+          everyone is fine — your token saves to your computer only, never the git repo.
         </p>
       </div>
 
       <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-600">
-        <li>Generate your token below (one per person).</li>
-        <li>Copy the env block into <code className="rounded bg-slate-100 px-1">Appdoers Work\.env.hub</code> on your computer.</li>
+        <li>Generate your token below.</li>
         <li>
-          Run once:{' '}
-          <code className="rounded bg-slate-100 px-1 text-xs">
-            node tools/hub-workflow-cli.mjs verify-setup
-          </code>
+          Run the setup script once (from your <code className="rounded bg-slate-100 px-1">Appdoers Work</code>{' '}
+          folder) and paste the token when asked.
         </li>
-        <li>Open your project folder in Cursor and start an agent chat — it will ask client, project, and confirm your name.</li>
+        <li>
+          Saved to{' '}
+          <code className="rounded bg-slate-100 px-1 text-xs break-all">{hubEnvPath}</code> — you
+          never edit this again.
+        </li>
+        <li>Open your project folder in Cursor → new Agent chat → pick client and project.</li>
       </ol>
+
+      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+        <p className="text-xs font-medium text-slate-700">Setup script (run once per laptop)</p>
+        <pre className="mt-1 overflow-x-auto text-xs text-slate-600 whitespace-pre-wrap">{setupScript}</pre>
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-2"
+          onClick={() => copyText(setupScript, 'script')}
+        >
+          {copied === 'script' ? 'Copied!' : 'Copy setup command'}
+        </Button>
+      </div>
 
       {newToken && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 space-y-3">
           <p className="text-sm font-medium text-emerald-900">
             Token created — copy now. It will not be shown again.
           </p>
+          <p className="text-xs text-emerald-800">
+            Easiest: run the setup script above and paste when prompted. Or copy the block below
+            into <code className="rounded bg-white/80 px-1">{hubEnvPath}</code>
+          </p>
           <div>
-            <label className={labelClass}>Paste into .env.hub</label>
+            <label className={labelClass}>.env contents</label>
             <textarea
               readOnly
               rows={3}
@@ -168,10 +190,6 @@ export function CursorSetupPanel({ tokens: initialTokens, hubUrl }: Props) {
           </ul>
         </div>
       )}
-
-      <p className="text-xs text-slate-500 border-t border-slate-100 pt-3">
-        Sharing one computer? Only one token can live in <code className="rounded bg-slate-100 px-1">.env.hub</code> at a time — swap it when someone else uses that machine.
-      </p>
     </div>
   )
 }

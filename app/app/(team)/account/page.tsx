@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation'
+import os from 'node:os'
+import path from 'node:path'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { ProfileEditor } from '@/components/team/account/profile-editor'
@@ -29,13 +31,19 @@ export default async function AccountPage() {
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, '') ??
     'https://appdoers-hub-two.vercel.app'
 
+  const hubEnvPath = path.join(
+    process.env.USERPROFILE || process.env.HOME || os.homedir(),
+    '.appdoers',
+    'hub.env'
+  )
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="My Account"
         subtitle="Profile, password, and Cursor connection"
       />
-      <CursorSetupPanel tokens={tokens} hubUrl={hubUrl} />
+      <CursorSetupPanel tokens={tokens} hubUrl={hubUrl} hubEnvPath={hubEnvPath} />
       <ProfileEditor
         user={{
           id: teamUser.id as string,

@@ -38,12 +38,19 @@ function parseDotEnv(content) {
   return values
 }
 
+function getUserHubEnvPath() {
+  const home = process.env.USERPROFILE || process.env.HOME || ''
+  if (!home) return null
+  return path.join(home, '.appdoers', 'hub.env')
+}
+
 function loadHubEnv() {
   const candidates = [
+    getUserHubEnvPath(),
     path.join(workspaceRoot, '.env.local'),
     path.join(workspaceRoot, '.env.hub'),
     path.join(workspaceRoot, '..', '.env.hub'),
-  ]
+  ].filter(Boolean)
 
   for (const filePath of candidates) {
     if (!fs.existsSync(filePath)) continue
@@ -94,7 +101,7 @@ Session:
   claim-ticket / move-ticket --stage developer start the active timer.
   flush-ticket-time logs unlogged active time; move-ticket --stage qa|reviewer|done auto-flushes.
 
-Required env vars:
+Required env vars (in ~/.appdoers/hub.env on your laptop, or legacy .env.hub):
   APPDOERS_HUB_URL
   APPDOERS_CURSOR_TOKEN
 `)
@@ -231,10 +238,12 @@ async function run() {
   }
 
   if (command === 'verify-setup') {
+    const userEnvPath = getUserHubEnvPath()
     const checks = {
       hub_url_set: Boolean(HUB_URL),
       token_set: Boolean(HUB_TOKEN),
       hub_url: HUB_URL || null,
+      env_file: userEnvPath,
       whoami: null,
       session: readSession(),
       ok: false,
