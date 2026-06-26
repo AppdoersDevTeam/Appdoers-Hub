@@ -43,3 +43,13 @@ node "tools/hub-workflow-cli.mjs" move-ticket --ticket-id "<ticket-uuid>" --stag
 - `.cursor/rules/hub-agent-behavior.mdc`
 
 These rules tell Cursor agents to create/use Hub tickets first and follow full PM/Designer/Developer/QA/Reviewer workflow.
+
+## 6) Install on other projects
+
+Copy the `hub-cursor-kit/` folder from this repo, then from the target project root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "path\to\hub-cursor-kit\install.ps1" -TargetProject "C:\path\to\your-project"
+```
+
+This installs `tools/hub-workflow-cli.mjs`, `tools/hub-ticket-time.mjs`, Cursor rules, and `.gitignore` entries for session/time files.
