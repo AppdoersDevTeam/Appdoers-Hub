@@ -21,12 +21,14 @@ function makeToken() {
   return `apd_${randomBytes(24).toString('hex')}`
 }
 
-async function requireUser() {
+async function requireUser(): Promise<
+  { user: { id: string } } | { error: string }
+> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not authenticated' as const }
+  if (!user) return { error: 'Not authenticated' }
   return { user }
 }
 
@@ -35,7 +37,7 @@ export async function listMyCursorTokensAction(): Promise<
 > {
   try {
     const auth = await requireUser()
-    if ('error' in auth) return { success: false, error: auth.error }
+    if (!('user' in auth)) return { success: false, error: auth.error }
 
     const service = await createServiceClient()
     const { data, error } = await service
@@ -57,7 +59,7 @@ export async function createCursorTokenAction(
 ): Promise<ActionResult<{ token: string; name: string }>> {
   try {
     const auth = await requireUser()
-    if ('error' in auth) return { success: false, error: auth.error }
+    if (!('user' in auth)) return { success: false, error: auth.error }
 
     const tokenName = name.trim()
     if (!tokenName) return { success: false, error: 'Token name is required' }
@@ -85,7 +87,7 @@ export async function revokeCursorTokenAction(
 ): Promise<ActionResult<undefined>> {
   try {
     const auth = await requireUser()
-    if ('error' in auth) return { success: false, error: auth.error }
+    if (!('user' in auth)) return { success: false, error: auth.error }
 
     const service = await createServiceClient()
     const { error } = await service
