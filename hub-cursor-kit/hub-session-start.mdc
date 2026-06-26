@@ -1,39 +1,47 @@
 ---
-description: Require client and project selection at the start of each Hub coding session
+description: Require client, project, and team member confirmation at the start of every new Cursor agent chat
 alwaysApply: true
 ---
 
 # Hub Session Start
 
-Before creating tickets or making code edits for a new request, ensure the active Hub client and project are set for this workspace.
+Before creating tickets or making code edits, confirm the active Hub client, project, and team member for this workspace.
 
-## Session start checklist
+## Every new agent chat (required)
 
-1. Run `node tools/hub-workflow-cli.mjs show-session`
-2. If no session exists, or the user is working for a different client/project:
+Run this checklist on the **first message** of every new Cursor agent conversation — even if `.hub-session.json` already exists.
+
+1. Run `node tools/hub-workflow-cli.mjs whoami` — show the authenticated team member and token name.
+2. Run `node tools/hub-workflow-cli.mjs show-session`.
+3. **Ask the user to confirm** via AskQuestion:
+   - If session exists: "Continue as {client_name} / {project_name} / {team_member_name}?"
+   - If no session or user wants to change: proceed with full selection below.
+4. If session is missing or user declines the existing session:
    - Run `node tools/hub-workflow-cli.mjs list-clients`
    - **Ask the user which client** this work is for
    - Run `node tools/hub-workflow-cli.mjs list-projects --client-id "<client-uuid>"`
    - **Ask the user which project** under that client
-   - Run `node tools/hub-workflow-cli.mjs set-session --client-id "<client-uuid>" --project-id "<project-uuid>"`
-3. Confirm session with `show-session` before `create-ticket`
+   - **Confirm team member** matches `whoami` output — the session team member must be the token owner
+   - If user says they are a different person, **stop** and tell them to update `APPDOERS_CURSOR_TOKEN` in `.env.local` or `.env.hub`
+   - Run `node tools/hub-workflow-cli.mjs set-session --client-id "<uuid>" --project-id "<uuid>" --team-user-id "<uuid>" --team-member-name "<name>"`
+5. Confirm with `show-session` before `create-ticket`.
+6. Echo confirmed `client_name`, `project_name`, `team_member_name`, and ids in the first status update.
 
 ## Rules
 
-- Never guess client or project — always ask when session is missing or unclear
+- Never guess client, project, or team member — always ask when session is missing or unconfirmed
 - Match folder context only as a hint; user confirmation wins
-- Multiple clients can share the same project name (e.g. two "New Website" projects) — always use ids from `list-projects --client-id`
+- Multiple clients can share the same project name — always use ids from `list-projects --client-id`
 - `create-ticket` uses the session project when `--project-id` is omitted
-- Include active `client_name`, `project_name`, and ids in status updates
+- `claim-ticket` uses session team member for assignment when `--assigned-to` is omitted
 - To switch client/project mid-session: `clear-session` then repeat the checklist
 
 ## Portable setup (any repo)
 
-Copy from `hub-cursor-kit/` in Appdoers CRM repo, or ensure this repo has:
+Install from `hub-cursor-kit/` in Appdoers CRM:
 
-- `tools/hub-workflow-cli.mjs`
-- `tools/hub-ticket-time.mjs`
-- `.env.local` with `APPDOERS_HUB_URL` and `APPDOERS_CURSOR_TOKEN`
-- Rule files under `.cursor/rules/`
+```powershell
+powershell -ExecutionPolicy Bypass -File "path\to\hub-cursor-kit\install.ps1" -TargetProject "C:\path\to\your-project"
+```
 
-Run `hub-cursor-kit/install.ps1` from the kit to copy everything into a new project.
+Requires `tools/hub-workflow-cli.mjs`, `tools/hub-ticket-time.mjs`, `.cursor/rules/` Hub rule files, and `.env.local` (or parent `.env.hub`) with `APPDOERS_HUB_URL` and `APPDOERS_CURSOR_TOKEN`.

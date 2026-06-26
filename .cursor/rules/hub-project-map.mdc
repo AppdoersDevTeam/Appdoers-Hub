@@ -1,0 +1,31 @@
+---
+description: Directory hints for Hub client/project selection — always confirm via session
+alwaysApply: true
+---
+
+# Appdoers Hub Project Mapping
+
+When creating a ticket, use the client and project from the active Hub session. Never hardcode project UUIDs.
+
+## Always confirm live
+
+1. Run `node tools/hub-workflow-cli.mjs list-clients`
+2. Run `node tools/hub-workflow-cli.mjs list-projects --client-id "<client-uuid>"`
+3. Ask the user to confirm client + project (match **both** `company_name` and project `name`)
+4. Save with `set-session`
+
+## Directory hints (confirm with user via session)
+
+These are shortcuts only — always verify via `list-clients` / `list-projects`:
+
+- `Appdoers CRM/` → usually Appdoers / Business Setup & Launch
+- `AppdoersWebsite/` → usually Appdoers / New Website
+- `ABCWebsite/` → usually Ashburton Baptist Church / New Website
+- Other folders → ask user, then `set-session`
+
+## Selection rules
+
+- Match **both** project name and `client_name` — never pick a project id from name alone
+- After creating or listing tickets, confirm `client_name` in the response matches the intended client
+- If a ticket is on the wrong project/client, fix with `update-ticket --project-id "<correct-uuid>" --note "Reassigned to correct client/project"`
+- If mapping is unclear, ask the user — do not default silently

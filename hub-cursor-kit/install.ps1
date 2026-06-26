@@ -17,8 +17,17 @@ New-Item -ItemType Directory -Force -Path $rulesDir | Out-Null
 
 Copy-Item (Join-Path $KitDir 'hub-workflow-cli.mjs') (Join-Path $toolsDir 'hub-workflow-cli.mjs') -Force
 Copy-Item (Join-Path $KitDir 'hub-ticket-time.mjs') (Join-Path $toolsDir 'hub-ticket-time.mjs') -Force
-Copy-Item (Join-Path $KitDir 'hub-session-start.mdc') (Join-Path $rulesDir 'hub-session-start.mdc') -Force
-Copy-Item (Join-Path $KitDir 'hub-workflow-enforcement.mdc') (Join-Path $rulesDir 'hub-workflow-enforcement.mdc') -Force
+
+$ruleFiles = @(
+  'hub-session-start.mdc',
+  'hub-workflow-enforcement.mdc',
+  'hub-agent-behavior.mdc',
+  'hub-project-map.mdc'
+)
+foreach ($rule in $ruleFiles) {
+  Copy-Item (Join-Path $KitDir $rule) (Join-Path $rulesDir $rule) -Force
+  Write-Host "  Installed rule: $rule"
+}
 
 $gitignoreLines = @('.hub-session.json', '.hub-ticket-time.json')
 if (Test-Path $gitignorePath) {
@@ -46,7 +55,28 @@ if (-not (Test-Path $envPath)) {
 }
 
 Write-Host ''
-Write-Host 'Done. Next steps:'
-Write-Host '  1. Set APPDOERS_CURSOR_TOKEN in .env.local'
-Write-Host '  2. node tools/hub-workflow-cli.mjs list-clients'
-Write-Host '  3. node tools/hub-workflow-cli.mjs set-session --client-id <uuid> --project-id <uuid>'
+Write-Host 'Running verify-setup...'
+Push-Location $TargetProject
+try {
+  node (Join-Path $toolsDir 'hub-workflow-cli.mjs') verify-setup
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host ''
+    Write-Host 'Install complete, but verify-setup failed. Set APPDOERS_CURSOR_TOKEN in .env.local (or parent .env.hub) and run:'
+    Write-Host "  node tools/hub-workflow-cli.mjs verify-setup"
+  } else {
+    Write-Host ''
+    Write-Host 'Install complete. Hub Cursor Kit is ready.'
+  }
+} catch {
+  Write-Host ''
+  Write-Host 'Install complete. Run verify-setup after setting your token:'
+  Write-Host "  node tools/hub-workflow-cli.mjs verify-setup"
+} finally {
+  Pop-Location
+}
+
+Write-Host ''
+Write-Host 'Next steps:'
+Write-Host '  1. Create a Cursor API token in Hub Settings (one per team member)'
+Write-Host '  2. Set APPDOERS_CURSOR_TOKEN in .env.local or parent .env.hub'
+Write-Host '  3. Open a new Cursor agent chat — it will ask for client, project, and team member'

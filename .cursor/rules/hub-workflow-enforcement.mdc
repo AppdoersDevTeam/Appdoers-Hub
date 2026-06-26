@@ -6,9 +6,9 @@ alwaysApply: true
 # Appdoers Hub Workflow Enforcement
 
 - Appdoers Hub is the source of truth for work tracking.
-- Follow `.cursor/rules/hub-session-start.mdc` before the first ticket in each session.
+- Follow `.cursor/rules/hub-session-start.mdc` before the first ticket in each agent chat.
 - Before code edits, ensure a Hub ticket exists (user-provided id or create one).
-- Use `node tools/hub-workflow-cli.mjs` for all Hub actions.
+- Use `node tools/hub-workflow-cli.mjs` for **all** Hub actions — never call Hub HTTP endpoints directly.
 - Include ticket id in updates and final responses.
 
 ## Stage flow
@@ -20,6 +20,7 @@ alwaysApply: true
 
 ## Commands
 
+- Setup: `whoami`, `verify-setup`
 - Session: `show-session`, `list-clients`, `list-projects --client-id <uuid>`, `set-session`, `clear-session`
 - Tickets: `create-ticket`, `get-ticket`, `list-tickets`, `update-ticket`, `move-ticket`, `claim-ticket`, `note`
 - Time: `show-ticket-time`, `flush-ticket-time`
@@ -31,6 +32,7 @@ alwaysApply: true
 - Gaps longer than 5 minutes between Hub CLI touches count as idle and are **not** logged.
 - When implementation for a user request is complete, run `flush-ticket-time --ticket-id "<id>"` before responding.
 - Moving to `qa`, `reviewer`, or `done` auto-flushes and logs active time to the ticket.
-- **Never** manually pass `hours` or `time_spent` to the API — the CLI calculates active time automatically.
+- **Never** manually pass hours or time_spent — the CLI calculates and logs active time automatically.
+- Time is attributed to the token owner; each team member should use their own `APPDOERS_CURSOR_TOKEN`.
 
 If blocked, keep stage and add note prefixed with `BLOCKED:`.

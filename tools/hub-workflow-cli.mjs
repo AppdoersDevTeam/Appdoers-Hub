@@ -69,25 +69,28 @@ function usage() {
   console.log(`Appdoers Hub Workflow CLI
 
 Usage:
+  node tools/hub-workflow-cli.mjs whoami
+  node tools/hub-workflow-cli.mjs verify-setup
   node tools/hub-workflow-cli.mjs list-clients [--status active]
   node tools/hub-workflow-cli.mjs list-projects [--client-id <uuid>]
   node tools/hub-workflow-cli.mjs show-session
-  node tools/hub-workflow-cli.mjs set-session --client-id <uuid> --project-id <uuid> [--client-name "..."] [--project-name "..."]
+  node tools/hub-workflow-cli.mjs set-session --client-id <uuid> --project-id <uuid> --team-user-id <uuid> [--team-member-name "..."] [--client-name "..."] [--project-name "..."] [--force]
   node tools/hub-workflow-cli.mjs clear-session
   node tools/hub-workflow-cli.mjs list-tickets [--project-id <uuid>] [--stage pm] [--limit 50]
   node tools/hub-workflow-cli.mjs get-ticket --ticket-id <uuid>
   node tools/hub-workflow-cli.mjs create-ticket --title "..." [--project-id <uuid>] [--type feature] [--priority p2] [--stage pm] [--description "..."] [--note "..."] [--assigned-to <uuid>]
   node tools/hub-workflow-cli.mjs move-ticket --ticket-id <uuid> --stage <pm|designer|developer|qa|reviewer|done> [--note "..."]
   node tools/hub-workflow-cli.mjs update-ticket --ticket-id <uuid> [--project-id <uuid>] [--title "..."] [--description "..."] [--clear-description] [--type feature] [--priority p2] [--assigned-to <uuid>] [--clear-assigned] [--note "..."]
-  node tools/hub-workflow-cli.mjs claim-ticket --ticket-id <uuid> [--agent-name "Cursor AI"] [--assigned-to <uuid>] [--note "..."]
+  node tools/hub-workflow-cli.mjs claim-ticket --ticket-id <uuid> [--agent-name "..."] [--assigned-to <uuid>] [--note "..."]
   node tools/hub-workflow-cli.mjs note --ticket-id <uuid> --note "..."
   node tools/hub-workflow-cli.mjs flush-ticket-time --ticket-id <uuid> [--note "..."] [--finalize]
   node tools/hub-workflow-cli.mjs show-ticket-time [--ticket-id <uuid>]
 
 Session:
-  .hub-session.json in the project root stores the active client/project for this coding session.
+  .hub-session.json stores active client, project, and team member for this workspace.
   .hub-ticket-time.json tracks active work time per ticket (idle gaps over 5 minutes are excluded).
   create-ticket uses the session project when --project-id is omitted.
+  claim-ticket uses session team member for assignment when --assigned-to is omitted.
   claim-ticket / move-ticket --stage developer start the active timer.
   flush-ticket-time logs unlogged active time; move-ticket --stage qa|reviewer|done auto-flushes.
 
@@ -159,6 +162,10 @@ function writeSession(session) {
   fs.writeFileSync(sessionFilePath, `${JSON.stringify(session, null, 2)}\n`, 'utf8')
 }
 
+async function fetchWhoami() {
+  return hubFetch('/api/cursor/me')
+}
+
 async function resolveProjectId(explicitProjectId) {
   if (explicitProjectId) return String(explicitProjectId)
   const session = readSession()
@@ -166,6 +173,20 @@ async function resolveProjectId(explicitProjectId) {
   throw new Error(
     'No project selected. Run set-session after asking the user which client and project to use, or pass --project-id.'
   )
+}
+
+function resolveSessionAssignee(explicitAssignedTo) {
+  if (explicitAssignedTo) return String(explicitAssignedTo)
+  const session = readSession()
+  if (session?.team_user_id) return String(session.team_user_id)
+  return undefined
+}
+
+function resolveSessionAgentName(explicitAgentName) {
+  if (explicitAgentName) return String(explicitAgentName)
+  const session = readSession()
+  if (session?.team_member_name) return String(session.team_member_name)
+  return 'Cursor AI'
 }
 
 function touchTicketTime(ticketId) {
@@ -200,6 +221,70 @@ async function run() {
     process.exit(0)
   }
 
+  if (command === 'whoami') {
+    const data = await fetchWhoami()
+    print({
+      ...data,
+      message: `Authenticated as ${data.team_user?.full_name ?? 'Unknown'} (token: ${data.token?.name ?? 'Unknown'}).`,
+    })
+    return
+  }
+
+  if (command === 'verify-setup') {
+    const checks = {
+      hub_url_set: Boolean(HUB_URL),
+      token_set: Boolean(HUB_TOKEN),
+      hub_url: HUB_URL || null,
+      whoami: null,
+      session: readSession(),
+      ok: false,
+    }
+
+    if (!checks.hub_url_set || !checks.token_set) {
+      print({
+        ...checks,
+        ok: false,
+        message:
+          'Missing APPDOERS_HUB_URL or APPDOERS_CURSOR_TOKEN. Add them to .env.local or .env.hub.',
+      })
+      process.exit(1)
+    }
+
+    try {
+      checks.whoami = await fetchWhoami()
+      checks.ok = true
+      print({
+        ...checks,
+        message: `Setup OK. Authenticated as ${checks.whoami.team_user?.full_name ?? 'Unknown'}.`,
+      })
+    } catch (err) {
+      const needsDeploy = String(err.message).includes('404')
+      if (needsDeploy) {
+        try {
+          await hubFetch('/api/cursor/clients?status=active')
+          checks.ok = true
+          print({
+            ...checks,
+            whoami_unavailable: true,
+            message:
+              'Setup OK (token valid). Deploy latest Hub for whoami support — using list-clients fallback.',
+          })
+          return
+        } catch (fallbackErr) {
+          err = fallbackErr
+        }
+      }
+      print({
+        ...checks,
+        ok: false,
+        error: err.message,
+        message: 'Token or Hub URL invalid. Check APPDOERS_HUB_URL and APPDOERS_CURSOR_TOKEN.',
+      })
+      process.exit(1)
+    }
+    return
+  }
+
   if (command === 'list-clients') {
     const params = new URLSearchParams()
     if (args.status) params.set('status', String(args.status))
@@ -221,16 +306,69 @@ async function run() {
   if (command === 'show-session') {
     const session = readSession()
     if (!session) {
-      print({ session: null, message: 'No active Hub session. Ask the user which client and project to use, then run set-session.' })
+      print({
+        session: null,
+        message:
+          'No active Hub session. Run whoami, ask the user which client/project/team member to use, then run set-session.',
+      })
       return
     }
-    print({ session })
+
+    let tokenOwner = null
+    let team_member_mismatch = false
+    try {
+      const me = await fetchWhoami()
+      tokenOwner = me.team_user
+      if (session.team_user_id && tokenOwner?.id && session.team_user_id !== tokenOwner.id) {
+        team_member_mismatch = true
+      }
+    } catch {
+      // whoami unavailable — still show session
+    }
+
+    print({
+      session,
+      token_owner: tokenOwner,
+      team_member_mismatch,
+      message: team_member_mismatch
+        ? 'Session team member does not match token owner. Run clear-session and set-session again, or update APPDOERS_CURSOR_TOKEN.'
+        : 'Active Hub session.',
+    })
     return
   }
 
   if (command === 'set-session') {
     if (!args['client-id']) throw new Error('--client-id is required')
     if (!args['project-id']) throw new Error('--project-id is required')
+
+    let tokenTeamUserId
+    let tokenTeamMemberName
+    try {
+      const me = await fetchWhoami()
+      tokenTeamUserId = me.team_user?.id
+      tokenTeamMemberName = me.team_user?.full_name ?? 'Unknown'
+    } catch (err) {
+      if (!args['team-user-id'] || !args['team-member-name']) {
+        throw new Error(
+          `whoami unavailable (${err.message}). Pass --team-user-id and --team-member-name explicitly, or deploy latest Hub.`
+        )
+      }
+    }
+
+    let teamUserId = args['team-user-id'] ? String(args['team-user-id']) : tokenTeamUserId
+    let teamMemberName = args['team-member-name']
+      ? String(args['team-member-name'])
+      : tokenTeamMemberName
+
+    if (!teamUserId) {
+      throw new Error('--team-user-id is required (or run whoami to resolve from token).')
+    }
+
+    if (!args.force && tokenTeamUserId && teamUserId !== tokenTeamUserId) {
+      throw new Error(
+        `Team member ${teamMemberName} (${teamUserId}) does not match token owner ${tokenTeamMemberName} (${tokenTeamUserId}). Use the correct APPDOERS_CURSOR_TOKEN or pass --force.`
+      )
+    }
 
     let clientName = args['client-name'] ? String(args['client-name']) : undefined
     let projectName = args['project-name'] ? String(args['project-name']) : undefined
@@ -253,6 +391,8 @@ async function run() {
       client_name: clientName,
       project_id: String(args['project-id']),
       project_name: projectName,
+      team_user_id: teamUserId,
+      team_member_name: teamMemberName,
       updated_at: new Date().toISOString(),
     }
     writeSession(session)
@@ -323,6 +463,7 @@ async function run() {
   if (command === 'create-ticket') {
     if (!args.title) throw new Error('--title is required')
     const projectId = await resolveProjectId(args['project-id'])
+    const assignedTo = resolveSessionAssignee(args['assigned-to'])
     const payload = {
       project_id: projectId,
       title: String(args.title),
@@ -331,7 +472,7 @@ async function run() {
       priority: args.priority ? String(args.priority) : 'p2',
       stage: args.stage ? String(args.stage) : 'pm',
       note: args.note ? String(args.note) : undefined,
-      assigned_to: args['assigned-to'] ? String(args['assigned-to']) : undefined,
+      assigned_to: assignedTo,
     }
     const data = await hubFetch('/api/cursor/tickets', {
       method: 'POST',
@@ -386,7 +527,9 @@ async function run() {
     if (args.note) payload.note = String(args.note)
 
     if (Object.keys(payload).length === 0) {
-      throw new Error('Provide at least one field to update: --project-id, --title, --description, --clear-description, --type, --priority, --assigned-to, --clear-assigned')
+      throw new Error(
+        'Provide at least one field to update: --project-id, --title, --description, --clear-description, --type, --priority, --assigned-to, --clear-assigned'
+      )
     }
 
     touchTicketTime(args['ticket-id'])
@@ -402,7 +545,8 @@ async function run() {
     if (!args['ticket-id']) throw new Error('--ticket-id is required')
     const ticketId = String(args['ticket-id'])
     const timer = ticketTime.startTicket(ticketId)
-    const agentName = args['agent-name'] ? String(args['agent-name']) : 'Cursor AI'
+    const agentName = resolveSessionAgentName(args['agent-name'])
+    const assignedTo = resolveSessionAssignee(args['assigned-to'])
     const claimNote = args.note
       ? String(args.note)
       : `Claimed by ${agentName}. Starting implementation now.`
@@ -410,7 +554,7 @@ async function run() {
       claim: true,
       agent_name: agentName,
       note: claimNote,
-      assigned_to: args['assigned-to'] ? String(args['assigned-to']) : undefined,
+      assigned_to: assignedTo,
     }
     const data = await hubFetch(`/api/cursor/tickets/${ticketId}`, {
       method: 'PATCH',
