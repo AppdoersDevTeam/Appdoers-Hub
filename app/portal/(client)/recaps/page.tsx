@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils/cn'
 import { formatDate, formatLongDate } from '@/lib/utils/format'
+import { Download } from 'lucide-react'
 
 const MONTHS = [
   'January','February','March','April','May','June',
@@ -106,16 +107,26 @@ function RecapCard({ recap, expanded }: {
   if (!expanded) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white px-5 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
             <p className="font-semibold text-gray-900">{periodLabel}</p>
             <p className="text-sm text-gray-500 mt-0.5">{workItems.length} work item{workItems.length !== 1 ? 's' : ''} completed</p>
           </div>
-          {recap.sent_at && (
-            <p className="text-xs text-gray-400">
-              {formatDate(recap.sent_at)}
-            </p>
-          )}
+          <div className="flex items-center gap-3">
+            <a
+              href={`/api/recaps/${recap.id}/export-pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" /> PDF
+            </a>
+            {recap.sent_at && (
+              <p className="text-xs text-gray-400">
+                {formatDate(recap.sent_at)}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -133,13 +144,25 @@ function RecapCard({ recap, expanded }: {
     <div className="rounded-xl border border-blue-200 bg-white overflow-hidden shadow-sm">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-5">
-        <p className="text-xs text-blue-200 font-medium uppercase tracking-wide">Monthly Progress Report</p>
-        <h2 className="text-2xl font-bold text-white mt-1">{periodLabel}</h2>
-        {recap.sent_at && (
-          <p className="text-blue-200 text-sm mt-1">
-            Sent {formatLongDate(recap.sent_at)}
-          </p>
-        )}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs text-blue-200 font-medium uppercase tracking-wide">Monthly Progress Report</p>
+            <h2 className="text-2xl font-bold text-white mt-1">{periodLabel}</h2>
+            {recap.sent_at && (
+              <p className="text-blue-200 text-sm mt-1">
+                Sent {formatLongDate(recap.sent_at)}
+              </p>
+            )}
+          </div>
+          <a
+            href={`/api/recaps/${recap.id}/export-pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-white/30 bg-white/10 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/20 transition-colors backdrop-blur-sm"
+          >
+            <Download className="h-3.5 w-3.5" /> Download PDF
+          </a>
+        </div>
       </div>
 
       <div className="p-6 space-y-6">

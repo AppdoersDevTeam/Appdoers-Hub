@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Trash2, Send, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Send, RefreshCw, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { saveRecapAction, sendRecapAction, generateRecapDataAction, type RecapWorkItem } from '@/lib/actions/recaps'
@@ -163,6 +163,14 @@ export function RecapEditor({
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <a
+            href={`/api/recaps/${recap.id}/export-pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:border-blue-400 hover:bg-blue-100 transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" /> Export PDF
+          </a>
           {!isSent && (
             <>
               <Button
@@ -327,6 +335,7 @@ export function RecapEditor({
           <div className="hub-card space-y-2">
             <h3 className="text-sm font-semibold text-slate-900">Tips</h3>
             <ul className="space-y-1.5 text-xs text-slate-500">
+              <li>• Save your draft before exporting — the PDF uses saved content</li>
               <li>• Use "Auto-fill from Data" to pull tasks + hours from the month automatically</li>
               <li>• Keep the intro friendly and personal — mention the client by name</li>
               <li>• Be specific about what was done — avoid vague phrases like "worked on the site"</li>
