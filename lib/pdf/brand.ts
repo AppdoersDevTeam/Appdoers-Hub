@@ -1,0 +1,8 @@
+export const PDF_BRAND = '#2563eb'
+export const PDF_BRAND_DARK = '#1e40af'
+export const PDF_BRAND_LIGHT = '#dbeafe'
+export const PDF_SLATE_900 = '#0f172a'
+export const PDF_SLATE_700 = '#334155'
+export const PDF_SLATE_600 = '#475569'
+export const PDF_SLATE_400 = '#94a3b8'
+export const PDF_BORDER = '#e2e8f0'

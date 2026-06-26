@@ -67,7 +67,7 @@ export default async function PortalInvoicesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
-                {['Invoice #', 'Issue Date', 'Due Date', 'Amount', 'Status'].map((h) => (
+                {['Invoice #', 'Issue Date', 'Due Date', 'Amount', 'Status', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-400">{h}</th>
                 ))}
               </tr>
@@ -86,6 +86,16 @@ export default async function PortalInvoicesPage() {
                     <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(Number(inv.total))}</td>
                     <td className="px-4 py-3">
                       <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>{st.label}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <a
+                        href={`/api/invoices/${inv.id}/export-pdf`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        PDF
+                      </a>
                     </td>
                   </tr>
                 )

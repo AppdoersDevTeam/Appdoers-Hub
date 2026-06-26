@@ -4,18 +4,13 @@ import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
 import { sendSlackMessage } from '@/lib/slack'
+import type { InvoiceLine } from '@/lib/invoices/types'
+
+export type { InvoiceLine } from '@/lib/invoices/types'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
   | { success: false; error: string }
-
-export interface InvoiceLine {
-  description: string
-  quantity: number
-  unit_price: number
-  amount: number
-  time_entry_id?: string | null
-}
 
 export interface InvoiceInput {
   client_id: string

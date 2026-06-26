@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Trash2, Send, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Send, CheckCircle, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { updateInvoiceAction, sendInvoiceAction, markInvoicePaidAction, type InvoiceLine } from '@/lib/actions/invoices'
@@ -146,6 +146,14 @@ export function InvoiceEditor({
           {project && <span className="text-sm text-slate-500">· {project.name}</span>}
         </div>
         <div className="flex items-center gap-2">
+          <a
+            href={`/api/invoices/${invoice.id}/export-pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:border-blue-400 hover:bg-blue-100 transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" /> Download PDF
+          </a>
           {!isLocked && (
             <Button size="sm" variant="outline" onClick={handleSave} disabled={isPending}>Save</Button>
           )}

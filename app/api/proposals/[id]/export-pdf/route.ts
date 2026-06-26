@@ -1,23 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { NextRequest } from 'next/server'
 import React from 'react'
+import { createClient } from '@/lib/supabase/server'
 import { ProposalPDFDocument } from '@/lib/proposals/proposal-pdf-document'
 import type { ProposalSection } from '@/lib/proposals/proposal-pdf-document'
 import type { ServiceCatalogEntry } from '@/lib/proposals/service-guide'
+import { renderPdfRoute } from '@/lib/pdf/render-route'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: proposal } = await supabase
+  const { data: proposal, error } = await supabase
     .from('proposals')
     .select('*, clients(company_name, contact_name, contact_email)')
     .eq('id', id)
-    .single()
+    .maybeSingle()
 
-  if (!proposal) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (error || !proposal) {
+    return Response.json({ error: 'Not found' }, { status: 404 })
   }
 
   const { data: catalog } = await supabase
@@ -44,27 +47,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     monthly_fee: Number(s.monthly_fee),
   }))
 
-  try {
-    const buffer = await renderToBuffer(
-      React.createElement(ProposalPDFDocument, {
-        title: proposal.title,
-        clientName,
-        contactName: client?.contact_name,
-        sections,
-        catalog: catalogEntries,
-        version: proposal.version,
-      })
-    )
-
-    const filename = `${proposal.title.replace(/[^a-z0-9]/gi, '_')}_Quote_v${proposal.version}.pdf`
-    return new NextResponse(new Uint8Array(buffer), {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-      },
-    })
-  } catch (err) {
-    console.error('PDF generation error:', err)
-    return NextResponse.json({ error: 'PDF generation failed' }, { status: 500 })
-  }
+  return renderPdfRoute(
+    React.createElement(ProposalPDFDocument, {
+      title: proposal.title,
+      clientName,
+      contactName: client?.contact_name,
+      sections,
+      catalog: catalogEntries,
+      version: proposal.version,
+    }),
+    `${proposal.title}_Quote_v${proposal.version}.pdf`
+  )
 }

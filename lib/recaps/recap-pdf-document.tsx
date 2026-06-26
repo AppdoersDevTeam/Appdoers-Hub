@@ -1,15 +1,16 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
-import type { RecapWorkItem } from '@/lib/actions/recaps'
-
-const BRAND = '#2563eb'
-const BRAND_DARK = '#1e40af'
-const BRAND_LIGHT = '#dbeafe'
-const SLATE_900 = '#0f172a'
-const SLATE_700 = '#334155'
-const SLATE_600 = '#475569'
-const SLATE_400 = '#94a3b8'
-const BORDER = '#e2e8f0'
+import type { RecapWorkItem } from '@/lib/recaps/types'
+import {
+  PDF_BRAND,
+  PDF_BRAND_DARK,
+  PDF_BRAND_LIGHT,
+  PDF_BORDER,
+  PDF_SLATE_400,
+  PDF_SLATE_700,
+  PDF_SLATE_900,
+} from '@/lib/pdf/brand'
+import { PdfPageFooter, PdfPlainText } from '@/lib/pdf/primitives'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -34,11 +35,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     fontFamily: 'Helvetica',
     fontSize: 10.5,
-    color: SLATE_700,
+    color: PDF_SLATE_700,
     backgroundColor: '#ffffff',
   },
   headerBand: {
-    backgroundColor: BRAND,
+    backgroundColor: PDF_BRAND,
     paddingTop: 40,
     paddingBottom: 28,
     paddingHorizontal: 48,
@@ -76,27 +77,21 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: 10,
     paddingBottom: 6,
     borderBottomWidth: 2,
-    borderBottomColor: BRAND,
+    borderBottomColor: PDF_BRAND,
     borderBottomStyle: 'solid',
-  },
-  sectionIcon: {
-    fontSize: 11,
-    marginRight: 6,
   },
   sectionTitle: {
     fontSize: 13,
     fontFamily: 'Helvetica-Bold',
-    color: SLATE_900,
+    color: PDF_SLATE_900,
   },
   paragraph: {
     fontSize: 10.5,
     lineHeight: 1.7,
-    color: SLATE_700,
+    color: PDF_SLATE_700,
     marginBottom: 6,
   },
   categoryBlock: {
@@ -106,7 +101,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 10,
     marginBottom: 8,
   },
   categoryBadgeText: {
@@ -122,28 +116,27 @@ const styles = StyleSheet.create({
   bulletDot: {
     width: 14,
     fontSize: 10,
-    color: BRAND,
+    color: PDF_BRAND,
     lineHeight: 1.65,
   },
   bulletText: {
     flex: 1,
     fontSize: 10.5,
     lineHeight: 1.65,
-    color: SLATE_700,
+    color: PDF_SLATE_700,
   },
   highlightBox: {
     backgroundColor: '#eff6ff',
     borderWidth: 1,
     borderColor: '#bfdbfe',
     borderStyle: 'solid',
-    borderRadius: 6,
     padding: 16,
     marginTop: 4,
   },
   highlightTitle: {
     fontSize: 12,
     fontFamily: 'Helvetica-Bold',
-    color: BRAND_DARK,
+    color: PDF_BRAND_DARK,
     marginBottom: 8,
   },
   highlightText: {
@@ -153,7 +146,6 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 12,
     marginBottom: 24,
   },
   statCard: {
@@ -161,13 +153,16 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: PDF_BORDER,
     borderStyle: 'solid',
-    borderRadius: 4,
+    marginRight: 12,
+  },
+  statCardLast: {
+    marginRight: 0,
   },
   statLabel: {
     fontSize: 7.5,
-    color: SLATE_400,
+    color: PDF_SLATE_400,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
     marginBottom: 4,
@@ -176,28 +171,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 16,
     fontFamily: 'Helvetica-Bold',
-    color: SLATE_900,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 24,
-    left: 48,
-    right: 48,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
-    borderTopStyle: 'solid',
-    paddingTop: 8,
-  },
-  footerText: {
-    fontSize: 8,
-    color: SLATE_400,
-  },
-  pageNumber: {
-    fontSize: 8,
-    color: SLATE_400,
+    color: PDF_SLATE_900,
   },
 })
 
@@ -210,36 +184,6 @@ function formatSentDate(sentAt: string | null): string | null {
   })
 }
 
-function PlainTextBlock({
-  text,
-  style,
-}: {
-  text: string
-  style: { fontSize: number; lineHeight: number; color: string; marginBottom?: number }
-}) {
-  const paragraphs = text.split(/\n\n+/).filter((p) => p.trim())
-  return React.createElement(
-    View,
-    null,
-    ...paragraphs.map((paragraph, i) =>
-      React.createElement(Text, { key: i, style: [style, i > 0 ? { marginTop: 8 } : {}] }, paragraph)
-    )
-  )
-}
-
-function PageFooter({ periodLabel }: { periodLabel: string }) {
-  return React.createElement(
-    View,
-    { style: styles.footer, fixed: true },
-    React.createElement(Text, { style: styles.footerText }, `Appdoers · ${periodLabel} Progress Report`),
-    React.createElement(Text, { style: styles.footerText }, 'appdoers.co.nz'),
-    React.createElement(Text, {
-      style: styles.pageNumber,
-      render: ({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`,
-    })
-  )
-}
-
 function WorkByCategory({ items }: { items: RecapWorkItem[] }) {
   const byCategory = items.reduce<Record<string, RecapWorkItem[]>>((acc, item) => {
     const cat = item.category || 'Other'
@@ -248,33 +192,29 @@ function WorkByCategory({ items }: { items: RecapWorkItem[] }) {
     return acc
   }, {})
 
-  const categories = Object.keys(byCategory).sort()
+  return (
+    <View>
+      {Object.keys(byCategory)
+        .sort()
+        .map((category) => {
+          const colors = CATEGORY_STYLES[category] ?? CATEGORY_STYLES.Other
+          const categoryItems = byCategory[category]
 
-  return React.createElement(
-    View,
-    null,
-    ...categories.map((category) => {
-      const colors = CATEGORY_STYLES[category] ?? CATEGORY_STYLES.Other
-      const categoryItems = byCategory[category]
-
-      return React.createElement(
-        View,
-        { key: category, style: styles.categoryBlock },
-        React.createElement(
-          View,
-          { style: [styles.categoryBadge, { backgroundColor: colors.bg }] },
-          React.createElement(Text, { style: [styles.categoryBadgeText, { color: colors.text }] }, category)
-        ),
-        ...categoryItems.map((item, i) =>
-          React.createElement(
-            View,
-            { key: i, style: styles.bulletRow },
-            React.createElement(Text, { style: styles.bulletDot }, '•'),
-            React.createElement(Text, { style: styles.bulletText }, item.description)
+          return (
+            <View key={category} style={styles.categoryBlock}>
+              <View style={[styles.categoryBadge, { backgroundColor: colors.bg }]}>
+                <Text style={[styles.categoryBadgeText, { color: colors.text }]}>{category}</Text>
+              </View>
+              {categoryItems.map((item, i) => (
+                <View key={i} style={styles.bulletRow}>
+                  <Text style={styles.bulletDot}>•</Text>
+                  <Text style={styles.bulletText}>{item.description}</Text>
+                </View>
+              ))}
+            </View>
           )
-        )
-      )
-    })
+        })}
+    </View>
   )
 }
 
@@ -299,115 +239,86 @@ export function RecapPDFDocument({
   comingNext,
   sentAt,
 }: RecapPDFProps) {
-  const periodLabel = `${MONTHS[month - 1]} ${year}`
+  const safeMonth = Math.min(12, Math.max(1, month))
+  const periodLabel = `${MONTHS[safeMonth - 1]} ${year}`
   const sentLabel = formatSentDate(sentAt)
-  const workItems = workCompleted.filter((w) => w.description?.trim())
+  const workItems = workCompleted
   const categories = new Set(workItems.map((w) => w.category || 'Other'))
 
-  return React.createElement(
-    Document,
-    {
-      title: `${periodLabel} Progress Report — ${clientName}`,
-      author: 'Appdoers',
-      subject: `Monthly progress report for ${clientName}`,
-      creator: 'Appdoers Hub',
-    },
-    React.createElement(
-      Page,
-      { size: 'A4', style: styles.page },
-      // Header band
-      React.createElement(
-        View,
-        { style: styles.headerBand },
-        React.createElement(Text, { style: styles.headerEyebrow }, 'Monthly Progress Report'),
-        React.createElement(Text, { style: styles.headerTitle }, periodLabel),
-        React.createElement(Text, { style: styles.headerClient }, clientName),
-        sentLabel
-          ? React.createElement(Text, { style: styles.headerMeta }, `Sent ${sentLabel}`)
-          : React.createElement(Text, { style: styles.headerMeta }, 'Draft — prepared by Appdoers')
-      ),
-      React.createElement(
-        View,
-        { style: styles.body },
-        // Summary stats
-        workItems.length > 0
-          ? React.createElement(
-              View,
-              { style: styles.statsRow },
-              React.createElement(
-                View,
-                { style: styles.statCard },
-                React.createElement(Text, { style: styles.statLabel }, 'Work Items'),
-                React.createElement(Text, { style: styles.statValue }, String(workItems.length))
-              ),
-              React.createElement(
-                View,
-                { style: styles.statCard },
-                React.createElement(Text, { style: styles.statLabel }, 'Categories'),
-                React.createElement(Text, { style: styles.statValue }, String(categories.size))
-              ),
-              React.createElement(
-                View,
-                { style: [styles.statCard, { backgroundColor: BRAND_LIGHT, borderColor: '#93c5fd' }] },
-                React.createElement(Text, { style: styles.statLabel }, 'Reporting Period'),
-                React.createElement(Text, { style: [styles.statValue, { fontSize: 12, color: BRAND_DARK }] }, periodLabel)
-              )
-            )
-          : null,
-        // Introduction
-        introText?.trim()
-          ? React.createElement(
-              View,
-              { style: styles.section },
-              React.createElement(
-                View,
-                { style: styles.sectionHeader },
-                React.createElement(Text, { style: styles.sectionTitle }, 'Introduction')
-              ),
-              React.createElement(PlainTextBlock, { text: introText, style: styles.paragraph })
-            )
-          : null,
-        // Work completed
-        workItems.length > 0
-          ? React.createElement(
-              View,
-              { style: styles.section },
-              React.createElement(
-                View,
-                { style: styles.sectionHeader },
-                React.createElement(Text, { style: styles.sectionTitle }, 'Work Completed This Month')
-              ),
-              React.createElement(WorkByCategory, { items: workItems })
-            )
-          : null,
-        // Performance
-        performanceNotes?.trim()
-          ? React.createElement(
-              View,
-              { style: styles.section },
-              React.createElement(
-                View,
-                { style: styles.sectionHeader },
-                React.createElement(Text, { style: styles.sectionTitle }, 'Performance & Highlights')
-              ),
-              React.createElement(PlainTextBlock, { text: performanceNotes, style: styles.paragraph })
-            )
-          : null,
-        // Coming next
-        comingNext?.trim()
-          ? React.createElement(
-              View,
-              { style: styles.section },
-              React.createElement(
-                View,
-                { style: styles.highlightBox },
-                React.createElement(Text, { style: styles.highlightTitle }, 'Coming Next Month'),
-                React.createElement(PlainTextBlock, { text: comingNext, style: styles.highlightText })
-              )
-            )
-          : null
-      ),
-      PageFooter({ periodLabel })
-    )
+  return (
+    <Document
+      title={`${periodLabel} Progress Report — ${clientName}`}
+      author="Appdoers"
+      subject={`Monthly progress report for ${clientName}`}
+      creator="Appdoers Hub"
+    >
+      <Page size="A4" style={styles.page}>
+        <View style={styles.headerBand}>
+          <Text style={styles.headerEyebrow}>Monthly Progress Report</Text>
+          <Text style={styles.headerTitle}>{periodLabel}</Text>
+          <Text style={styles.headerClient}>{clientName}</Text>
+          <Text style={styles.headerMeta}>
+            {sentLabel ? `Sent ${sentLabel}` : 'Draft — prepared by Appdoers'}
+          </Text>
+        </View>
+
+        <View style={styles.body}>
+          {workItems.length > 0 && (
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <Text style={styles.statLabel}>Work Items</Text>
+                <Text style={styles.statValue}>{String(workItems.length)}</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statLabel}>Categories</Text>
+                <Text style={styles.statValue}>{String(categories.size)}</Text>
+              </View>
+              <View style={[styles.statCard, styles.statCardLast, { backgroundColor: PDF_BRAND_LIGHT, borderColor: '#93c5fd' }]}>
+                <Text style={styles.statLabel}>Reporting Period</Text>
+                <Text style={[styles.statValue, { fontSize: 12, color: PDF_BRAND_DARK }]}>{periodLabel}</Text>
+              </View>
+            </View>
+          )}
+
+          {introText?.trim() ? (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Introduction</Text>
+              </View>
+              <PdfPlainText text={introText} style={styles.paragraph} />
+            </View>
+          ) : null}
+
+          {workItems.length > 0 ? (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Work Completed This Month</Text>
+              </View>
+              <WorkByCategory items={workItems} />
+            </View>
+          ) : null}
+
+          {performanceNotes?.trim() ? (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Performance & Highlights</Text>
+              </View>
+              <PdfPlainText text={performanceNotes} style={styles.paragraph} />
+            </View>
+          ) : null}
+
+          {comingNext?.trim() ? (
+            <View style={styles.section}>
+              <View style={styles.highlightBox}>
+                <Text style={styles.highlightTitle}>Coming Next Month</Text>
+                <PdfPlainText text={comingNext} style={styles.highlightText} />
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        <PdfPageFooter label={`Appdoers · ${periodLabel} Progress Report`} />
+      </Page>
+    </Document>
   )
 }

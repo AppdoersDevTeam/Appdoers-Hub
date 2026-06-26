@@ -3,15 +3,13 @@
 import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { sendSlackMessage } from '@/lib/slack'
+import type { RecapWorkItem } from '@/lib/recaps/types'
+
+export type { RecapWorkItem } from '@/lib/recaps/types'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
   | { success: false; error: string }
-
-export interface RecapWorkItem {
-  description: string
-  category: string
-}
 
 export interface RecapInput {
   client_id: string
