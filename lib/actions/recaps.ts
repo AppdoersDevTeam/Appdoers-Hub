@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
-import { sendSlackMessage } from '@/lib/slack'
+import { hubRecapUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
 import type { RecapWorkItem } from '@/lib/recaps/types'
 
 export type { RecapWorkItem } from '@/lib/recaps/types'
@@ -403,15 +403,17 @@ export async function sendRecapAction(recapId: string): Promise<ActionResult<und
     const clientName = (recap.clients as { company_name?: string } | null)?.company_name ?? 'client'
     const monthLabel = `${MONTH_NAMES[(recap.month as number) - 1]} ${recap.year}`
 
-    await sendSlackMessage(`📊 Monthly Recap Sent: ${clientName} — ${monthLabel}`, [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*📊 Monthly Recap Sent*\n*Client:* ${clientName}\n*Period:* ${monthLabel}\n*Coming next:* ${String(recap.coming_next ?? '').slice(0, 120)}…`,
-        },
-      },
-    ])
+    await sendSlackAlert('clients', {
+      text: `Monthly recap sent: ${clientName} — ${monthLabel}`,
+      title: 'Monthly recap sent',
+      fields: [
+        { label: 'Client', value: clientName },
+        { label: 'Period', value: monthLabel },
+      ],
+      body: recap.coming_next ? String(recap.coming_next) : null,
+      bodyLabel: recap.coming_next ? 'Coming next' : undefined,
+      action: slackOpenHub(hubRecapUrl(recapId)),
+    })
 
     revalidatePath('/app/recaps')
     revalidatePath(`/portal/recaps`)

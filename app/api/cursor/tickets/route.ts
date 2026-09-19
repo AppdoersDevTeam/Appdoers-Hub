@@ -3,8 +3,8 @@ import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
 import { CURSOR_STAGES, hashApiToken, stageToTaskStatus, type CursorStage } from '@/lib/cursor-workflow'
 import { formatTicket, getJoinedClientName, ticketSelect } from '@/lib/cursor-ticket-format'
-import { sendToChannel } from '@/lib/slack'
-import { getTeamMemberName, slackPeopleLines } from '@/lib/team-member'
+import { hubTaskUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
+import { getTeamMemberName, slackPeopleContext } from '@/lib/team-member'
 
 const createTicketSchema = z.object({
   project_id: z.string().uuid(),
@@ -124,30 +124,26 @@ export async function POST(req: Request) {
     })
   }
 
-  await sendToChannel('tasks', `🎫 Cursor ticket created: ${payload.title}`, [
-    {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: [
-          '*🎫 Cursor Ticket Created*',
-          `*Task:* ${payload.title}`,
-          `*Project:* ${projectName} (${clientName})`,
-          `*Priority:* ${payload.priority.toUpperCase()}`,
-          `*Stage:* ${payload.stage}`,
-          `*Status:* ${status}`,
-          ...slackPeopleLines({
-            requestedBy: auth.teamMemberName,
-            assignedTo: payload.assigned_to
-              ? await getTeamMemberName(auth.service, payload.assigned_to)
-              : 'Unassigned',
-          }),
-        ]
-          .filter(Boolean)
-          .join('\n'),
-      },
-    },
-  ])
+  const assigneeName = payload.assigned_to
+    ? await getTeamMemberName(auth.service, payload.assigned_to)
+    : 'Unassigned'
+
+  await sendSlackAlert('tasks', {
+    text: `New ticket: ${payload.title}`,
+    title: 'New ticket',
+    fields: [
+      { label: 'Task', value: payload.title },
+      { label: 'Project', value: `${projectName} (${clientName})` },
+      { label: 'Priority', value: payload.priority.toUpperCase() },
+      { label: 'Stage', value: payload.stage },
+      { label: 'Status', value: status },
+      { label: 'Assigned to', value: assigneeName ?? 'Unassigned' },
+    ],
+    body: payload.note ?? null,
+    bodyLabel: payload.note ? 'Note' : undefined,
+    context: slackPeopleContext({ requestedBy: auth.teamMemberName }),
+    action: slackOpenHub(hubTaskUrl(inserted.id)),
+  })
 
   return NextResponse.json({ ticket: inserted }, { status: 201 })
 }

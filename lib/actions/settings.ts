@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import {
-  sendToChannel,
+  sendSlackAlert,
   SLACK_CHANNEL_LABELS,
   type SlackChannel,
 } from '@/lib/slack'
@@ -36,18 +36,14 @@ export async function testSlackChannelAction(
 ): Promise<ActionResult<undefined>> {
   try {
     const label = SLACK_CHANNEL_LABELS[channel]
-    const result = await sendToChannel(
+    const result = await sendSlackAlert(
       channel,
-      `✅ Appdoers Hub test: ${label} webhook is working.`,
-      [
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `*✅ Slack webhook test*\nChannel: *${label}*\nThis confirms Appdoers Hub can post to this webhook.`,
-          },
-        },
-      ],
+      {
+        text: `Appdoers Hub test: ${label} webhook is working.`,
+        title: 'Slack webhook test',
+        fields: [{ label: 'Channel', value: label }],
+        context: ['This confirms Appdoers Hub can post to this webhook.'],
+      },
       { fallback: false }
     )
 

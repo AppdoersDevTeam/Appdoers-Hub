@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { sendToChannel } from '@/lib/slack'
+import { hubProposalUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
 import type { ProposalStatus } from '@/lib/types/database'
 
 type ActionResult<T = undefined> =
@@ -155,15 +155,17 @@ export async function sendProposalAction(id: string): Promise<ActionResult<undef
       description: `Proposal "${title}" sent to ${clientName}`,
     })
 
-    await sendToChannel('proposals', `📄 Proposal Sent: ${title}`, [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*📄 Proposal Sent*\n*Title:* ${title}\n*Client:* ${clientName}\n*Setup:* $${Number(setup).toFixed(2)} + $${Number(monthly).toFixed(2)}/mo`,
-        },
-      },
-    ])
+    await sendSlackAlert('proposals', {
+      text: `Proposal sent: ${title}`,
+      title: 'Proposal sent',
+      fields: [
+        { label: 'Title', value: title },
+        { label: 'Client', value: clientName },
+        { label: 'Setup', value: `$${Number(setup).toFixed(2)}` },
+        { label: 'Monthly', value: `$${Number(monthly).toFixed(2)}` },
+      ],
+      action: slackOpenHub(hubProposalUrl(id)),
+    })
 
     revalidatePath(`/app/proposals/${id}`)
     revalidatePath('/app/proposals')

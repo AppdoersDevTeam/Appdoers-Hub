@@ -3,8 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { hubTaskUrl, notifyTaskActivity, type SlackBlock } from '@/lib/slack'
-import { getTeamMemberName, slackPeopleLines } from '@/lib/team-member'
+import { buildSlackAlert, hubTaskUrl, notifyTaskActivity, type SlackAlertField } from '@/lib/slack'
+import { getTeamMemberName, slackPeopleContext } from '@/lib/team-member'
 import type { TaskStatus, TaskType, TaskPriority, WorkflowStage } from '@/lib/types/database'
 import { stageToTaskStatus } from '@/lib/cursor-workflow'
 import { WORKFLOW_STAGE_CONFIG, TASK_STATUS_CONFIG } from '@/lib/tasks/constants'
@@ -63,28 +63,37 @@ async function loadCurrentMemberName(
   return getTeamMemberName(supabase, user?.id)
 }
 
-function taskHubLine(taskId: string): string {
-  const url = hubTaskUrl(taskId)
-  return url ? `<${url}|Open in Hub>` : ''
+function taskProjectValue(project: TaskSlackProject): string {
+  return project.clientName ? `${project.name} (${project.clientName})` : project.name
 }
 
 async function notifyTaskSlack(
   project: TaskSlackProject,
-  text: string,
-  headline: string,
-  details: string[]
+  input: {
+    text: string
+    title: string
+    fields?: SlackAlertField[]
+    body?: string | null
+    bodyLabel?: string
+    context?: string[]
+    taskId?: string
+  }
 ) {
+  const url = input.taskId ? hubTaskUrl(input.taskId) : ''
   await notifyTaskActivity({
-    text,
-    blocks: [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*${headline}*\n${details.filter(Boolean).join('\n')}`,
-        },
-      },
-    ] satisfies SlackBlock[],
+    text: input.text,
+    blocks: buildSlackAlert({
+      text: input.text,
+      title: input.title,
+      fields: [
+        ...(input.fields ?? []),
+        { label: 'Project', value: taskProjectValue(project) },
+      ],
+      body: input.body,
+      bodyLabel: input.bodyLabel,
+      context: input.context,
+      action: url ? { label: 'Open in Hub', url } : null,
+    }),
     clientSlackChannelId: project.clientSlackChannelId,
   })
 }
@@ -143,14 +152,18 @@ export async function createTaskAction(
       description: `Task "${task.title}" created in ${project.name}`,
     })
 
-    await notifyTaskSlack(project, `🎫 New Task: ${task.title}`, '🎫 New Task Created', [
-      `*Task:* ${task.title}`,
-      `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
-      `*Priority:* ${input.priority.toUpperCase()}`,
-      `*Type:* ${input.type}`,
-      ...slackPeopleLines({ requestedBy, assignedTo: assigneeName }),
-      taskHubLine(task.id),
-    ])
+    await notifyTaskSlack(project, {
+      text: `New task: ${task.title}`,
+      title: 'New task',
+      fields: [
+        { label: 'Task', value: task.title },
+        { label: 'Priority', value: input.priority.toUpperCase() },
+        { label: 'Type', value: input.type },
+        { label: 'Assigned to', value: assigneeName },
+      ],
+      context: slackPeopleContext({ requestedBy }),
+      taskId: task.id,
+    })
 
     revalidatePath('/app/tasks')
     revalidatePath(`/app/projects/${input.project_id}`)
@@ -177,11 +190,12 @@ export async function deleteTaskAction(
     if (error) return { success: false, error: error.message }
 
     const actorName = await loadCurrentMemberName(supabase)
-    await notifyTaskSlack(project, `🗑️ Task deleted: ${existing?.title ?? 'Task'}`, '🗑️ Task Deleted', [
-      `*Task:* ${existing?.title ?? 'Task'}`,
-      `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
-      ...slackPeopleLines({ by: actorName, byLabel: 'Deleted by' }),
-    ])
+    await notifyTaskSlack(project, {
+      text: `Task deleted: ${existing?.title ?? 'Task'}`,
+      title: 'Task deleted',
+      fields: [{ label: 'Task', value: existing?.title ?? 'Task' }],
+      context: slackPeopleContext({ by: actorName, byLabel: 'Deleted by' }),
+    })
 
     revalidatePath('/app/tasks')
     revalidatePath(`/app/projects/${projectId}`)
@@ -327,20 +341,25 @@ export async function updateTaskDetailsAction(
     const requestedBy = await getTeamMemberName(supabase, existing.created_by)
     const updatedBy = await getTeamMemberName(supabase, user?.id)
     if (input.project_id && input.project_id !== previousProjectId) {
-      await notifyTaskSlack(slackProject, `📁 Task moved: ${taskTitle}`, '📁 Task Project Updated', [
-        `*Task:* ${taskTitle}`,
-        `*Moved to:* ${projectName} (${clientName})`,
-        ...slackPeopleLines({ requestedBy, by: updatedBy }),
-        taskHubLine(id),
-      ])
+      await notifyTaskSlack(slackProject, {
+        text: `Task moved: ${taskTitle}`,
+        title: 'Task moved',
+        fields: [{ label: 'Task', value: taskTitle }],
+        body: `Moved to ${projectName} (${clientName})`,
+        bodyLabel: 'Change',
+        context: slackPeopleContext({ requestedBy, by: updatedBy }),
+        taskId: id,
+      })
     } else if (changes.length > 0) {
-      await notifyTaskSlack(slackProject, `✏️ Task updated: ${taskTitle}`, '✏️ Task Updated', [
-        `*Task:* ${taskTitle}`,
-        `*Project:* ${slackProject.name}${slackProject.clientName ? ` (${slackProject.clientName})` : ''}`,
-        `*Changes:* ${changes.join(', ')}`,
-        ...slackPeopleLines({ requestedBy, by: updatedBy }),
-        taskHubLine(id),
-      ])
+      await notifyTaskSlack(slackProject, {
+        text: `Task updated: ${taskTitle}`,
+        title: 'Task updated',
+        fields: [{ label: 'Task', value: taskTitle }],
+        body: changes.join('\n'),
+        bodyLabel: 'Changes',
+        context: slackPeopleContext({ requestedBy, by: updatedBy }),
+        taskId: id,
+      })
     }
 
     revalidatePath('/app/tasks')
@@ -387,13 +406,16 @@ export async function updateTaskStatusAction(
     const project = await loadTaskSlackProject(supabase, projectId)
     const requestedBy = await getTeamMemberName(supabase, task?.created_by)
     const updatedBy = await loadCurrentMemberName(supabase)
-    await notifyTaskSlack(project, `🔄 Task status: ${task?.title ?? 'Task'}`, '🔄 Task Status Updated', [
-      `*Task:* ${task?.title ?? 'Task'}`,
-      `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
-      `*Status:* ${statusLabel[status]}`,
-      ...slackPeopleLines({ requestedBy, by: updatedBy }),
-      taskHubLine(id),
-    ])
+    await notifyTaskSlack(project, {
+      text: `Task status: ${task?.title ?? 'Task'}`,
+      title: 'Task status updated',
+      fields: [
+        { label: 'Task', value: task?.title ?? 'Task' },
+        { label: 'Status', value: statusLabel[status] },
+      ],
+      context: slackPeopleContext({ requestedBy, by: updatedBy }),
+      taskId: id,
+    })
 
     revalidatePath('/app/tasks')
     revalidatePath(`/app/tasks/${id}`)
@@ -441,19 +463,17 @@ export async function updateTaskWorkflowStageAction(
     const project = await loadTaskSlackProject(supabase, projectId)
     const requestedBy = await getTeamMemberName(supabase, task?.created_by)
     const updatedBy = await loadCurrentMemberName(supabase)
-    await notifyTaskSlack(
-      project,
-      `🔄 Task stage: ${task?.title ?? 'Task'}`,
-      '🔄 Workflow Stage Changed',
-      [
-        `*Task:* ${task?.title ?? 'Task'}`,
-        `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
-        `*Stage:* ${WORKFLOW_STAGE_CONFIG[workflowStage].label}`,
-        `*Status:* ${TASK_STATUS_CONFIG[status].label}`,
-        ...slackPeopleLines({ requestedBy, by: updatedBy }),
-        taskHubLine(id),
-      ]
-    )
+    await notifyTaskSlack(project, {
+      text: `Task stage: ${task?.title ?? 'Task'}`,
+      title: 'Workflow updated',
+      fields: [
+        { label: 'Task', value: task?.title ?? 'Task' },
+        { label: 'Stage', value: WORKFLOW_STAGE_CONFIG[workflowStage].label },
+        { label: 'Status', value: TASK_STATUS_CONFIG[status].label },
+      ],
+      context: slackPeopleContext({ requestedBy, by: updatedBy }),
+      taskId: id,
+    })
 
     revalidatePath('/app/tasks')
     revalidatePath(`/app/tasks/${id}`)
@@ -508,13 +528,15 @@ export async function addTaskNoteAction(
     const project = await loadTaskSlackProject(supabase, projectId)
     const requestedBy = await getTeamMemberName(supabase, task?.created_by)
     const updatedBy = await getTeamMemberName(supabase, user.id)
-    await notifyTaskSlack(project, `📝 Task note added: ${task?.title ?? 'Task'}`, '📝 Task Note Added', [
-      `*Task:* ${task?.title ?? 'Task'}`,
-      `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
-      `*Note:* ${content}`,
-      ...slackPeopleLines({ requestedBy, by: updatedBy, byLabel: 'Note by' }),
-      taskHubLine(taskId),
-    ])
+    await notifyTaskSlack(project, {
+      text: `Task note: ${task?.title ?? 'Task'}`,
+      title: 'Progress note',
+      fields: [{ label: 'Task', value: task?.title ?? 'Task' }],
+      body: content,
+      bodyLabel: 'Note',
+      context: slackPeopleContext({ requestedBy, by: updatedBy, byLabel: 'Note by' }),
+      taskId: taskId,
+    })
 
     revalidatePath('/app/tasks')
     revalidatePath(`/app/tasks/${taskId}`)

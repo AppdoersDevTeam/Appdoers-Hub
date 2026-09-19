@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { sendSlackMessage } from '@/lib/slack'
+import { hubLeadUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
 import type { LeadSource, LeadStatus, LostReason } from '@/lib/types/database'
 
 type ActionResult<T = undefined> =
@@ -176,15 +176,17 @@ export async function markLeadLostAction(
       description: `Lead "${name}" marked lost — reason: ${reason}`,
     })
 
-    await sendSlackMessage(`❌ Lead Lost: ${name}`, [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*❌ Lead Lost*\n*Lead:* ${name}\n*Reason:* ${reason.replace('_', ' ')}\n${notes ? `*Notes:* ${notes}` : ''}`,
-        },
-      },
-    ])
+    await sendSlackAlert('leads', {
+      text: `Lead lost: ${name}`,
+      title: 'Lead lost',
+      fields: [
+        { label: 'Lead', value: name },
+        { label: 'Reason', value: reason.replace('_', ' ') },
+      ],
+      body: notes ?? null,
+      bodyLabel: notes ? 'Notes' : undefined,
+      action: slackOpenHub(hubLeadUrl(id)),
+    })
 
     revalidatePath(`/app/leads/${id}`)
     revalidatePath('/app/leads')
@@ -224,15 +226,17 @@ export async function markLeadWonAction(id: string): Promise<ActionResult<undefi
       description: `Lead "${name}" marked won! 🎉`,
     })
 
-    await sendSlackMessage(`🎉 Lead Won: ${name}`, [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*🎉 Lead Won!*\n*Lead:* ${name}\n${lead?.estimated_value ? `*Est. Value:* $${lead.estimated_value.toLocaleString()}` : ''}`,
-        },
-      },
-    ])
+    await sendSlackAlert('leads', {
+      text: `Lead won: ${name}`,
+      title: 'Lead won',
+      fields: [
+        { label: 'Lead', value: name },
+        ...(lead?.estimated_value
+          ? [{ label: 'Est. value', value: `$${lead.estimated_value.toLocaleString()}` }]
+          : []),
+      ],
+      action: slackOpenHub(hubLeadUrl(id)),
+    })
 
     revalidatePath(`/app/leads/${id}`)
     revalidatePath('/app/leads')

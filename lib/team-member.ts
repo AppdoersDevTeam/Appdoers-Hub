@@ -13,20 +13,16 @@ export function slackPersonLine(label: string, name: string | null | undefined):
   return trimmed ? `*${label}:* ${trimmed}` : ''
 }
 
-export function slackPeopleLines(input: {
+export function slackPeopleContext(input: {
   requestedBy?: string | null
   by?: string | null
   byLabel?: string
-  assignedTo?: string | null
 }): string[] {
   const requestedBy = input.requestedBy?.trim() || null
   const by = input.by?.trim() || null
   const byLabel = input.byLabel ?? 'Updated by'
-  const lines: string[] = []
-
-  if (requestedBy) lines.push(slackPersonLine('Requested by', requestedBy))
-  if (by && by !== requestedBy) lines.push(slackPersonLine(byLabel, by))
-  if (input.assignedTo) lines.push(slackPersonLine('Assigned To', input.assignedTo))
-
-  return lines
+  const parts: string[] = []
+  if (requestedBy) parts.push(`Requested by *${requestedBy}*`)
+  if (by && by !== requestedBy) parts.push(`${byLabel} *${by}*`)
+  return parts
 }

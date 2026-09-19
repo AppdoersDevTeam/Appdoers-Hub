@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { sendSlackMessage } from '@/lib/slack'
+import { sendSlackAlert } from '@/lib/slack'
 import type { InvoiceLine } from '@/lib/invoices/types'
 
 export type { InvoiceLine } from '@/lib/invoices/types'
@@ -145,15 +145,16 @@ export async function sendInvoiceAction(id: string): Promise<ActionResult<undefi
       description: `Invoice ${num} sent to ${clientName}`,
     })
 
-    await sendSlackMessage(`🧾 Invoice Sent: ${num}`, [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*🧾 Invoice Sent*\n*Invoice:* ${num}\n*Client:* ${clientName}\n*Total:* $${Number(total).toFixed(2)} NZD\n*Due:* ${dueDate}`,
-        },
-      },
-    ])
+    await sendSlackAlert('billing', {
+      text: `Invoice sent: ${num}`,
+      title: 'Invoice sent',
+      fields: [
+        { label: 'Invoice', value: num },
+        { label: 'Client', value: clientName },
+        { label: 'Total', value: `$${Number(total).toFixed(2)} NZD` },
+        { label: 'Due', value: dueDate },
+      ],
+    })
 
     revalidatePath(`/app/invoices/${id}`)
     revalidatePath('/app/invoices')
@@ -200,15 +201,16 @@ export async function markInvoicePaidAction(
       description: `Invoice ${num} marked as paid${paymentReference ? ` (ref: ${paymentReference})` : ''}`,
     })
 
-    await sendSlackMessage(`💰 Invoice Paid: ${num}`, [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*💰 Invoice Paid!*\n*Invoice:* ${num}\n*Client:* ${clientName}\n*Amount:* $${Number(total).toFixed(2)} NZD${paymentReference ? `\n*Reference:* ${paymentReference}` : ''}`,
-        },
-      },
-    ])
+    await sendSlackAlert('billing', {
+      text: `Invoice paid: ${num}`,
+      title: 'Invoice paid',
+      fields: [
+        { label: 'Invoice', value: num },
+        { label: 'Client', value: clientName },
+        { label: 'Amount', value: `$${Number(total).toFixed(2)} NZD` },
+        ...(paymentReference ? [{ label: 'Reference', value: paymentReference }] : []),
+      ],
+    })
 
     revalidatePath(`/app/invoices/${id}`)
     revalidatePath('/app/invoices')

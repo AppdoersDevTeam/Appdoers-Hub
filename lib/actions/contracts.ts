@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { sendSlackMessage } from '@/lib/slack'
+import { hubContractUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -163,15 +163,16 @@ export async function sendContractAction(id: string): Promise<ActionResult<undef
       description: `Contract "${title}" sent to ${clientName}`,
     })
 
-    await sendSlackMessage(`📝 Contract Sent: ${title}`, [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*📝 Contract Sent to Client*\n*Title:* ${title}\n*Client:* ${clientName}\n_Awaiting e-signature in client portal._`,
-        },
-      },
-    ])
+    await sendSlackAlert('general', {
+      text: `Contract sent: ${title}`,
+      title: 'Contract sent',
+      fields: [
+        { label: 'Title', value: title },
+        { label: 'Client', value: clientName },
+      ],
+      context: ['Awaiting e-signature in the client portal'],
+      action: slackOpenHub(hubContractUrl(id)),
+    })
 
     revalidatePath(`/app/contracts/${id}`)
     revalidatePath('/app/contracts')
@@ -229,15 +230,17 @@ export async function signContractAction(
       description: `Contract "${title}" signed by ${signedByName}`,
     })
 
-    await sendSlackMessage(`✍️ Contract Signed: ${title}`, [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*✍️ Contract Signed!*\n*Contract:* ${title}\n*Client:* ${clientName}\n*Signed by:* ${signedByName} (${signedByEmail})\n*Signed at:* ${new Date().toLocaleString('en-NZ')}`,
-        },
-      },
-    ])
+    await sendSlackAlert('general', {
+      text: `Contract signed: ${title}`,
+      title: 'Contract signed',
+      fields: [
+        { label: 'Contract', value: title },
+        { label: 'Client', value: clientName },
+        { label: 'Signed by', value: `${signedByName} (${signedByEmail})` },
+        { label: 'Signed at', value: new Date().toLocaleString('en-NZ') },
+      ],
+      action: slackOpenHub(hubContractUrl(id)),
+    })
 
     revalidatePath(`/app/contracts/${id}`)
     return { success: true, data: undefined }

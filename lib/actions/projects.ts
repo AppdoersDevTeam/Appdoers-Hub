@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { sendToChannel } from '@/lib/slack'
+import { hubProjectUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
 import type { ProjectPhase, ClientFacingStatus } from '@/lib/types/database'
 
 type ActionResult<T = undefined> =
@@ -219,15 +219,17 @@ export async function advancePhaseAction(
       description: `Project "${projectName}" advanced to ${phaseLabel[nextPhase]}`,
     })
 
-    await sendToChannel('projects', `📋 Phase Change: ${projectName}`, [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*📋 Project Phase Updated*\n*Project:* ${projectName}\n*Client:* ${clientName}\n*Phase:* ${phaseLabel[currentPhase]} → *${phaseLabel[nextPhase]}*`,
-        },
-      },
-    ])
+    await sendSlackAlert('projects', {
+      text: `Phase change: ${projectName}`,
+      title: 'Project phase updated',
+      fields: [
+        { label: 'Project', value: projectName },
+        { label: 'Client', value: clientName },
+        { label: 'From', value: phaseLabel[currentPhase] },
+        { label: 'To', value: phaseLabel[nextPhase] },
+      ],
+      action: slackOpenHub(hubProjectUrl(projectId)),
+    })
 
     revalidatePath(`/app/projects/${projectId}`)
     revalidatePath('/app/projects')
@@ -271,15 +273,16 @@ export async function updateClientStatusAction(
       description: `"${projectName}" client status → ${clientStatusLabel[newStatus]}`,
     })
 
-    await sendToChannel('projects', `🔄 Status: ${projectName}`, [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*🔄 Client Status Updated*\n*Project:* ${projectName}\n*Client:* ${clientName}\n*Status:* *${clientStatusLabel[newStatus]}*`,
-        },
-      },
-    ])
+    await sendSlackAlert('projects', {
+      text: `Client status: ${projectName}`,
+      title: 'Client status updated',
+      fields: [
+        { label: 'Project', value: projectName },
+        { label: 'Client', value: clientName },
+        { label: 'Status', value: clientStatusLabel[newStatus] },
+      ],
+      action: slackOpenHub(hubProjectUrl(projectId)),
+    })
 
     revalidatePath(`/app/projects/${projectId}`)
     revalidatePath('/app/projects')

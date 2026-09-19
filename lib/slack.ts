@@ -76,28 +76,58 @@ async function slackApi<T extends Record<string, unknown>>(
   }
 }
 
-export function slugifyClientChannelName(companyName: string, clientId?: string): string {
-  const slug = companyName
+function slugifyChannelBody(name: string, id: string | undefined, prefix: string): string {
+  const slug = name
     .toLowerCase()
     .normalize('NFKD')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-{2,}/g, '-')
     .replace(/^-+|-+$/g, '')
-  const prefix = 'client-'
-  const fallback = clientId ? clientId.replace(/-/g, '').slice(0, 8) : 'channel'
+  const fallback = id ? id.replace(/-/g, '').slice(0, 8) : 'channel'
   const body = (slug || fallback).slice(0, 80 - prefix.length)
   return `${prefix}${body}`
 }
 
-export function hubClientUrl(clientId: string): string {
+export function slugifyClientChannelName(companyName: string, clientId?: string): string {
+  return slugifyChannelBody(companyName, clientId, 'client-')
+}
+
+export function slugifyLeadChannelName(displayName: string, leadId?: string): string {
+  return slugifyChannelBody(displayName, leadId, 'lead-')
+}
+
+function hubAppUrl(path: string): string {
   const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '')
-  return `${base}/app/clients/${clientId}`
+  if (!base) return ''
+  return `${base}${path}`
+}
+
+export function hubClientUrl(clientId: string): string {
+  return hubAppUrl(`/app/clients/${clientId}`)
+}
+
+export function hubLeadUrl(leadId: string): string {
+  return hubAppUrl(`/app/leads/${leadId}`)
 }
 
 export function hubTaskUrl(taskId: string): string {
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '')
-  if (!base) return ''
-  return `${base}/app/tasks/${taskId}`
+  return hubAppUrl(`/app/tasks/${taskId}`)
+}
+
+export function hubProposalUrl(proposalId: string): string {
+  return hubAppUrl(`/app/proposals/${proposalId}`)
+}
+
+export function hubProjectUrl(projectId: string): string {
+  return hubAppUrl(`/app/projects/${projectId}`)
+}
+
+export function hubContractUrl(contractId: string): string {
+  return hubAppUrl(`/app/contracts/${contractId}`)
+}
+
+export function hubRecapUrl(recapId: string): string {
+  return hubAppUrl(`/app/recaps/${recapId}`)
 }
 
 export function withHttpUrl(url: string): string {
@@ -307,6 +337,94 @@ async function getWebhookUrl(
   return null
 }
 
+export type SlackAlertField = { label: string; value: string }
+
+export type SlackAlertInput = {
+  text: string
+  title: string
+  fields?: SlackAlertField[]
+  body?: string | null
+  bodyLabel?: string
+  context?: string[]
+  action?: { label: string; url: string } | null
+}
+
+export function slackOpenHub(url: string): SlackAlertInput['action'] {
+  return url ? { label: 'Open in Hub', url } : null
+}
+
+function slackEscape(text: string): string {
+  return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+}
+
+function slackTruncate(text: string, max: number): string {
+  const trimmed = text.trim()
+  if (trimmed.length <= max) return trimmed
+  return `${trimmed.slice(0, Math.max(0, max - 1)).trimEnd()}…`
+}
+
+export function buildSlackAlert(input: SlackAlertInput): SlackBlock[] {
+  const blocks: SlackBlock[] = [
+    {
+      type: 'header',
+      text: {
+        type: 'plain_text',
+        text: slackTruncate(input.title, 150),
+        emoji: true,
+      },
+    },
+    { type: 'divider' },
+  ]
+
+  const fields = (input.fields ?? [])
+    .filter((field) => field.value.trim())
+    .slice(0, 10)
+    .map((field) => ({
+      type: 'mrkdwn',
+      text: `*${slackEscape(field.label)}*\n${slackTruncate(slackEscape(field.value), 200)}`,
+    }))
+
+  if (fields.length > 0) {
+    blocks.push({ type: 'section', fields })
+  }
+
+  const body = input.body?.trim()
+  if (body) {
+    const label = input.bodyLabel?.trim() ? `*${slackEscape(input.bodyLabel.trim())}*\n` : ''
+    const quoted = slackEscape(slackTruncate(body, 1800))
+      .split('\n')
+      .map((line) => `>${line}`)
+      .join('\n')
+    blocks.push({
+      type: 'section',
+      text: { type: 'mrkdwn', text: `${label}${quoted}` },
+    })
+  }
+
+  const context = (input.context ?? []).map((item) => item.trim()).filter(Boolean)
+  if (context.length > 0) {
+    blocks.push({
+      type: 'context',
+      elements: [{ type: 'mrkdwn', text: slackTruncate(context.join('   ·   '), 2000) }],
+    })
+  }
+
+  if (input.action?.url) {
+    blocks.push({
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: slackTruncate(input.action.label, 75), emoji: true },
+          url: input.action.url,
+        },
+      ],
+    })
+  }
+
+  return blocks
+}
+
 export async function sendToChannel(
   channel: SlackChannel,
   text: string,
@@ -338,6 +456,14 @@ export async function sendToChannel(
     console.error('[Slack] Notification failed:', err)
     return { ok: false, error, code: 'network_error' }
   }
+}
+
+export async function sendSlackAlert(
+  channel: SlackChannel,
+  input: SlackAlertInput,
+  options?: { fallback?: boolean }
+): Promise<SlackVoidResult> {
+  return sendToChannel(channel, input.text, buildSlackAlert(input), options)
 }
 
 export async function notifyTaskActivity(input: {
