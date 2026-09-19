@@ -76,8 +76,8 @@ In Supabase → **Authentication** → **URL Configuration**:
 
 ## Supabase Storage Bucket
 
-Create a storage bucket called `client-files`:
+Create a storage bucket called `client-files` (used for proposal and contract uploads):
 1. Supabase → **Storage** → **New bucket**
 2. Name: `client-files`
 3. Public: **No** (private)
-4. Add RLS policy: team members can read/write all, portal users can read/write their client's files only
+4. Add RLS policy: team members can read/write all objects. Portal users do not need direct storage access — downloads use signed URLs.

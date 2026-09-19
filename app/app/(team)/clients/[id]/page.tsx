@@ -6,8 +6,8 @@ import { ContactsSection } from '@/components/team/clients/contacts-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
 import { ClientEditForm } from '@/components/team/clients/client-edit-form'
-import { ArrowLeft, FolderOpen, FileText, ScrollText, Receipt } from 'lucide-react'
-import { FilesManager } from '@/components/team/files/files-manager'
+import { ArrowLeft, FolderOpen } from 'lucide-react'
+import { DocumentRecordsList } from '@/components/team/documents/document-records-list'
 import { TasksTable } from '@/components/team/tasks/tasks-table'
 import { NotesSection } from '@/components/team/notes/notes-section'
 import { CredentialsSection } from '@/components/team/clients/credentials-section'
@@ -24,8 +24,6 @@ const TABS = [
   { key: 'tasks', label: 'Tasks' },
   { key: 'proposals', label: 'Proposals' },
   { key: 'contracts', label: 'Contracts' },
-  { key: 'invoices', label: 'Invoices' },
-  { key: 'files', label: 'Files' },
   { key: 'notes', label: 'Notes' },
   { key: 'credentials', label: 'Credentials' },
   { key: 'domains', label: 'Domains' },
@@ -106,15 +104,6 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
         .order('created_at', { ascending: false })
     : { data: null }
 
-  // Fetch files only when on files tab
-  const { data: clientFiles } = tab === 'files'
-    ? await supabase
-        .from('files')
-        .select('id, name, size, mime_type, folder, is_client_visible, created_at, client_id, project_id, projects(name)')
-        .eq('client_id', id)
-        .order('created_at', { ascending: false })
-    : { data: null }
-
   // Fetch credentials only when on credentials tab
   const { data: clientCredentials } = tab === 'credentials'
     ? await supabase
@@ -166,7 +155,15 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
   const { data: clientProposals } = tab === 'proposals'
     ? await supabase
         .from('proposals')
-        .select('id, title, version, status, created_at, sent_at, total_setup, total_monthly')
+        .select('id, title, status, created_at, sent_at, client_id, file_name, file_size, file_mime_type, is_client_visible')
+        .eq('client_id', id)
+        .order('created_at', { ascending: false })
+    : { data: null }
+
+  const { data: clientContracts } = tab === 'contracts'
+    ? await supabase
+        .from('contracts')
+        .select('id, title, status, created_at, sent_at, client_id, file_name, file_size, file_mime_type, is_client_visible')
         .eq('client_id', id)
         .order('created_at', { ascending: false })
     : { data: null }
@@ -435,76 +432,43 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
         />
       )}
       {tab === 'proposals' && (
-        clientProposals && clientProposals.length > 0 ? (
-          <div className="hub-card overflow-hidden p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    {['Title', 'Version', 'Status', 'Setup', 'Monthly', 'Created', 'Sent'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {clientProposals.map((p) => {
-                    const statusCls: Record<string, { label: string; cls: string }> = { draft: { label: 'Draft', cls: 'bg-slate-100 text-slate-500' }, sent: { label: 'Sent', cls: 'bg-blue-50 text-blue-700' }, approved: { label: 'Approved', cls: 'bg-emerald-50 text-emerald-700' }, declined: { label: 'Declined', cls: 'bg-red-50 text-red-700' }, expired: { label: 'Expired', cls: 'bg-amber-50 text-amber-700' } }
-                    const st = statusCls[p.status] ?? statusCls.draft
-                    return (
-                      <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-slate-900">
-                          <Link href={`/app/proposals/${p.id}`} className="hover:text-blue-600 transition-colors">{p.title}</Link>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">v{p.version}</td>
-                        <td className="px-4 py-3">
-                          <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>{st.label}</span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">{p.total_setup ? formatCurrency(Number(p.total_setup)) : '—'}</td>
-                        <td className="px-4 py-3 text-slate-600">{p.total_monthly ? `${formatCurrency(Number(p.total_monthly))}/mo` : '—'}</td>
-                        <td className="px-4 py-3 text-slate-500">{formatDate(p.created_at)}</td>
-                        <td className="px-4 py-3 text-slate-500">{p.sent_at ? formatDate(p.sent_at) : '—'}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : (
-          <EmptyState icon={FileText} title="No proposals yet" description="Proposals will appear here once created." />
-        )
+        <DocumentRecordsList
+          kind="proposal"
+          lockedClientId={id}
+          clients={[{ id: client.id, company_name: client.company_name }]}
+          records={(clientProposals ?? []).map((p) => ({
+            id: p.id,
+            title: p.title,
+            status: p.status,
+            created_at: p.created_at,
+            sent_at: p.sent_at,
+            client_id: id,
+            client_name: client.company_name,
+            file_name: (p.file_name as string | null) ?? null,
+            file_size: (p.file_size as number | null) ?? null,
+            file_mime_type: (p.file_mime_type as string | null) ?? null,
+            is_client_visible: Boolean(p.is_client_visible),
+          }))}
+        />
       )}
       {tab === 'contracts' && (
-        <EmptyState
-          icon={ScrollText}
-          title="No contracts yet"
-          description="Contracts will appear here once signed."
-        />
-      )}
-      {tab === 'invoices' && (
-        <EmptyState
-          icon={Receipt}
-          title="No invoices yet"
-          description="Invoices will appear here once generated."
-        />
-      )}
-      {tab === 'files' && (
-        <FilesManager
-          files={(clientFiles ?? []).map((f) => ({
-            id: f.id,
-            name: f.name as string,
-            size: f.size as number | null,
-            mime_type: f.mime_type as string | null,
-            folder: f.folder as string | null,
-            is_client_visible: f.is_client_visible as boolean,
-            created_at: f.created_at as string,
-            client_id: f.client_id as string,
-            project_id: f.project_id as string | null,
-            client_name: client.company_name,
-            project_name: (f.projects as { name?: string } | null)?.name ?? null,
-          }))}
+        <DocumentRecordsList
+          kind="contract"
+          lockedClientId={id}
           clients={[{ id: client.id, company_name: client.company_name }]}
-          clientId={id}
+          records={(clientContracts ?? []).map((c) => ({
+            id: c.id,
+            title: c.title,
+            status: c.status,
+            created_at: c.created_at,
+            sent_at: c.sent_at,
+            client_id: id,
+            client_name: client.company_name,
+            file_name: (c.file_name as string | null) ?? null,
+            file_size: (c.file_size as number | null) ?? null,
+            file_mime_type: (c.file_mime_type as string | null) ?? null,
+            is_client_visible: Boolean(c.is_client_visible),
+          }))}
         />
       )}
       {tab === 'notes' && (

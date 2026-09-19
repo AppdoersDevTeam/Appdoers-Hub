@@ -13,8 +13,6 @@ const navItems = [
   { href: '/portal/projects', label: 'My Projects' },
   { href: '/portal/proposals', label: 'Proposals' },
   { href: '/portal/contracts', label: 'Contracts' },
-  { href: '/portal/invoices', label: 'Invoices' },
-  { href: '/portal/files', label: 'Files' },
   { href: '/portal/recaps', label: 'Reports' },
 ]
 

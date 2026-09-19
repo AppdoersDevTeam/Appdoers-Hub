@@ -29,6 +29,18 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      { source: '/app/invoices', destination: '/app/dashboard', permanent: false },
+      { source: '/app/invoices/:id', destination: '/app/dashboard', permanent: false },
+      { source: '/app/files', destination: '/app/dashboard', permanent: false },
+      { source: '/app/proposals/:id', destination: '/app/proposals', permanent: false },
+      { source: '/app/contracts/:id', destination: '/app/contracts', permanent: false },
+      { source: '/portal/invoices', destination: '/portal/projects', permanent: false },
+      { source: '/portal/files', destination: '/portal/projects', permanent: false },
+      { source: '/portal/contracts/:id', destination: '/portal/contracts', permanent: false },
+    ]
+  },
 }
 
 export default nextConfig
