@@ -5,16 +5,26 @@ import { logActivity } from '@/lib/actions/activity'
 import {
   DOCUMENT_BUCKET,
   DOCUMENT_MAX_SIZE,
-  folderForKind,
+  buildDocumentStoragePath,
   isAllowedDocument,
+  parseDocumentKind,
   statusesForKind,
   tableForKind,
-  type DocumentKind,
+  validateDocumentOwner,
 } from '@/lib/documents'
 
-function parseKind(value: FormDataEntryValue | null): DocumentKind | null {
-  if (value === 'proposal' || value === 'contract') return value
-  return null
+interface UploadBody {
+  step?: string
+  kind?: string
+  client_id?: string
+  lead_id?: string
+  title?: string
+  status?: string
+  is_client_visible?: boolean
+  file_name?: string
+  mime_type?: string
+  file_size?: number
+  storage_path?: string
 }
 
 export async function POST(req: NextRequest) {
@@ -24,67 +34,93 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: access.message }, { status: access.status })
     }
 
-    const formData = await req.formData()
-    const file = formData.get('file')
-    const kind = parseKind(formData.get('kind'))
-    const clientId = String(formData.get('client_id') ?? '').trim()
-    const leadId = String(formData.get('lead_id') ?? '').trim()
-    const title = String(formData.get('title') ?? '').trim()
-    const status = String(formData.get('status') ?? 'sent')
-    const isClientVisible = formData.get('is_client_visible') === 'true'
-
-    if (!(file instanceof File)) {
-      return NextResponse.json({ error: 'A PDF or Word document is required' }, { status: 400 })
+    let body: UploadBody
+    try {
+      body = (await req.json()) as UploadBody
+    } catch {
+      return NextResponse.json({ error: 'Invalid upload request' }, { status: 400 })
     }
+    const kind = parseDocumentKind(body.kind)
+    const clientId = String(body.client_id ?? '').trim()
+    const leadId = String(body.lead_id ?? '').trim()
+    const title = String(body.title ?? '').trim()
+    const status = String(body.status ?? 'sent')
+    const fileName = String(body.file_name ?? '').trim()
+    const mimeType = String(body.mime_type ?? '')
+    const fileSize = Number(body.file_size ?? 0)
+    const isClientVisible = body.is_client_visible === true
+
     if (!kind) {
       return NextResponse.json({ error: 'kind must be proposal or contract' }, { status: 400 })
     }
-    if (kind === 'contract' && !clientId) {
-      return NextResponse.json({ error: 'client_id is required' }, { status: 400 })
-    }
-    if (kind === 'proposal' && !clientId && !leadId) {
-      return NextResponse.json({ error: 'Select a client or a lead' }, { status: 400 })
+    const ownerError = validateDocumentOwner(kind, clientId, leadId)
+    if (ownerError) {
+      return NextResponse.json({ error: ownerError }, { status: 400 })
     }
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 })
     }
-    if (file.size > DOCUMENT_MAX_SIZE) {
+    if (!fileName) {
+      return NextResponse.json({ error: 'A PDF or Word document is required' }, { status: 400 })
+    }
+    if (fileSize > DOCUMENT_MAX_SIZE) {
       return NextResponse.json({ error: 'File exceeds 50MB limit' }, { status: 413 })
     }
-    if (!isAllowedDocument(file)) {
+    if (!isAllowedDocument({ name: fileName, type: mimeType })) {
       return NextResponse.json({ error: 'Only PDF and Word documents (.pdf, .doc, .docx) are allowed' }, { status: 400 })
     }
     if (!statusesForKind(kind).includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
 
-    const timestamp = Date.now()
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const ownerPrefix = clientId ? `clients/${clientId}` : `leads/${leadId}`
-    const storagePath = `${ownerPrefix}/${folderForKind(kind)}/${timestamp}-${safeName}`
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const now = new Date().toISOString()
+    if (body.step === 'prepare') {
+      const storagePath = buildDocumentStoragePath(kind, clientId, leadId, fileName)
+      const { data, error } = await access.db.storage
+        .from(DOCUMENT_BUCKET)
+        .createSignedUploadUrl(storagePath)
 
-    const { error: storageError } = await access.db.storage
-      .from(DOCUMENT_BUCKET)
-      .upload(storagePath, buffer, {
-        contentType: file.type || 'application/octet-stream',
-        upsert: false,
+      if (error || !data) {
+        return NextResponse.json({ error: error?.message ?? 'Could not start upload' }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        path: data.path,
+        token: data.token,
+        signedUrl: data.signedUrl,
+        bucket: DOCUMENT_BUCKET,
       })
-
-    if (storageError) {
-      return NextResponse.json({ error: storageError.message }, { status: 500 })
     }
 
+    if (body.step !== 'complete') {
+      return NextResponse.json({ error: 'Invalid upload step' }, { status: 400 })
+    }
+
+    const storagePath = String(body.storage_path ?? '').trim()
+    const expectedPrefix = clientId
+      ? `clients/${clientId}/${kind === 'proposal' ? 'proposals' : 'contracts'}/`
+      : `leads/${leadId}/proposals/`
+    if (!storagePath.startsWith(expectedPrefix)) {
+      return NextResponse.json({ error: 'Invalid storage path' }, { status: 400 })
+    }
+
+    const { error: existsError } = await access.db.storage
+      .from(DOCUMENT_BUCKET)
+      .createSignedUrl(storagePath, 10)
+    if (existsError) {
+      return NextResponse.json({ error: 'File was not uploaded. Please try again.' }, { status: 400 })
+    }
+
+    const now = new Date().toISOString()
     const table = tableForKind(kind)
     const row: Record<string, unknown> = {
       client_id: clientId || null,
       title,
       status,
-      file_name: file.name,
+      file_name: fileName,
       storage_path: storagePath,
-      mime_type: file.type || null,
-      file_size: file.size,
+      mime_type: mimeType || null,
+      file_size: fileSize || null,
       is_client_visible: Boolean(clientId) && isClientVisible,
       created_by: access.userId,
       sent_at: status === 'draft' ? null : now,

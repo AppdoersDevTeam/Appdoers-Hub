@@ -59,6 +59,19 @@ const statusStyles: Record<string, { label: string; cls: string }> = {
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 const selectClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
+async function readJson(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text()
+  if (!text) return {}
+  try {
+    return JSON.parse(text) as Record<string, unknown>
+  } catch {
+    if (/request entity too large/i.test(text) || res.status === 413) {
+      throw new Error('File is too large to send through the app server.')
+    }
+    throw new Error(text.replace(/\s+/g, ' ').slice(0, 180) || `Upload failed (${res.status})`)
+  }
+}
+
 export function leadDisplayName(lead: { contact_name: string; company_name: string | null }): string {
   return lead.company_name ? `${lead.contact_name} · ${lead.company_name}` : lead.contact_name
 }
@@ -130,29 +143,67 @@ export function DocumentTracker({
     if (!file) { setError('Choose a PDF or Word document'); return }
 
     setUploading(true)
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('kind', kind)
-    if (ownerType === 'client') formData.append('client_id', form.client_id)
-    if (ownerType === 'lead') formData.append('lead_id', form.lead_id)
-    formData.append('title', form.title.trim())
-    formData.append('status', form.status)
-    formData.append('is_client_visible', String(ownerType === 'client' && form.is_client_visible))
+    const payload = {
+      kind,
+      client_id: ownerType === 'client' ? form.client_id : '',
+      lead_id: ownerType === 'lead' ? form.lead_id : '',
+      title: form.title.trim(),
+      status: form.status,
+      is_client_visible: ownerType === 'client' && form.is_client_visible,
+      file_name: file.name,
+      mime_type: file.type,
+      file_size: file.size,
+    }
 
     try {
-      const res = await fetch('/api/documents/upload', { method: 'POST', body: formData })
-      const json = await res.json()
-      if (!res.ok || !json.success) {
-        setError(json.error ?? 'Upload failed')
+      const prepareRes = await fetch('/api/documents/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, step: 'prepare' }),
+      })
+      const prepareJson = await readJson(prepareRes)
+      if (!prepareRes.ok || !prepareJson.success) {
+        setError(String(prepareJson.error ?? 'Could not start upload'))
         return
       }
+
+      const uploadRes = await fetch(String(prepareJson.signedUrl), {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${String(prepareJson.token)}`,
+          'Content-Type': file.type || 'application/octet-stream',
+          'x-upsert': 'false',
+        },
+        body: file,
+      })
+      if (!uploadRes.ok) {
+        const uploadText = await uploadRes.text()
+        setError(uploadText.slice(0, 180) || 'File upload failed')
+        return
+      }
+
+      const completeRes = await fetch('/api/documents/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...payload,
+          step: 'complete',
+          storage_path: prepareJson.path,
+        }),
+      })
+      const json = await readJson(completeRes)
+      if (!completeRes.ok || !json.success) {
+        setError(String(json.error ?? 'Upload failed'))
+        return
+      }
+      const uploaded = json.document as TrackedDocument
       const ownerName = ownerType === 'lead'
         ? (leads.find((l) => l.id === form.lead_id) ? leadDisplayName(leads.find((l) => l.id === form.lead_id)!) : 'Lead')
         : (clients.find((c) => c.id === form.client_id)?.company_name ?? '—')
       setDocuments((prev) => [{
-        ...json.document,
-        client_id: json.document.client_id ?? null,
-        lead_id: json.document.lead_id ?? null,
+        ...uploaded,
+        client_id: uploaded.client_id ?? null,
+        lead_id: uploaded.lead_id ?? null,
         owner_kind: ownerType,
         owner_name: ownerName,
         is_client_visible: ownerType === 'client' && form.is_client_visible,

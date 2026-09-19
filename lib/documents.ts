@@ -46,3 +46,30 @@ export function formatFileSize(bytes: number | null | undefined): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
+
+export function parseDocumentKind(value: unknown): DocumentKind | null {
+  if (value === 'proposal' || value === 'contract') return value
+  return null
+}
+
+export function validateDocumentOwner(
+  kind: DocumentKind,
+  clientId: string,
+  leadId: string
+): string | null {
+  if (kind === 'contract' && !clientId) return 'Select a client'
+  if (kind === 'proposal' && !clientId && !leadId) return 'Select a client or a lead'
+  return null
+}
+
+export function buildDocumentStoragePath(
+  kind: DocumentKind,
+  clientId: string,
+  leadId: string,
+  fileName: string
+): string {
+  const timestamp = Date.now()
+  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const ownerPrefix = clientId ? `clients/${clientId}` : `leads/${leadId}`
+  return `${ownerPrefix}/${folderForKind(kind)}/${timestamp}-${safeName}`
+}
