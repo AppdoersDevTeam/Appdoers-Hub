@@ -5,7 +5,6 @@ import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { logTimeAction, deleteTimeEntryAction } from '@/lib/actions/time'
-import { createInvoiceFromTimeAction } from '@/lib/actions/invoices'
 import { formatDate } from '@/lib/utils/format'
 import { formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
@@ -26,7 +25,6 @@ interface TimeEntry {
 
 interface Props {
   projectId: string
-  clientId: string
   entries: TimeEntry[]
   estimatedHours: number | null
   teamMembers: Pick<TeamUser, 'id' | 'full_name'>[]
@@ -37,16 +35,10 @@ interface Props {
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 const selectClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
-export function TimeTab({ projectId, clientId, entries, estimatedHours, teamMembers, currentUserId, tasks }: Props) {
+export function TimeTab({ projectId, entries, estimatedHours, teamMembers, currentUserId, tasks }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [showInvoiceForm, setShowInvoiceForm] = useState(false)
-  const [invoiceDueDate, setInvoiceDueDate] = useState(
-    new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
-  )
-
-  const uninvoicedBillable = entries.filter((e) => e.is_billable && !e.is_invoiced)
 
   const [form, setForm] = useState({
     team_user_id: currentUserId,
@@ -119,52 +111,11 @@ export function TimeTab({ projectId, clientId, entries, estimatedHours, teamMemb
       )}
 
       {/* Actions */}
-      <div className="flex items-center justify-between">
-        {uninvoicedBillable.length > 0 && (
-          <Button size="sm" variant="outline" onClick={() => setShowInvoiceForm(!showInvoiceForm)}>
-            🧾 Invoice {uninvoicedBillable.length} uninvoiced entries
-          </Button>
-        )}
-        <div className="ml-auto">
-          <Button size="sm" onClick={() => setShowForm(!showForm)}>
-            {showForm ? 'Cancel' : '+ Log Time'}
-          </Button>
-        </div>
+      <div className="flex items-center justify-end">
+        <Button size="sm" onClick={() => setShowForm(!showForm)}>
+          {showForm ? 'Cancel' : '+ Log Time'}
+        </Button>
       </div>
-
-      {showInvoiceForm && (
-        <div className="hub-card flex items-center gap-4">
-          <p className="text-sm text-slate-600 shrink-0">
-            Create invoice for <strong>{uninvoicedBillable.length}</strong> billable entries
-          </p>
-          <div>
-            <label className="block text-xs text-slate-500 mb-1">Due Date</label>
-            <Input type="date" value={invoiceDueDate} onChange={(e) => setInvoiceDueDate(e.target.value)} />
-          </div>
-          <Button
-            size="sm"
-            disabled={isPending}
-            onClick={() => {
-              startTransition(async () => {
-                const result = await createInvoiceFromTimeAction(
-                  clientId,
-                  projectId,
-                  uninvoicedBillable.map((e) => e.id),
-                  invoiceDueDate
-                )
-                if (result.success) {
-                  window.location.href = `/app/invoices/${result.data.id}`
-                } else {
-                  setError(result.error)
-                }
-              })
-            }}
-          >
-            {isPending ? 'Creating…' : 'Create Invoice'}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setShowInvoiceForm(false)}>Cancel</Button>
-        </div>
-      )}
 
       {showForm && (
         <form onSubmit={handleLog} className="hub-card space-y-4">

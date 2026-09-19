@@ -52,6 +52,13 @@ export function formatRelativeTime(date: string | Date): string {
   return formatDistanceToNow(new Date(date), { addSuffix: true })
 }
 
+export function formatBytes(bytes: number | null | undefined): string {
+  if (!bytes) return '—'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export function formatInvoiceNumber(seq: number): string {
   return `APD-${String(seq).padStart(4, '0')}`
 }

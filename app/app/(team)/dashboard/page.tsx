@@ -13,7 +13,6 @@ import { TeamHoursChart } from '@/components/team/dashboard/team-hours-chart'
 import { OverdueTasksPanel } from '@/components/team/dashboard/overdue-tasks-panel'
 import { FollowUpsPanel } from '@/components/team/dashboard/follow-ups-panel'
 import { ProjectHealthPanel } from '@/components/team/dashboard/project-health-panel'
-import { OverdueInvoicesPanel } from '@/components/team/dashboard/overdue-invoices-panel'
 import {
   formatCurrency,
   formatMonthDay,
@@ -75,7 +74,7 @@ export default async function DashboardPage({
     {
       label: 'Billable WIP',
       value: formatCurrency(metrics.billableWipValue),
-      sub: 'Uninvoiced billable time',
+      sub: 'Unbilled billable time',
       icon: Briefcase,
       color: 'text-purple-600',
       bg: 'bg-purple-50',
@@ -171,10 +170,6 @@ export default async function DashboardPage({
         />
         <FollowUpsPanel items={metrics.followUpItems} />
         <ProjectHealthPanel items={metrics.projectHealthItems} />
-        <OverdueInvoicesPanel
-          items={metrics.overdueInvoices}
-          totalCount={metrics.overdueInvoiceCount}
-        />
       </div>
       </DashboardSection>
 

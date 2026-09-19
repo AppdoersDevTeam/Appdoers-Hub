@@ -34,8 +34,6 @@ export async function getDashboardAnalytics(
     closedTasksRes,
     timeInPeriodRes,
     uninvoicedTimeRes,
-    overdueInvoicesRes,
-    paidInvoicesRes,
     activityRes,
     renewalsRes,
   ] = await Promise.all([
@@ -89,21 +87,6 @@ export async function getDashboardAnalytics(
       .eq('is_invoiced', false),
 
     supabase
-      .from('invoices')
-      .select('id, invoice_number, total, due_date, clients(company_name)')
-      .in('status', ['sent', 'overdue'])
-      .lt('due_date', today)
-      .order('due_date', { ascending: true })
-      .limit(5),
-
-    supabase
-      .from('invoices')
-      .select('total')
-      .eq('status', 'paid')
-      .gte('paid_at', range.start)
-      .lte('paid_at', range.end),
-
-    supabase
       .from('activity_log')
       .select('id, description, created_at, team_users(full_name)')
       .order('created_at', { ascending: false })
@@ -124,8 +107,6 @@ export async function getDashboardAnalytics(
   const openTasks = openTasksRes.data ?? []
   const timeInPeriod = timeInPeriodRes.data ?? []
   const uninvoicedTime = uninvoicedTimeRes.data ?? []
-  const overdueInvoices = overdueInvoicesRes.data ?? []
-  const paidInvoices = paidInvoicesRes.data ?? []
 
   // --- Snapshot KPIs ---
   const activeLeads = leads.filter((l) => !['won', 'lost'].includes(l.status))
@@ -173,11 +154,6 @@ export async function getDashboardAnalytics(
       l.updated_at >= periodStartIso &&
       l.updated_at <= periodEndIso
   ).length
-
-  const paidThisPeriod = paidInvoices.reduce(
-    (sum, inv) => sum + Number(inv.total ?? 0),
-    0
-  )
 
   // --- Hours by date (chart) ---
   const bucketTotals = new Map<string, { hours: number; billableHours: number }>()
@@ -304,11 +280,6 @@ export async function getDashboardAnalytics(
     .sort((a, b) => b.overByHours - a.overByHours)
     .slice(0, 5)
 
-  const overdueInvoiceValue = overdueInvoices.reduce(
-    (sum, i) => sum + Number(i.total ?? 0),
-    0
-  )
-
   return {
     period,
     periodLabel: range.label,
@@ -326,7 +297,6 @@ export async function getDashboardAnalytics(
     tasksClosed,
     leadsWon,
     leadsLost,
-    paidThisPeriod,
 
     hoursByDate,
     leadsByStatus,
@@ -336,16 +306,6 @@ export async function getDashboardAnalytics(
     overdueTaskItems,
     followUpItems,
     projectHealthItems,
-    overdueInvoices: overdueInvoices.map((inv) => ({
-      id: inv.id as string,
-      invoiceNumber: inv.invoice_number as string,
-      clientName:
-        (inv.clients as { company_name?: string } | null)?.company_name ?? '—',
-      dueDate: inv.due_date as string,
-      total: Number(inv.total),
-    })),
-    overdueInvoiceCount: overdueInvoices.length,
-    overdueInvoiceValue,
 
     renewingSoon: (renewalsRes.data ?? []).map((sub) => ({
       id: sub.id as string,

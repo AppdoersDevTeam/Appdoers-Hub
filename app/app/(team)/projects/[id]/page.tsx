@@ -8,7 +8,7 @@ import { TasksTable } from '@/components/team/tasks/tasks-table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ClientStatusSelector } from '@/components/team/projects/client-status-selector'
 import { formatDate } from '@/lib/utils/format'
-import { ArrowLeft, Folder, StickyNote } from 'lucide-react'
+import { ArrowLeft, StickyNote } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import type { ProjectPhase } from '@/lib/types/database'
 
@@ -17,7 +17,6 @@ const TABS = [
   { key: 'phases', label: 'Phases' },
   { key: 'tasks', label: 'Tasks' },
   { key: 'time', label: 'Time' },
-  { key: 'files', label: 'Files' },
   { key: 'notes', label: 'Notes' },
 ]
 
@@ -178,7 +177,6 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
       {tab === 'time' && (
         <TimeTab
           projectId={id}
-          clientId={project.client_id}
           entries={(timeEntries ?? []) as Parameters<typeof TimeTab>[0]['entries']}
           estimatedHours={project.estimated_hours ? Number(project.estimated_hours) : null}
           teamMembers={teamMembers ?? []}
@@ -187,9 +185,6 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
         />
       )}
 
-      {tab === 'files' && (
-        <EmptyState icon={Folder} title="No files yet" description="Upload project files and deliverables here." />
-      )}
       {tab === 'notes' && (
         <EmptyState icon={StickyNote} title="No notes yet" description="Internal project notes will appear here." />
       )}
