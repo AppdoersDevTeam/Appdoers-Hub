@@ -27,10 +27,11 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const file = formData.get('file')
     const kind = parseKind(formData.get('kind'))
-    const clientId = String(formData.get('client_id') ?? '')
+    const clientId = String(formData.get('client_id') ?? '').trim()
+    const leadId = String(formData.get('lead_id') ?? '').trim()
     const title = String(formData.get('title') ?? '').trim()
     const status = String(formData.get('status') ?? 'sent')
-    const isClientVisible = formData.get('is_client_visible') !== 'false'
+    const isClientVisible = formData.get('is_client_visible') === 'true'
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: 'A PDF or Word document is required' }, { status: 400 })
@@ -38,8 +39,11 @@ export async function POST(req: NextRequest) {
     if (!kind) {
       return NextResponse.json({ error: 'kind must be proposal or contract' }, { status: 400 })
     }
-    if (!clientId) {
+    if (kind === 'contract' && !clientId) {
       return NextResponse.json({ error: 'client_id is required' }, { status: 400 })
+    }
+    if (kind === 'proposal' && !clientId && !leadId) {
+      return NextResponse.json({ error: 'Select a client or a lead' }, { status: 400 })
     }
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 })
@@ -56,7 +60,8 @@ export async function POST(req: NextRequest) {
 
     const timestamp = Date.now()
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const storagePath = `clients/${clientId}/${folderForKind(kind)}/${timestamp}-${safeName}`
+    const ownerPrefix = clientId ? `clients/${clientId}` : `leads/${leadId}`
+    const storagePath = `${ownerPrefix}/${folderForKind(kind)}/${timestamp}-${safeName}`
     const buffer = Buffer.from(await file.arrayBuffer())
     const now = new Date().toISOString()
 
@@ -73,19 +78,20 @@ export async function POST(req: NextRequest) {
 
     const table = tableForKind(kind)
     const row: Record<string, unknown> = {
-      client_id: clientId,
+      client_id: clientId || null,
       title,
       status,
       file_name: file.name,
       storage_path: storagePath,
       mime_type: file.type || null,
       file_size: file.size,
-      is_client_visible: isClientVisible,
+      is_client_visible: Boolean(clientId) && isClientVisible,
       created_by: access.userId,
       sent_at: status === 'draft' ? null : now,
     }
 
     if (kind === 'proposal') {
+      row.lead_id = leadId || null
       row.version = 1
       row.sections = []
       row.total_setup = 0
@@ -109,7 +115,7 @@ export async function POST(req: NextRequest) {
     await logActivity({
       entityType: kind,
       entityId: record.id,
-      clientId,
+      clientId: clientId || null,
       action: 'created',
       description: `${kind === 'proposal' ? 'Proposal' : 'Contract'} "${title}" uploaded`,
     })
@@ -118,7 +124,8 @@ export async function POST(req: NextRequest) {
     const portalPath = kind === 'proposal' ? '/portal/proposals' : '/portal/contracts'
     revalidatePath(listPath)
     revalidatePath(portalPath)
-    revalidatePath(`/app/clients/${clientId}`)
+    if (clientId) revalidatePath(`/app/clients/${clientId}`)
+    if (leadId) revalidatePath(`/app/leads/${leadId}`)
 
     return NextResponse.json({ success: true, document: record })
   } catch (err) {

@@ -34,8 +34,16 @@ export interface TrackedDocument {
   file_size: number | null
   storage_path: string | null
   is_client_visible: boolean
-  client_id: string
-  client_name: string
+  client_id: string | null
+  lead_id?: string | null
+  owner_kind: 'client' | 'lead'
+  owner_name: string
+}
+
+export interface LeadOption {
+  id: string
+  contact_name: string
+  company_name: string | null
 }
 
 const statusStyles: Record<string, { label: string; cls: string }> = {
@@ -51,16 +59,24 @@ const statusStyles: Record<string, { label: string; cls: string }> = {
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 const selectClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
+export function leadDisplayName(lead: { contact_name: string; company_name: string | null }): string {
+  return lead.company_name ? `${lead.contact_name} · ${lead.company_name}` : lead.contact_name
+}
+
 export function DocumentTracker({
   kind,
   documents: initialDocuments,
   clients,
+  leads = [],
   clientId,
+  leadId,
 }: {
   kind: DocumentKind
   documents: TrackedDocument[]
   clients: { id: string; company_name: string }[]
+  leads?: LeadOption[]
   clientId?: string
+  leadId?: string
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -70,11 +86,15 @@ export function DocumentTracker({
   const [uploading, setUploading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<TrackedDocument | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const allowLeadOwner = kind === 'proposal'
+  const defaultOwnerType: 'client' | 'lead' = leadId ? 'lead' : 'client'
   const [form, setForm] = useState({
+    owner_type: defaultOwnerType,
     client_id: clientId ?? '',
+    lead_id: leadId ?? '',
     title: '',
     status: 'sent',
-    is_client_visible: true,
+    is_client_visible: !leadId,
   })
 
   useEffect(() => {
@@ -84,13 +104,28 @@ export function DocumentTracker({
   const noun = kind === 'proposal' ? 'proposal' : 'contract'
   const nounTitle = kind === 'proposal' ? 'Proposal' : 'Contract'
   const statuses = statusesForKind(kind)
-  const showClientCol = !clientId
+  const showOwnerCol = !clientId && !leadId
+  const ownerLocked = Boolean(clientId || leadId)
+  const ownerType = ownerLocked ? defaultOwnerType : form.owner_type
+  const showPortalToggle = ownerType === 'client'
+
+  const resetForm = () => {
+    setForm({
+      owner_type: defaultOwnerType,
+      client_id: clientId ?? '',
+      lead_id: leadId ?? '',
+      title: '',
+      status: 'sent',
+      is_client_visible: !leadId,
+    })
+  }
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     const file = fileInputRef.current?.files?.[0]
-    if (!form.client_id) { setError('Select a client'); return }
+    if (ownerType === 'client' && !form.client_id) { setError('Select a client'); return }
+    if (ownerType === 'lead' && !form.lead_id) { setError('Select a lead'); return }
     if (!form.title.trim()) { setError('Title is required'); return }
     if (!file) { setError('Choose a PDF or Word document'); return }
 
@@ -98,10 +133,11 @@ export function DocumentTracker({
     const formData = new FormData()
     formData.append('file', file)
     formData.append('kind', kind)
-    formData.append('client_id', form.client_id)
+    if (ownerType === 'client') formData.append('client_id', form.client_id)
+    if (ownerType === 'lead') formData.append('lead_id', form.lead_id)
     formData.append('title', form.title.trim())
     formData.append('status', form.status)
-    formData.append('is_client_visible', String(form.is_client_visible))
+    formData.append('is_client_visible', String(ownerType === 'client' && form.is_client_visible))
 
     try {
       const res = await fetch('/api/documents/upload', { method: 'POST', body: formData })
@@ -110,15 +146,19 @@ export function DocumentTracker({
         setError(json.error ?? 'Upload failed')
         return
       }
-      const clientName = clients.find((c) => c.id === form.client_id)?.company_name ?? '—'
-      setDocuments((prev) => [{ ...json.document, client_name: clientName }, ...prev])
+      const ownerName = ownerType === 'lead'
+        ? (leads.find((l) => l.id === form.lead_id) ? leadDisplayName(leads.find((l) => l.id === form.lead_id)!) : 'Lead')
+        : (clients.find((c) => c.id === form.client_id)?.company_name ?? '—')
+      setDocuments((prev) => [{
+        ...json.document,
+        client_id: json.document.client_id ?? null,
+        lead_id: json.document.lead_id ?? null,
+        owner_kind: ownerType,
+        owner_name: ownerName,
+        is_client_visible: ownerType === 'client' && form.is_client_visible,
+      }, ...prev])
       setShowUpload(false)
-      setForm({
-        client_id: clientId ?? '',
-        title: '',
-        status: 'sent',
-        is_client_visible: true,
-      })
+      resetForm()
       if (fileInputRef.current) fileInputRef.current.value = ''
       router.refresh()
     } catch (err) {
@@ -158,6 +198,7 @@ export function DocumentTracker({
   }
 
   const handleVisibility = (doc: TrackedDocument) => {
+    if (doc.owner_kind !== 'client' || !doc.client_id) return
     startTransition(async () => {
       const next = !doc.is_client_visible
       const result = await toggleDocumentVisibilityAction(kind, doc.id, next)
@@ -184,6 +225,8 @@ export function DocumentTracker({
     })
   }
 
+  const ownerColLabel = kind === 'proposal' ? 'For' : 'Client'
+
   return (
     <>
       <div className="flex justify-end">
@@ -203,7 +246,7 @@ export function DocumentTracker({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                {['Title', ...(showClientCol ? ['Client'] : []), 'File', 'Status', 'Client portal', 'Uploaded', ''].map((h) => (
+                {['Title', ...(showOwnerCol ? [ownerColLabel] : []), 'File', 'Status', 'Client portal', 'Uploaded', ''].map((h) => (
                   <th key={h || 'actions'} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
                 ))}
               </tr>
@@ -211,7 +254,7 @@ export function DocumentTracker({
             <tbody className="divide-y divide-slate-200">
               {documents.length === 0 ? (
                 <tr>
-                  <td colSpan={showClientCol ? 7 : 6} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={showOwnerCol ? 7 : 6} className="px-4 py-10 text-center text-slate-500">
                     No {noun}s yet. Upload a PDF or Word document to keep track of them.
                   </td>
                 </tr>
@@ -221,8 +264,17 @@ export function DocumentTracker({
                   return (
                     <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-slate-900">{doc.title}</td>
-                      {showClientCol && (
-                        <td className="px-4 py-3 text-slate-600">{doc.client_name}</td>
+                      {showOwnerCol && (
+                        <td className="px-4 py-3 text-slate-600">
+                          <div className="flex flex-col gap-0.5">
+                            <span>{doc.owner_name}</span>
+                            {kind === 'proposal' && (
+                              <span className="text-[11px] uppercase tracking-wide text-slate-400">
+                                {doc.owner_kind === 'lead' ? 'Lead' : 'Client'}
+                              </span>
+                            )}
+                          </div>
+                        </td>
                       )}
                       <td className="px-4 py-3 text-slate-600">
                         {doc.file_name ? (
@@ -255,16 +307,20 @@ export function DocumentTracker({
                         </select>
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => handleVisibility(doc)}
-                          disabled={isPending}
-                          className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800"
-                          title={doc.is_client_visible ? 'Visible in client portal' : 'Hidden from client portal'}
-                        >
-                          {doc.is_client_visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                          {doc.is_client_visible ? 'Visible' : 'Hidden'}
-                        </button>
+                        {doc.owner_kind === 'client' && doc.client_id ? (
+                          <button
+                            type="button"
+                            onClick={() => handleVisibility(doc)}
+                            disabled={isPending}
+                            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800"
+                            title={doc.is_client_visible ? 'Visible in client portal' : 'Hidden from client portal'}
+                          >
+                            {doc.is_client_visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                            {doc.is_client_visible ? 'Visible' : 'Hidden'}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-400">n/a</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-slate-500">{formatDate(doc.created_at)}</td>
                       <td className="px-4 py-3">
@@ -301,13 +357,43 @@ export function DocumentTracker({
         open={showUpload}
         onClose={() => setShowUpload(false)}
         title={`Upload ${nounTitle}`}
-        subtitle="Attach a PDF or Word document to keep on the client record"
+        subtitle={
+          kind === 'proposal'
+            ? 'Attach a PDF or Word document to a client or lead'
+            : 'Attach a PDF or Word document to keep on the client record'
+        }
       >
         <form onSubmit={handleUpload} className="space-y-5 px-6 py-5">
           {error && showUpload && (
             <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>
           )}
-          {!clientId && (
+          {!ownerLocked && allowLeadOwner && (
+            <div>
+              <label className={labelClass}>Attach to *</label>
+              <div className="flex gap-2">
+                {(['client', 'lead'] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setForm((f) => ({
+                      ...f,
+                      owner_type: type,
+                      is_client_visible: type === 'client' ? f.is_client_visible : false,
+                    }))}
+                    className={cn(
+                      'flex-1 rounded-md border px-3 py-2 text-sm font-medium capitalize',
+                      ownerType === type
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    )}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {!ownerLocked && ownerType === 'client' && (
             <div>
               <label className={labelClass}>Client *</label>
               <select
@@ -319,6 +405,22 @@ export function DocumentTracker({
                 <option value="">Select client…</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>{c.company_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {!ownerLocked && ownerType === 'lead' && (
+            <div>
+              <label className={labelClass}>Lead *</label>
+              <select
+                className={selectClass}
+                value={form.lead_id}
+                onChange={(e) => setForm((f) => ({ ...f, lead_id: e.target.value }))}
+                required
+              >
+                <option value="">Select lead…</option>
+                {leads.map((l) => (
+                  <option key={l.id} value={l.id}>{leadDisplayName(l)}</option>
                 ))}
               </select>
             </div>
@@ -356,14 +458,16 @@ export function DocumentTracker({
               ))}
             </select>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            <input
-              type="checkbox"
-              checked={form.is_client_visible}
-              onChange={(e) => setForm((f) => ({ ...f, is_client_visible: e.target.checked }))}
-            />
-            Show in client portal
-          </label>
+          {showPortalToggle && (
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                checked={form.is_client_visible}
+                onChange={(e) => setForm((f) => ({ ...f, is_client_visible: e.target.checked }))}
+              />
+              Show in client portal
+            </label>
+          )}
           <div className="flex gap-3 pt-2">
             <Button type="submit" disabled={uploading} className="flex-1">
               <Upload className="h-4 w-4" />

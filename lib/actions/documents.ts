@@ -14,12 +14,13 @@ type ActionResult<T = undefined> =
   | { success: true; data: T }
   | { success: false; error: string }
 
-function revalidateDocumentPaths(kind: DocumentKind, clientId?: string | null) {
+function revalidateDocumentPaths(kind: DocumentKind, clientId?: string | null, leadId?: string | null) {
   const listPath = kind === 'proposal' ? '/app/proposals' : '/app/contracts'
   const portalPath = kind === 'proposal' ? '/portal/proposals' : '/portal/contracts'
   revalidatePath(listPath)
   revalidatePath(portalPath)
   if (clientId) revalidatePath(`/app/clients/${clientId}`)
+  if (leadId) revalidatePath(`/app/leads/${leadId}`)
 }
 
 export async function getDocumentDownloadUrlAction(
@@ -57,7 +58,7 @@ export async function getDocumentDownloadUrlAction(
         .eq('has_portal_access', true)
         .maybeSingle()
 
-      if (!contact || contact.client_id !== doc.client_id || !doc.is_client_visible) {
+      if (!contact || !doc.client_id || contact.client_id !== doc.client_id || !doc.is_client_visible) {
         return { success: false, error: 'File not found or not accessible' }
       }
     }
@@ -110,11 +111,11 @@ export async function updateDocumentStatusAction(
       .from(table)
       .update(updates)
       .eq('id', id)
-      .select('client_id')
+      .select()
       .maybeSingle()
 
     if (error) return { success: false, error: error.message }
-    revalidateDocumentPaths(kind, data?.client_id)
+    revalidateDocumentPaths(kind, data?.client_id, data?.lead_id ?? null)
     return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: String(err) }
@@ -133,11 +134,11 @@ export async function toggleDocumentVisibilityAction(
       .from(table)
       .update({ is_client_visible: isVisible })
       .eq('id', id)
-      .select('client_id')
+      .select()
       .maybeSingle()
 
     if (error) return { success: false, error: error.message }
-    revalidateDocumentPaths(kind, data?.client_id)
+    revalidateDocumentPaths(kind, data?.client_id, data?.lead_id ?? null)
     return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: String(err) }
@@ -155,7 +156,7 @@ export async function deleteDocumentAction(
 
     const { data: doc } = await supabase
       .from(table)
-      .select('storage_path, client_id, title')
+      .select()
       .eq('id', id)
       .maybeSingle()
 
@@ -176,7 +177,7 @@ export async function deleteDocumentAction(
       description: `${kind === 'proposal' ? 'Proposal' : 'Contract'} "${doc.title}" deleted`,
     })
 
-    revalidateDocumentPaths(kind, doc.client_id)
+    revalidateDocumentPaths(kind, doc.client_id, doc.lead_id ?? null)
     return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: String(err) }

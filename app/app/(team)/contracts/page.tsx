@@ -26,7 +26,8 @@ export default async function ContractsPage() {
     storage_path: c.storage_path,
     is_client_visible: c.is_client_visible ?? true,
     client_id: c.client_id,
-    client_name: (c.clients as { company_name?: string } | null)?.company_name ?? '—',
+    owner_kind: 'client' as const,
+    owner_name: (c.clients as { company_name?: string } | null)?.company_name ?? '—',
   }))
 
   return (

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { LeadActions } from '@/components/team/leads/lead-actions'
 import { LeadNotes } from '@/components/team/leads/lead-notes'
+import { DocumentTracker, leadDisplayName, type TrackedDocument } from '@/components/team/documents/document-tracker'
 import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/format'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
@@ -53,6 +54,12 @@ export default async function LeadDetailPage({ params }: Props) {
   const { data: notes } = await supabase
     .from('lead_notes')
     .select('*, team_users(full_name)')
+    .eq('lead_id', id)
+    .order('created_at', { ascending: false })
+
+  const { data: leadProposals } = await supabase
+    .from('proposals')
+    .select('id, title, status, created_at, sent_at, file_name, mime_type, file_size, storage_path, is_client_visible, client_id, lead_id')
     .eq('lead_id', id)
     .order('created_at', { ascending: false })
 
@@ -151,6 +158,35 @@ export default async function LeadDetailPage({ params }: Props) {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-slate-900">Proposals</h3>
+            <DocumentTracker
+              kind="proposal"
+              leadId={id}
+              clients={[]}
+              leads={[{ id: lead.id, contact_name: lead.contact_name, company_name: lead.company_name }]}
+              documents={(leadProposals ?? []).map((p): TrackedDocument => ({
+                id: p.id,
+                title: p.title,
+                status: p.status,
+                created_at: p.created_at,
+                sent_at: p.sent_at,
+                file_name: p.file_name,
+                mime_type: p.mime_type,
+                file_size: p.file_size,
+                storage_path: p.storage_path,
+                is_client_visible: p.is_client_visible ?? false,
+                client_id: p.client_id,
+                lead_id: p.lead_id,
+                owner_kind: 'lead',
+                owner_name: leadDisplayName({
+                  contact_name: lead.contact_name,
+                  company_name: lead.company_name,
+                }),
+              }))}
+            />
           </div>
 
           {/* Notes */}
