@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { CURSOR_STAGES, hashApiToken, stageToTaskStatus, type CursorStage } from '@/lib/cursor-workflow'
 import { formatTicket, getJoinedClientName, ticketSelect } from '@/lib/cursor-ticket-format'
 import { sendToChannel } from '@/lib/slack'
+import { getTeamMemberName, slackPeopleLines } from '@/lib/team-member'
 
 const createTicketSchema = z.object({
   project_id: z.string().uuid(),
@@ -35,7 +36,8 @@ async function authenticateCursorRequest(req: Request) {
   if (error || !data) return { error: 'Invalid API token' as const }
 
   await service.from('cursor_api_tokens').update({ last_used_at: new Date().toISOString() }).eq('id', data.id)
-  return { service, teamUserId: data.team_user_id }
+  const teamMemberName = await getTeamMemberName(service, data.team_user_id)
+  return { service, teamUserId: data.team_user_id, teamMemberName }
 }
 
 export async function GET(req: Request) {
@@ -127,7 +129,22 @@ export async function POST(req: Request) {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*🎫 Cursor Ticket Created*\n*Task:* ${payload.title}\n*Project:* ${projectName} (${clientName})\n*Priority:* ${payload.priority.toUpperCase()}\n*Stage:* ${payload.stage}\n*Status:* ${status}`,
+        text: [
+          '*🎫 Cursor Ticket Created*',
+          `*Task:* ${payload.title}`,
+          `*Project:* ${projectName} (${clientName})`,
+          `*Priority:* ${payload.priority.toUpperCase()}`,
+          `*Stage:* ${payload.stage}`,
+          `*Status:* ${status}`,
+          ...slackPeopleLines({
+            requestedBy: auth.teamMemberName,
+            assignedTo: payload.assigned_to
+              ? await getTeamMemberName(auth.service, payload.assigned_to)
+              : 'Unassigned',
+          }),
+        ]
+          .filter(Boolean)
+          .join('\n'),
       },
     },
   ])

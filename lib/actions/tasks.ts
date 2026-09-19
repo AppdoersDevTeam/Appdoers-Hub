@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
 import { hubTaskUrl, notifyTaskActivity, type SlackBlock } from '@/lib/slack'
+import { getTeamMemberName, slackPeopleLines } from '@/lib/team-member'
 import type { TaskStatus, TaskType, TaskPriority, WorkflowStage } from '@/lib/types/database'
 import { stageToTaskStatus } from '@/lib/cursor-workflow'
 import { WORKFLOW_STAGE_CONFIG, TASK_STATUS_CONFIG } from '@/lib/tasks/constants'
@@ -51,6 +52,15 @@ async function loadTaskSlackProject(
     clientName: client?.company_name ?? '',
     clientSlackChannelId: client?.slack_channel_id ?? null,
   }
+}
+
+async function loadCurrentMemberName(
+  supabase: Awaited<ReturnType<typeof createSupabaseClient>>
+): Promise<string | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  return getTeamMemberName(supabase, user?.id)
 }
 
 function taskHubLine(taskId: string): string {
@@ -122,15 +132,8 @@ export async function createTaskAction(
 
     const project = await loadTaskSlackProject(supabase, input.project_id)
 
-    let assigneeName = 'Unassigned'
-    if (input.assigned_to) {
-      const { data: member } = await supabase
-        .from('team_users')
-        .select('full_name')
-        .eq('id', input.assigned_to)
-        .single()
-      assigneeName = member?.full_name ?? 'Unassigned'
-    }
+    const requestedBy = await getTeamMemberName(supabase, user?.id)
+    const assigneeName = (await getTeamMemberName(supabase, input.assigned_to)) ?? 'Unassigned'
 
     await logActivity({
       entityType: 'task',
@@ -145,7 +148,7 @@ export async function createTaskAction(
       `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
       `*Priority:* ${input.priority.toUpperCase()}`,
       `*Type:* ${input.type}`,
-      `*Assigned To:* ${assigneeName}`,
+      ...slackPeopleLines({ requestedBy, assignedTo: assigneeName }),
       taskHubLine(task.id),
     ])
 
@@ -173,9 +176,11 @@ export async function deleteTaskAction(
     const { error } = await supabase.from('tasks').delete().eq('id', id)
     if (error) return { success: false, error: error.message }
 
+    const actorName = await loadCurrentMemberName(supabase)
     await notifyTaskSlack(project, `🗑️ Task deleted: ${existing?.title ?? 'Task'}`, '🗑️ Task Deleted', [
       `*Task:* ${existing?.title ?? 'Task'}`,
       `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
+      ...slackPeopleLines({ by: actorName, byLabel: 'Deleted by' }),
     ])
 
     revalidatePath('/app/tasks')
@@ -209,7 +214,7 @@ export async function updateTaskDetailsAction(
 
     const { data: existing } = await supabase
       .from('tasks')
-      .select('title, project_id, status, workflow_stage, time_spent')
+      .select('title, project_id, status, workflow_stage, time_spent, created_by')
       .eq('id', id)
       .single()
 
@@ -319,10 +324,13 @@ export async function updateTaskDetailsAction(
 
     const slackProject = await loadTaskSlackProject(supabase, nextProjectId)
     const taskTitle = input.title ?? existing.title
+    const requestedBy = await getTeamMemberName(supabase, existing.created_by)
+    const updatedBy = await getTeamMemberName(supabase, user?.id)
     if (input.project_id && input.project_id !== previousProjectId) {
       await notifyTaskSlack(slackProject, `📁 Task moved: ${taskTitle}`, '📁 Task Project Updated', [
         `*Task:* ${taskTitle}`,
         `*Moved to:* ${projectName} (${clientName})`,
+        ...slackPeopleLines({ requestedBy, by: updatedBy }),
         taskHubLine(id),
       ])
     } else if (changes.length > 0) {
@@ -330,6 +338,7 @@ export async function updateTaskDetailsAction(
         `*Task:* ${taskTitle}`,
         `*Project:* ${slackProject.name}${slackProject.clientName ? ` (${slackProject.clientName})` : ''}`,
         `*Changes:* ${changes.join(', ')}`,
+        ...slackPeopleLines({ requestedBy, by: updatedBy }),
         taskHubLine(id),
       ])
     }
@@ -357,7 +366,7 @@ export async function updateTaskStatusAction(
 
     const { data: task } = await supabase
       .from('tasks')
-      .select('title')
+      .select('title, created_by')
       .eq('id', id)
       .single()
 
@@ -376,10 +385,13 @@ export async function updateTaskStatusAction(
     })
 
     const project = await loadTaskSlackProject(supabase, projectId)
+    const requestedBy = await getTeamMemberName(supabase, task?.created_by)
+    const updatedBy = await loadCurrentMemberName(supabase)
     await notifyTaskSlack(project, `🔄 Task status: ${task?.title ?? 'Task'}`, '🔄 Task Status Updated', [
       `*Task:* ${task?.title ?? 'Task'}`,
       `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
       `*Status:* ${statusLabel[status]}`,
+      ...slackPeopleLines({ requestedBy, by: updatedBy }),
       taskHubLine(id),
     ])
 
@@ -402,7 +414,7 @@ export async function updateTaskWorkflowStageAction(
 
     const { data: task } = await supabase
       .from('tasks')
-      .select('title')
+      .select('title, created_by')
       .eq('id', id)
       .single()
 
@@ -427,6 +439,8 @@ export async function updateTaskWorkflowStageAction(
     })
 
     const project = await loadTaskSlackProject(supabase, projectId)
+    const requestedBy = await getTeamMemberName(supabase, task?.created_by)
+    const updatedBy = await loadCurrentMemberName(supabase)
     await notifyTaskSlack(
       project,
       `🔄 Task stage: ${task?.title ?? 'Task'}`,
@@ -436,6 +450,7 @@ export async function updateTaskWorkflowStageAction(
         `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
         `*Stage:* ${WORKFLOW_STAGE_CONFIG[workflowStage].label}`,
         `*Status:* ${TASK_STATUS_CONFIG[status].label}`,
+        ...slackPeopleLines({ requestedBy, by: updatedBy }),
         taskHubLine(id),
       ]
     )
@@ -467,7 +482,7 @@ export async function addTaskNoteAction(
 
     const { data: task } = await supabase
       .from('tasks')
-      .select('title, project_id, projects(name, client_id, clients(company_name))')
+      .select('title, project_id, created_by, projects(name, client_id, clients(company_name))')
       .eq('id', taskId)
       .single()
 
@@ -491,10 +506,13 @@ export async function addTaskNoteAction(
     await supabase.from('tasks').update({ updated_at: new Date().toISOString() }).eq('id', taskId)
 
     const project = await loadTaskSlackProject(supabase, projectId)
+    const requestedBy = await getTeamMemberName(supabase, task?.created_by)
+    const updatedBy = await getTeamMemberName(supabase, user.id)
     await notifyTaskSlack(project, `📝 Task note added: ${task?.title ?? 'Task'}`, '📝 Task Note Added', [
       `*Task:* ${task?.title ?? 'Task'}`,
       `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
       `*Note:* ${content}`,
+      ...slackPeopleLines({ requestedBy, by: updatedBy, byLabel: 'Note by' }),
       taskHubLine(taskId),
     ])
 

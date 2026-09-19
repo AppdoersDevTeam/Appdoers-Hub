@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { CURSOR_STAGES, hashApiToken, stageToTaskStatus } from '@/lib/cursor-workflow'
 import { formatTicket, getJoinedClientName, ticketSelect } from '@/lib/cursor-ticket-format'
 import { sendToChannel } from '@/lib/slack'
+import { getTeamMemberName, slackPeopleLines } from '@/lib/team-member'
 import { getTaskHoursLogged, logCursorTaskTime } from '@/lib/cursor-time'
 import { setTaskTimeSpent } from '@/lib/task-time'
 
@@ -69,7 +70,8 @@ async function authenticateCursorRequest(req: Request) {
   if (error || !data) return { error: 'Invalid API token' as const }
 
   await service.from('cursor_api_tokens').update({ last_used_at: new Date().toISOString() }).eq('id', data.id)
-  return { service, teamUserId: data.team_user_id }
+  const teamMemberName = await getTeamMemberName(service, data.team_user_id)
+  return { service, teamUserId: data.team_user_id, teamMemberName }
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -103,13 +105,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const payload = parsed.data
   const { data: existing, error: existingError } = await auth.service
     .from('tasks')
-    .select('id, project_id, title, status, workflow_stage, assigned_to')
+    .select('id, project_id, title, status, workflow_stage, assigned_to, created_by')
     .eq('id', id)
     .single()
 
   if (existingError || !existing) {
     return NextResponse.json({ error: existingError?.message ?? 'Ticket not found' }, { status: 404 })
   }
+
+  const requestedBy = await getTeamMemberName(auth.service, existing.created_by)
+  const actorName = auth.teamMemberName
 
   let nextProject: ProjectSummary | null = null
   if (payload.project_id !== undefined && payload.project_id !== existing.project_id) {
@@ -185,7 +190,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   if (payload.claim) {
-    const claimBy = payload.agent_name ?? 'Cursor AI'
+    const claimBy = actorName ?? payload.agent_name ?? 'Cursor AI'
     await auth.service.from('activity_log').insert({
       entity_type: 'task',
       entity_id: id,
@@ -200,7 +205,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*🤖 Ticket Claimed*\n*Task:* ${task?.title ?? 'Task'}\n*Project:* ${projectName} (${clientName})\n*Claimed By:* ${claimBy}\n*Assigned To:* ${assigneeName ?? 'Unassigned'}`,
+          text: [
+            '*🤖 Ticket Claimed*',
+            `*Task:* ${task?.title ?? 'Task'}`,
+            `*Project:* ${projectName} (${clientName})`,
+            ...slackPeopleLines({
+              requestedBy,
+              by: claimBy,
+              byLabel: 'Claimed by',
+              assignedTo: assigneeName ?? 'Unassigned',
+            }),
+          ]
+            .filter(Boolean)
+            .join('\n'),
         },
       },
     ])
@@ -221,7 +238,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*🔄 Workflow Stage Changed*\n*Task:* ${task?.title ?? 'Task'}\n*Project:* ${projectName} (${clientName})\n*New Stage:* ${payload.stage}\n*Status:* ${task?.status ?? 'unknown'}`,
+          text: [
+            '*🔄 Workflow Stage Changed*',
+            `*Task:* ${task?.title ?? 'Task'}`,
+            `*Project:* ${projectName} (${clientName})`,
+            `*New Stage:* ${payload.stage}`,
+            `*Status:* ${task?.status ?? 'unknown'}`,
+            ...slackPeopleLines({ requestedBy, by: actorName }),
+          ]
+            .filter(Boolean)
+            .join('\n'),
         },
       },
     ])
@@ -242,7 +268,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*📝 Progress Note*\n*Task:* ${task?.title ?? 'Task'}\n*Project:* ${projectName} (${clientName})\n*Note:* ${payload.note}`,
+          text: [
+            '*📝 Progress Note*',
+            `*Task:* ${task?.title ?? 'Task'}`,
+            `*Project:* ${projectName} (${clientName})`,
+            `*Note:* ${payload.note}`,
+            ...slackPeopleLines({ requestedBy, by: actorName, byLabel: 'Note by' }),
+          ]
+            .filter(Boolean)
+            .join('\n'),
         },
       },
     ])
@@ -300,7 +334,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*📁 Ticket Project Updated*\n*Task:* ${task?.title ?? 'Task'}\n*From:* ${previousProject?.name ?? 'Unknown project'} (${previousProject?.client_name ?? 'Unknown client'})\n*To:* ${nextProject.name} (${nextProject.client_name})`,
+          text: [
+            '*📁 Ticket Project Updated*',
+            `*Task:* ${task?.title ?? 'Task'}`,
+            `*From:* ${previousProject?.name ?? 'Unknown project'} (${previousProject?.client_name ?? 'Unknown client'})`,
+            `*To:* ${nextProject.name} (${nextProject.client_name})`,
+            ...slackPeopleLines({ requestedBy, by: actorName }),
+          ]
+            .filter(Boolean)
+            .join('\n'),
         },
       },
     ])
