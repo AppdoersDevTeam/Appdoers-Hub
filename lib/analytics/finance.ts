@@ -30,10 +30,8 @@ function safeDivide(numerator: number, denominator: number): number | null {
 
 export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
   const supabase = await createClient()
-  const today = new Date().toISOString().split('T')[0]
-  const monthStart = `${today.slice(0, 7)}-01`
 
-  const [subsRes, clientsRes, outstandingRes, overdueRes, paidThisMonthRes] =
+  const [subsRes, clientsRes] =
     await Promise.all([
       supabase
         .from('agency_subscriptions')
@@ -43,24 +41,6 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
         .from('clients')
         .select('monthly_fee, status')
         .eq('status', 'active'),
-
-      supabase
-        .from('invoices')
-        .select('total')
-        .in('status', ['sent', 'overdue']),
-
-      supabase
-        .from('invoices')
-        .select('total')
-        .in('status', ['sent', 'overdue'])
-        .lt('due_date', today),
-
-      supabase
-        .from('invoices')
-        .select('total')
-        .eq('status', 'paid')
-        .gte('paid_at', monthStart)
-        .lte('paid_at', `${today}T23:59:59.999Z`),
     ])
 
   const allSubs = (subsRes.data ?? []) as SubscriptionRow[]
@@ -143,10 +123,6 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
   const toolCostAsPercentOfRevenue =
     mrr > 0 ? (monthlySpend / mrr) * 100 : null
 
-  const outstandingInvoices = outstandingRes.data ?? []
-  const overdueInvoices = overdueRes.data ?? []
-  const paidThisMonthInvoices = paidThisMonthRes.data ?? []
-
   return {
     monthlySpend,
     yearlyProjected,
@@ -161,18 +137,5 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
     marginPerPayingClient,
     grossMarginPercent,
     toolCostAsPercentOfRevenue,
-    outstandingTotal: outstandingInvoices.reduce(
-      (sum, inv) => sum + Number(inv.total ?? 0),
-      0
-    ),
-    overdueTotal: overdueInvoices.reduce(
-      (sum, inv) => sum + Number(inv.total ?? 0),
-      0
-    ),
-    overdueCount: overdueInvoices.length,
-    paidThisMonth: paidThisMonthInvoices.reduce(
-      (sum, inv) => sum + Number(inv.total ?? 0),
-      0
-    ),
   }
 }

@@ -54,28 +54,3 @@ export async function requirePortalAccess(): Promise<PortalAccess | AccessDenied
   const db = await createServiceClient()
   return { ok: true, db, userId: user.id, clientId: contact.client_id }
 }
-
-/** Team members or portal clients with access to a non-draft invoice. */
-export async function requireInvoiceAccess(
-  invoiceId: string
-): Promise<(TeamAccess | PortalAccess) | AccessDenied> {
-  const team = await requireTeamAccess()
-  if (team.ok) return team
-
-  const portal = await requirePortalAccess()
-  if (!portal.ok) return portal
-
-  const { data: invoice } = await portal.db
-    .from('invoices')
-    .select('id, client_id, status')
-    .eq('id', invoiceId)
-    .eq('client_id', portal.clientId)
-    .in('status', ['sent', 'paid', 'overdue'])
-    .maybeSingle()
-
-  if (!invoice) {
-    return { ok: false, status: 403, message: 'Forbidden' }
-  }
-
-  return portal
-}

@@ -39,10 +39,4 @@ export interface FinanceAnalytics {
   marginPerPayingClient: number | null
   grossMarginPercent: number | null
   toolCostAsPercentOfRevenue: number | null
-
-  // Invoice health
-  outstandingTotal: number
-  overdueTotal: number
-  overdueCount: number
-  paidThisMonth: number
 }

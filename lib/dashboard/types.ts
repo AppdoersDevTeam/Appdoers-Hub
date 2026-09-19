@@ -39,14 +39,6 @@ export interface ProjectHealthItem {
   overByHours: number
 }
 
-export interface OverdueInvoiceItem {
-  id: string
-  invoiceNumber: string
-  clientName: string
-  dueDate: string
-  total: number
-}
-
 export interface RenewalItem {
   id: string
   name: string
@@ -82,7 +74,6 @@ export interface DashboardAnalytics {
   tasksClosed: number
   leadsWon: number
   leadsLost: number
-  paidThisPeriod: number
 
   // Chart data
   hoursByDate: HoursByDate[]
@@ -94,9 +85,6 @@ export interface DashboardAnalytics {
   overdueTaskItems: OverdueTaskItem[]
   followUpItems: FollowUpItem[]
   projectHealthItems: ProjectHealthItem[]
-  overdueInvoices: OverdueInvoiceItem[]
-  overdueInvoiceCount: number
-  overdueInvoiceValue: number
 
   // Footer
   renewingSoon: RenewalItem[]

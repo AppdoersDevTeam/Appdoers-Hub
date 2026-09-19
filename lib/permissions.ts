@@ -7,8 +7,6 @@ export type Feature =
   | 'tasks'
   | 'proposals'
   | 'contracts'
-  | 'invoices'
-  | 'files'
   | 'recaps'
   | 'subscriptions'
   | 'analytics'
@@ -16,7 +14,7 @@ export type Feature =
 
 export const ALL_FEATURES: Feature[] = [
   'clients', 'leads', 'projects', 'tasks', 'proposals',
-  'contracts', 'invoices', 'files', 'recaps', 'subscriptions', 'analytics', 'settings',
+  'contracts', 'recaps', 'subscriptions', 'analytics', 'settings',
 ]
 
 export const FEATURE_LABELS: Record<Feature, string> = {
@@ -26,8 +24,6 @@ export const FEATURE_LABELS: Record<Feature, string> = {
   tasks: 'Tasks',
   proposals: 'Proposals',
   contracts: 'Contracts',
-  invoices: 'Invoices',
-  files: 'Files',
   recaps: 'Recaps',
   subscriptions: 'Subscriptions',
   analytics: 'Analytics',
@@ -42,8 +38,6 @@ export const FEATURE_HREF: Record<Feature, string> = {
   tasks: '/app/tasks',
   proposals: '/app/proposals',
   contracts: '/app/contracts',
-  invoices: '/app/invoices',
-  files: '/app/files',
   recaps: '/app/recaps',
   subscriptions: '/app/subscriptions',
   analytics: '/app/analytics',
@@ -54,12 +48,12 @@ export const FEATURE_HREF: Record<Feature, string> = {
 const ROLE_DEFAULTS: Record<string, Record<Feature, PermissionLevel>> = {
   director: {
     clients: 'edit', leads: 'edit', projects: 'edit', tasks: 'edit',
-    proposals: 'edit', contracts: 'edit', invoices: 'edit', files: 'edit',
+    proposals: 'edit', contracts: 'edit',
     recaps: 'edit', subscriptions: 'edit', analytics: 'view', settings: 'edit',
   },
   member: {
     clients: 'edit', leads: 'edit', projects: 'edit', tasks: 'edit',
-    proposals: 'view', contracts: 'view', invoices: 'view', files: 'edit',
+    proposals: 'view', contracts: 'view',
     recaps: 'edit', subscriptions: 'none', analytics: 'none', settings: 'none',
   },
 }

@@ -7,7 +7,6 @@ import {
   Users,
   UserCheck,
   Percent,
-  Receipt,
   CreditCard,
 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
@@ -118,16 +117,12 @@ export default async function AnalyticsPage() {
       bg: 'bg-indigo-50',
     },
     {
-      label: 'Outstanding Invoices',
-      value: formatCurrency(metrics.outstandingTotal),
-      sub:
-        metrics.overdueCount > 0
-          ? `${metrics.overdueCount} overdue (${formatCurrency(metrics.overdueTotal)})`
-          : 'Sent, awaiting payment',
-      icon: Receipt,
-      color: metrics.overdueCount > 0 ? 'text-red-600' : 'text-slate-500',
-      bg: metrics.overdueCount > 0 ? 'bg-red-50' : 'bg-slate-100',
-      highlight: metrics.overdueCount > 0,
+      label: 'Avg Revenue / Client',
+      value: formatNullableCurrency(metrics.avgRevenuePerPayingClient),
+      sub: 'MRR ÷ paying clients',
+      icon: DollarSign,
+      color: 'text-slate-600',
+      bg: 'bg-slate-100',
     },
   ]
 
@@ -145,8 +140,8 @@ export default async function AnalyticsPage() {
           cards={revenueCostKpis}
         />
         <KpiSection
-          title="Unit economics & invoices"
-          description="Per-client costs, margins, and receivables"
+          title="Unit economics"
+          description="Per-client costs and margins"
           cards={unitEconomicsKpis}
         />
       </div>
