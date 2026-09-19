@@ -1,10 +1,11 @@
-import { notFound } from 'next/navigation'
+﻿import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { LeadActions } from '@/components/team/leads/lead-actions'
 import { LeadNotes } from '@/components/team/leads/lead-notes'
-import { DocumentTracker, leadDisplayName, type TrackedDocument } from '@/components/team/documents/document-tracker'
+import { DocumentTracker } from '@/components/team/documents/document-tracker'
+import { leadDisplayName, type TrackedDocument } from '@/lib/documents'
 import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/format'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
@@ -105,8 +106,8 @@ export default async function LeadDetailPage({ params }: Props) {
               Lead Details
             </h3>
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-              <InfoRow label="Email" value={lead.email ?? '—'} />
-              <InfoRow label="Phone" value={lead.phone ?? '—'} />
+              <InfoRow label="Email" value={lead.email ?? 'ΓÇö'} />
+              <InfoRow label="Phone" value={lead.phone ?? 'ΓÇö'} />
               <InfoRow
                 label="Source"
                 value={sourceLabels[lead.source] ?? lead.source}
@@ -120,7 +121,7 @@ export default async function LeadDetailPage({ params }: Props) {
               />
               <InfoRow
                 label="Next Action"
-                value={lead.next_action ?? '—'}
+                value={lead.next_action ?? 'ΓÇö'}
               />
               {lead.next_action_date && (
                 <InfoRow
@@ -153,7 +154,7 @@ export default async function LeadDetailPage({ params }: Props) {
                     href={`/app/clients/${lead.converted_client_id}`}
                     className="mt-0.5 text-blue-600 hover:underline"
                   >
-                    View Client Record →
+                    View Client Record ΓåÆ
                   </Link>
                 </div>
               )}
@@ -215,7 +216,7 @@ export default async function LeadDetailPage({ params }: Props) {
                         <span className="text-xs text-slate-500">
                           {(note.team_users as { full_name?: string } | null)
                             ?.full_name ?? 'Team'}{' '}
-                          · {formatRelativeTime(note.created_at as string)}
+                          ┬╖ {formatRelativeTime(note.created_at as string)}
                         </span>
                       </div>
                       <p className="text-sm text-slate-600 whitespace-pre-wrap">
@@ -246,7 +247,7 @@ export default async function LeadDetailPage({ params }: Props) {
               <p className="mt-0.5 font-medium text-slate-900">
                 {lead.estimated_setup_fee
                   ? formatCurrency(lead.estimated_setup_fee)
-                  : '—'}
+                  : 'ΓÇö'}
               </p>
             </div>
             <div>
@@ -254,7 +255,7 @@ export default async function LeadDetailPage({ params }: Props) {
               <p className="mt-0.5 font-medium text-slate-900">
                 {lead.estimated_monthly
                   ? formatCurrency(lead.estimated_monthly)
-                  : '—'}
+                  : 'ΓÇö'}
               </p>
             </div>
             <div>
@@ -262,11 +263,11 @@ export default async function LeadDetailPage({ params }: Props) {
               <p className="mt-0.5 text-xl font-semibold text-blue-600">
                 {lead.estimated_value
                   ? formatCurrency(lead.estimated_value)
-                  : '—'}
+                  : 'ΓÇö'}
               </p>
               {lead.estimated_monthly && (
                 <p className="text-xs text-slate-500">
-                  setup + monthly × 12
+                  setup + monthly ├ù 12
                 </p>
               )}
             </div>

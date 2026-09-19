@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
-import { DocumentTracker, leadDisplayName, type TrackedDocument } from '@/components/team/documents/document-tracker'
+import { DocumentTracker } from '@/components/team/documents/document-tracker'
+import { leadDisplayName, oneRelation, type TrackedDocument } from '@/lib/documents'
 
 export default async function ProposalsPage() {
   const supabase = await createClient()
@@ -19,8 +20,8 @@ export default async function ProposalsPage() {
   ])
 
   const rows: TrackedDocument[] = (proposals ?? []).map((p) => {
-    const clientName = (p.clients as { company_name?: string } | null)?.company_name ?? null
-    const lead = p.leads as { contact_name?: string; company_name?: string | null } | null
+    const clientName = oneRelation(p.clients as { company_name?: string } | { company_name?: string }[] | null)?.company_name ?? null
+    const lead = oneRelation(p.leads as { contact_name?: string; company_name?: string | null } | { contact_name?: string; company_name?: string | null }[] | null)
     const ownerKind = p.client_id ? 'client' : 'lead'
     const ownerName = ownerKind === 'client'
       ? (clientName ?? '—')

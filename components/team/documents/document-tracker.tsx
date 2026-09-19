@@ -16,35 +16,14 @@ import {
 import {
   DOCUMENT_ACCEPT,
   formatFileSize,
+  leadDisplayName,
   statusesForKind,
   type DocumentKind,
+  type LeadOption,
+  type TrackedDocument,
 } from '@/lib/documents'
 import { formatDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
-
-export interface TrackedDocument {
-  id: string
-  title: string
-  status: string
-  created_at: string
-  sent_at: string | null
-  signed_at?: string | null
-  file_name: string | null
-  mime_type: string | null
-  file_size: number | null
-  storage_path: string | null
-  is_client_visible: boolean
-  client_id: string | null
-  lead_id?: string | null
-  owner_kind: 'client' | 'lead'
-  owner_name: string
-}
-
-export interface LeadOption {
-  id: string
-  contact_name: string
-  company_name: string | null
-}
 
 const statusStyles: Record<string, { label: string; cls: string }> = {
   draft: { label: 'Draft', cls: 'bg-slate-100 text-slate-500' },
@@ -59,6 +38,8 @@ const statusStyles: Record<string, { label: string; cls: string }> = {
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 const selectClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
+export type { TrackedDocument, LeadOption }
+
 async function readJson(res: Response): Promise<Record<string, unknown>> {
   const text = await res.text()
   if (!text) return {}
@@ -70,10 +51,6 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
     }
     throw new Error(text.replace(/\s+/g, ' ').slice(0, 180) || `Upload failed (${res.status})`)
   }
-}
-
-export function leadDisplayName(lead: { contact_name: string; company_name: string | null }): string {
-  return lead.company_name ? `${lead.contact_name} · ${lead.company_name}` : lead.contact_name
 }
 
 export function DocumentTracker({
@@ -196,18 +173,28 @@ export function DocumentTracker({
         setError(String(json.error ?? 'Upload failed'))
         return
       }
-      const uploaded = json.document as TrackedDocument
+      const uploaded = json.document as Record<string, unknown>
       const ownerName = ownerType === 'lead'
         ? (leads.find((l) => l.id === form.lead_id) ? leadDisplayName(leads.find((l) => l.id === form.lead_id)!) : 'Lead')
         : (clients.find((c) => c.id === form.client_id)?.company_name ?? '—')
-      setDocuments((prev) => [{
-        ...uploaded,
-        client_id: uploaded.client_id ?? null,
-        lead_id: uploaded.lead_id ?? null,
+      const nextDoc: TrackedDocument = {
+        id: String(uploaded.id),
+        title: String(uploaded.title ?? payload.title),
+        status: String(uploaded.status ?? payload.status),
+        created_at: String(uploaded.created_at ?? new Date().toISOString()),
+        sent_at: (uploaded.sent_at as string | null) ?? null,
+        signed_at: (uploaded.signed_at as string | null) ?? null,
+        file_name: (uploaded.file_name as string | null) ?? payload.file_name,
+        mime_type: (uploaded.mime_type as string | null) ?? payload.mime_type,
+        file_size: typeof uploaded.file_size === 'number' ? uploaded.file_size : payload.file_size,
+        storage_path: (uploaded.storage_path as string | null) ?? null,
+        is_client_visible: ownerType === 'client' && form.is_client_visible,
+        client_id: (uploaded.client_id as string | null) ?? null,
+        lead_id: (uploaded.lead_id as string | null) ?? null,
         owner_kind: ownerType,
         owner_name: ownerName,
-        is_client_visible: ownerType === 'client' && form.is_client_visible,
-      }, ...prev])
+      }
+      setDocuments((prev) => [nextDoc, ...prev])
       setShowUpload(false)
       resetForm()
       if (fileInputRef.current) fileInputRef.current.value = ''

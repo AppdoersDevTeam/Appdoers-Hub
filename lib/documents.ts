@@ -1,5 +1,38 @@
 export type DocumentKind = 'proposal' | 'contract'
 
+export interface TrackedDocument {
+  id: string
+  title: string
+  status: string
+  created_at: string
+  sent_at: string | null
+  signed_at?: string | null
+  file_name: string | null
+  mime_type: string | null
+  file_size: number | null
+  storage_path: string | null
+  is_client_visible: boolean
+  client_id: string | null
+  lead_id?: string | null
+  owner_kind: 'client' | 'lead'
+  owner_name: string
+}
+
+export interface LeadOption {
+  id: string
+  contact_name: string
+  company_name: string | null
+}
+
+export function leadDisplayName(lead: { contact_name: string; company_name: string | null }): string {
+  return lead.company_name ? `${lead.contact_name} · ${lead.company_name}` : lead.contact_name
+}
+
+export function oneRelation<T extends object>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null
+  return Array.isArray(value) ? (value[0] ?? null) : value
+}
+
 export const DOCUMENT_BUCKET = 'client-files'
 export const DOCUMENT_MAX_SIZE = 50 * 1024 * 1024
 

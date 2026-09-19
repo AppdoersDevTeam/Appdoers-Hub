@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
-import { DocumentTracker, type TrackedDocument } from '@/components/team/documents/document-tracker'
+import { DocumentTracker } from '@/components/team/documents/document-tracker'
+import { oneRelation, type TrackedDocument } from '@/lib/documents'
 
 export default async function ContractsPage() {
   const supabase = await createClient()
@@ -27,7 +28,7 @@ export default async function ContractsPage() {
     is_client_visible: c.is_client_visible ?? true,
     client_id: c.client_id,
     owner_kind: 'client' as const,
-    owner_name: (c.clients as { company_name?: string } | null)?.company_name ?? '—',
+    owner_name: oneRelation(c.clients as { company_name?: string } | { company_name?: string }[] | null)?.company_name ?? '—',
   }))
 
   return (
