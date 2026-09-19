@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { updateSettingAction } from '@/lib/actions/settings'
+import { testSlackChannelAction, updateSettingAction } from '@/lib/actions/settings'
 import {
   SLACK_CHANNEL_LABELS,
   SLACK_CHANNEL_DESCRIPTIONS,
@@ -103,12 +103,38 @@ export function SettingsEditor({ settings }: Props) {
     return result
   })
   const [slackSaved, setSlackSaved] = useState(false)
+  const [testingChannel, setTestingChannel] = useState<SlackChannel | null>(null)
+  const [testResult, setTestResult] = useState<Partial<Record<SlackChannel, { ok: boolean; message: string }>>>({})
 
   const saveSlack = () => {
     startTransition(async () => {
-      await updateSettingAction('slack_channels', channels as unknown as Record<string, unknown>)
+      const result = await updateSettingAction('slack_channels', channels as unknown as Record<string, unknown>)
+      if (!result.success) {
+        setTestResult(prev => ({ ...prev, general: { ok: false, message: result.error } }))
+        return
+      }
       setSlackSaved(true)
       setTimeout(() => setSlackSaved(false), 3000)
+    })
+  }
+
+  const testChannel = (ch: SlackChannel) => {
+    startTransition(async () => {
+      setTestingChannel(ch)
+      const saved = await updateSettingAction('slack_channels', channels as unknown as Record<string, unknown>)
+      if (!saved.success) {
+        setTestResult(prev => ({ ...prev, [ch]: { ok: false, message: saved.error } }))
+        setTestingChannel(null)
+        return
+      }
+      const result = await testSlackChannelAction(ch)
+      setTestResult(prev => ({
+        ...prev,
+        [ch]: result.success
+          ? { ok: true, message: 'Test message sent to Slack.' }
+          : { ok: false, message: result.error },
+      }))
+      setTestingChannel(null)
     })
   }
 
@@ -198,6 +224,7 @@ export function SettingsEditor({ settings }: Props) {
           <strong className="text-slate-500">General</strong> channel as a fallback, or set{' '}
           <strong className="text-slate-500">General</strong> as your single catch-all webhook.
           Create webhooks at <span className="font-mono text-blue-600">api.slack.com/apps</span>.
+          Save changes, then use <strong className="text-slate-500">Send test</strong> to confirm each channel.
         </p>
         <div className="space-y-4">
           {ALL_CHANNELS.map((ch) => (
@@ -224,6 +251,22 @@ export function SettingsEditor({ settings }: Props) {
                 className="font-mono text-xs"
                 disabled={!channels[ch].enabled}
               />
+              <div className="mt-2 flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isPending || !channels[ch].enabled || !channels[ch].webhook_url.trim()}
+                  onClick={() => testChannel(ch)}
+                >
+                  {testingChannel === ch ? 'Sending…' : 'Send test'}
+                </Button>
+                {testResult[ch] && (
+                  <span className={`text-xs ${testResult[ch]?.ok ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {testResult[ch]?.message}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>

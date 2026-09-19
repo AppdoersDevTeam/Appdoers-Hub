@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { sendToChannel } from '@/lib/slack'
+import { hubTaskUrl, notifyTaskActivity, type SlackBlock } from '@/lib/slack'
 import type { TaskStatus, TaskType, TaskPriority, WorkflowStage } from '@/lib/types/database'
 import { stageToTaskStatus } from '@/lib/cursor-workflow'
 import { WORKFLOW_STAGE_CONFIG, TASK_STATUS_CONFIG } from '@/lib/tasks/constants'
@@ -18,6 +18,65 @@ const statusLabel: Record<TaskStatus, string> = {
   in_progress: 'In Progress',
   awaiting_review: 'Awaiting Review',
   closed: 'Closed',
+}
+
+type TaskSlackProject = {
+  name: string
+  clientId: string | null
+  clientName: string
+  clientSlackChannelId: string | null
+}
+
+function clientFromProject(project: {
+  clients?: { company_name?: string; slack_channel_id?: string | null } | { company_name?: string; slack_channel_id?: string | null }[] | null
+} | null) {
+  const clients = project?.clients
+  return (Array.isArray(clients) ? clients[0] : clients) ?? null
+}
+
+async function loadTaskSlackProject(
+  supabase: Awaited<ReturnType<typeof createSupabaseClient>>,
+  projectId: string
+): Promise<TaskSlackProject> {
+  const { data: project } = await supabase
+    .from('projects')
+    .select('name, client_id, clients(company_name, slack_channel_id)')
+    .eq('id', projectId)
+    .single()
+
+  const client = clientFromProject(project)
+  return {
+    name: (project as { name?: string } | null)?.name ?? 'project',
+    clientId: (project as { client_id?: string } | null)?.client_id ?? null,
+    clientName: client?.company_name ?? '',
+    clientSlackChannelId: client?.slack_channel_id ?? null,
+  }
+}
+
+function taskHubLine(taskId: string): string {
+  const url = hubTaskUrl(taskId)
+  return url ? `<${url}|Open in Hub>` : ''
+}
+
+async function notifyTaskSlack(
+  project: TaskSlackProject,
+  text: string,
+  headline: string,
+  details: string[]
+) {
+  await notifyTaskActivity({
+    text,
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*${headline}*\n${details.filter(Boolean).join('\n')}`,
+        },
+      },
+    ] satisfies SlackBlock[],
+    clientSlackChannelId: project.clientSlackChannelId,
+  })
 }
 
 export interface CreateTaskInput {
@@ -61,19 +120,8 @@ export async function createTaskAction(
 
     if (error) return { success: false, error: error.message }
 
-    // Get project + client info for Slack
-    const { data: project } = await supabase
-      .from('projects')
-      .select('name, client_id, clients(company_name)')
-      .eq('id', input.project_id)
-      .single()
+    const project = await loadTaskSlackProject(supabase, input.project_id)
 
-    const projectName = (project as { name?: string } | null)?.name ?? 'project'
-    const clientName =
-      ((project as { clients?: { company_name?: string } } | null)?.clients
-        ?.company_name) ?? ''
-
-    // Get assignee name
     let assigneeName = 'Unassigned'
     if (input.assigned_to) {
       const { data: member } = await supabase
@@ -87,19 +135,18 @@ export async function createTaskAction(
     await logActivity({
       entityType: 'task',
       entityId: task.id,
-      clientId: (project as { client_id?: string } | null)?.client_id ?? null,
+      clientId: project.clientId,
       action: 'created',
-      description: `Task "${task.title}" created in ${projectName}`,
+      description: `Task "${task.title}" created in ${project.name}`,
     })
 
-    await sendToChannel('tasks', `🎫 New Task: ${task.title}`, [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*🎫 New Task Created*\n*Task:* ${task.title}\n*Project:* ${projectName}${clientName ? ` (${clientName})` : ''}\n*Priority:* ${input.priority.toUpperCase()}\n*Type:* ${input.type}\n*Assigned To:* ${assigneeName}`,
-        },
-      },
+    await notifyTaskSlack(project, `🎫 New Task: ${task.title}`, '🎫 New Task Created', [
+      `*Task:* ${task.title}`,
+      `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
+      `*Priority:* ${input.priority.toUpperCase()}`,
+      `*Type:* ${input.type}`,
+      `*Assigned To:* ${assigneeName}`,
+      taskHubLine(task.id),
     ])
 
     revalidatePath('/app/tasks')
@@ -116,8 +163,21 @@ export async function deleteTaskAction(
 ): Promise<ActionResult<undefined>> {
   try {
     const supabase = await createSupabaseClient()
+    const { data: existing } = await supabase
+      .from('tasks')
+      .select('title')
+      .eq('id', id)
+      .single()
+    const project = await loadTaskSlackProject(supabase, projectId)
+
     const { error } = await supabase.from('tasks').delete().eq('id', id)
     if (error) return { success: false, error: error.message }
+
+    await notifyTaskSlack(project, `🗑️ Task deleted: ${existing?.title ?? 'Task'}`, '🗑️ Task Deleted', [
+      `*Task:* ${existing?.title ?? 'Task'}`,
+      `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
+    ])
+
     revalidatePath('/app/tasks')
     revalidatePath(`/app/projects/${projectId}`)
     return { success: true, data: undefined }
@@ -257,6 +317,23 @@ export async function updateTaskDetailsAction(
       })
     }
 
+    const slackProject = await loadTaskSlackProject(supabase, nextProjectId)
+    const taskTitle = input.title ?? existing.title
+    if (input.project_id && input.project_id !== previousProjectId) {
+      await notifyTaskSlack(slackProject, `📁 Task moved: ${taskTitle}`, '📁 Task Project Updated', [
+        `*Task:* ${taskTitle}`,
+        `*Moved to:* ${projectName} (${clientName})`,
+        taskHubLine(id),
+      ])
+    } else if (changes.length > 0) {
+      await notifyTaskSlack(slackProject, `✏️ Task updated: ${taskTitle}`, '✏️ Task Updated', [
+        `*Task:* ${taskTitle}`,
+        `*Project:* ${slackProject.name}${slackProject.clientName ? ` (${slackProject.clientName})` : ''}`,
+        `*Changes:* ${changes.join(', ')}`,
+        taskHubLine(id),
+      ])
+    }
+
     revalidatePath('/app/tasks')
     revalidatePath(`/app/tasks/${id}`)
     revalidatePath(`/app/projects/${previousProjectId}`)
@@ -297,6 +374,14 @@ export async function updateTaskStatusAction(
       action: 'status_changed',
       description: `Task "${task?.title}" → ${statusLabel[status]}`,
     })
+
+    const project = await loadTaskSlackProject(supabase, projectId)
+    await notifyTaskSlack(project, `🔄 Task status: ${task?.title ?? 'Task'}`, '🔄 Task Status Updated', [
+      `*Task:* ${task?.title ?? 'Task'}`,
+      `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
+      `*Status:* ${statusLabel[status]}`,
+      taskHubLine(id),
+    ])
 
     revalidatePath('/app/tasks')
     revalidatePath(`/app/tasks/${id}`)
@@ -340,6 +425,20 @@ export async function updateTaskWorkflowStageAction(
       action: 'workflow_stage_changed',
       description: `Task "${task?.title}" → ${WORKFLOW_STAGE_CONFIG[workflowStage].label} (${TASK_STATUS_CONFIG[status].label})`,
     })
+
+    const project = await loadTaskSlackProject(supabase, projectId)
+    await notifyTaskSlack(
+      project,
+      `🔄 Task stage: ${task?.title ?? 'Task'}`,
+      '🔄 Workflow Stage Changed',
+      [
+        `*Task:* ${task?.title ?? 'Task'}`,
+        `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
+        `*Stage:* ${WORKFLOW_STAGE_CONFIG[workflowStage].label}`,
+        `*Status:* ${TASK_STATUS_CONFIG[status].label}`,
+        taskHubLine(id),
+      ]
+    )
 
     revalidatePath('/app/tasks')
     revalidatePath(`/app/tasks/${id}`)
@@ -391,20 +490,12 @@ export async function addTaskNoteAction(
 
     await supabase.from('tasks').update({ updated_at: new Date().toISOString() }).eq('id', taskId)
 
-    const projectName = (task?.projects as { name?: string } | null)?.name ?? 'project'
-    const clientName =
-      ((task?.projects as { clients?: { company_name?: string } } | null)?.clients?.company_name as
-        | string
-        | undefined) ?? ''
-
-    await sendToChannel('tasks', `📝 Task note added: ${task?.title ?? 'Task'}`, [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*📝 Task Note Added*\n*Task:* ${task?.title ?? 'Task'}\n*Project:* ${projectName}${clientName ? ` (${clientName})` : ''}\n*Note:* ${content}`,
-        },
-      },
+    const project = await loadTaskSlackProject(supabase, projectId)
+    await notifyTaskSlack(project, `📝 Task note added: ${task?.title ?? 'Task'}`, '📝 Task Note Added', [
+      `*Task:* ${task?.title ?? 'Task'}`,
+      `*Project:* ${project.name}${project.clientName ? ` (${project.clientName})` : ''}`,
+      `*Note:* ${content}`,
+      taskHubLine(taskId),
     ])
 
     revalidatePath('/app/tasks')

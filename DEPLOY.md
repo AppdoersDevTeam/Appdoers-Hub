@@ -48,7 +48,7 @@ In Supabase → **Settings** → **API**:
 1. Copy `.env.local.example` → `.env.local`
 2. Fill in the values from Step 4
 3. Set `NEXT_PUBLIC_APP_URL=http://localhost:3000`
-4. Set `SLACK_WEBHOOK_URL` = your Slack webhook
+4. Slack incoming webhooks are set in Hub **Settings → Slack Channels** after the app is running. Do not set `SLACK_WEBHOOK_URL`.
 5. Run: `npm run dev`
 6. Open: http://localhost:3000
 
