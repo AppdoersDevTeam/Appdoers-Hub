@@ -1,3 +1,7 @@
+import { normalizeIndustry, type IndustryId } from '@/lib/industries'
+import { DOMAIN_TLDS, type DomainTldPreference } from './domain-suggestions'
+import type { PlanInterest } from './profiles'
+
 export type IntakeStatus = 'sent' | 'submitted' | 'updated' | 'locked'
 export type ColorMode = 'palette' | 'custom' | 'unsure'
 export type FontMode = 'pairing' | 'custom' | 'unsure'
@@ -8,6 +12,24 @@ export type CopySource = 'client' | 'appdoers' | 'mix' | 'unsure'
 export type ToneId = 'professional' | 'friendly' | 'bold' | 'calm' | 'luxury' | 'unsure'
 export type HostingOwnership = 'have' | 'appdoers' | 'unsure'
 export type DomainLoginStatus = 'have' | 'later' | 'appdoers'
+export type SellOnline = '' | 'yes' | 'no' | 'planning'
+
+export type { DomainTldPreference, IndustryId }
+export type CompanyTypeId = IndustryId
+
+export interface IntakeProfileDetails {
+  denomination: string
+  congregation_size: string
+  service_times: string
+  organisation_kind: string
+  community_size: string
+  product_types: string
+  sell_online: SellOnline
+  trade_type: string
+  years_operating: string
+  youtube_url: string
+  mailbox_count: string
+}
 
 export interface IntakeContact {
   name: string
@@ -26,15 +48,18 @@ export interface IntakeColors {
 export interface IntakeAnswers {
   people: {
     company_name: string
+    company_type: IndustryId | ''
     what_we_do: string
     audience: string
     location: string
     preferred_contact: PreferredContact
     primary: IntakeContact
     extras: IntakeContact[]
+    profile: IntakeProfileDetails
   }
   domain: {
     status: DomainStatus
+    tld_preference: DomainTldPreference
     domain_name: string
     current_site: string
     has_current_site: 'yes' | 'none'
@@ -63,6 +88,7 @@ export interface IntakeAnswers {
     copy_source: CopySource
   }
   features: {
+    plan_interest: PlanInterest
     items: string[]
     must_haves: string
     nice_to_haves: string
@@ -95,19 +121,38 @@ export function emptyIntakeContact(): IntakeContact {
   return { name: '', role: '', email: '', phone: '' }
 }
 
+export function emptyIntakeProfile(): IntakeProfileDetails {
+  return {
+    denomination: '',
+    congregation_size: '',
+    service_times: '',
+    organisation_kind: '',
+    community_size: '',
+    product_types: '',
+    sell_online: '',
+    trade_type: '',
+    years_operating: '',
+    youtube_url: '',
+    mailbox_count: '',
+  }
+}
+
 export function emptyIntakeAnswers(): IntakeAnswers {
   return {
     people: {
       company_name: '',
+      company_type: '',
       what_we_do: '',
       audience: '',
       location: '',
       preferred_contact: 'email',
       primary: emptyIntakeContact(),
       extras: [],
+      profile: emptyIntakeProfile(),
     },
     domain: {
       status: 'unsure',
+      tld_preference: 'unsure',
       domain_name: '',
       current_site: '',
       has_current_site: 'none',
@@ -136,12 +181,13 @@ export function emptyIntakeAnswers(): IntakeAnswers {
     content: {
       tagline: '',
       tone: 'unsure',
-      pages: ['home', 'about', 'services', 'contact'],
+      pages: [],
       custom_pages: '',
       copy_source: 'mix',
     },
     features: {
-      items: ['contact_form'],
+      plan_interest: 'unsure',
+      items: [],
       must_haves: '',
       nice_to_haves: '',
       references: '',
@@ -191,10 +237,14 @@ export function mergeIntakeAnswers(raw: unknown): IntakeAnswers {
   const extras = Array.isArray(people.extras) ? people.extras.map(mergeContact) : []
   const pages = Array.isArray(content.pages) ? content.pages.filter((x): x is string => typeof x === 'string') : base.content.pages
   const items = Array.isArray(features.items) ? features.items.filter((x): x is string => typeof x === 'string') : base.features.items
+  const profileRaw = (people.profile ?? {}) as Record<string, unknown>
+  const sellOnline = asString(profileRaw.sell_online)
+  const planInterest = asString(features.plan_interest)
 
   return {
     people: {
       company_name: asString(people.company_name),
+      company_type: normalizeIndustry(asString(people.company_type)),
       what_we_do: asString(people.what_we_do),
       audience: asString(people.audience),
       location: asString(people.location),
@@ -203,9 +253,25 @@ export function mergeIntakeAnswers(raw: unknown): IntakeAnswers {
         : base.people.preferred_contact) as PreferredContact,
       primary: mergeContact(people.primary),
       extras,
+      profile: {
+        denomination: asString(profileRaw.denomination),
+        congregation_size: asString(profileRaw.congregation_size),
+        service_times: asString(profileRaw.service_times),
+        organisation_kind: asString(profileRaw.organisation_kind),
+        community_size: asString(profileRaw.community_size),
+        product_types: asString(profileRaw.product_types),
+        sell_online: (['yes', 'no', 'planning'].includes(sellOnline) ? sellOnline : '') as SellOnline,
+        trade_type: asString(profileRaw.trade_type),
+        years_operating: asString(profileRaw.years_operating),
+        youtube_url: asString(profileRaw.youtube_url),
+        mailbox_count: asString(profileRaw.mailbox_count),
+      },
     },
     domain: {
       status: (['own', 'buy', 'unsure'].includes(asString(domain.status)) ? domain.status : base.domain.status) as DomainStatus,
+      tld_preference: (DOMAIN_TLDS.some((item) => item.id === asString(domain.tld_preference))
+        ? domain.tld_preference
+        : 'unsure') as DomainTldPreference,
       domain_name: asString(domain.domain_name),
       current_site: asString(domain.current_site),
       has_current_site: asString(domain.has_current_site) === 'yes' ? 'yes' : 'none',
@@ -249,6 +315,7 @@ export function mergeIntakeAnswers(raw: unknown): IntakeAnswers {
         : base.content.copy_source) as CopySource,
     },
     features: {
+      plan_interest: (['basic', 'full', 'unsure'].includes(planInterest) ? planInterest : 'unsure') as PlanInterest,
       items,
       must_haves: asString(features.must_haves),
       nice_to_haves: asString(features.nice_to_haves),
@@ -281,7 +348,8 @@ export function mergeIntakeAnswers(raw: unknown): IntakeAnswers {
 }
 
 export function validateIntakeAnswers(answers: IntakeAnswers): string | null {
-  if (!answers.people.company_name.trim()) return 'Please enter your business name.'
+  if (!answers.people.company_type) return 'Please choose whether you are a church, business, school/nonprofit, shop, or trade.'
+  if (!answers.people.company_name.trim()) return 'Please enter your organisation name.'
   if (!answers.people.primary.name.trim()) return 'Please enter a primary contact name.'
   if (!answers.people.primary.email.trim()) return 'Please enter a primary contact email.'
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(answers.people.primary.email.trim())) {

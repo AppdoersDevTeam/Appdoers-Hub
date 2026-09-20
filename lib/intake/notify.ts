@@ -6,6 +6,8 @@ import {
   slackOpenHub,
 } from '@/lib/slack'
 import { moodById, paletteById, pairingById } from './brand-options'
+import { tldLabel } from './domain-suggestions'
+import { industryLabel } from '@/lib/industries'
 import type { IntakeAnswers } from './types'
 
 export async function notifyIntakeSubmitted(input: {
@@ -24,6 +26,10 @@ export async function notifyIntakeSubmitted(input: {
       : input.answers.domain.status === 'buy'
         ? `Needs domain${input.answers.domain.domain_name ? ` (${input.answers.domain.domain_name})` : ''}`
         : 'Domain not sure yet'
+  const domainTld =
+    input.answers.domain.tld_preference !== 'unsure'
+      ? ` · prefer ${tldLabel(input.answers.domain.tld_preference)}`
+      : ''
 
   const colorLabel =
     input.answers.brand.color_mode === 'palette'
@@ -50,7 +56,20 @@ export async function notifyIntakeSubmitted(input: {
     text,
     title,
     fields: [
-      { label: 'Domain', value: domainStatus },
+      { label: 'Domain', value: `${domainStatus}${domainTld}` },
+      {
+        label: 'Type',
+        value: industryLabel(input.answers.people.company_type) ?? 'Not set',
+      },
+      {
+        label: 'Plan',
+        value:
+          input.answers.features.plan_interest === 'full'
+            ? 'Full Website'
+            : input.answers.features.plan_interest === 'basic'
+              ? 'Basic Website'
+              : 'Not sure',
+      },
       { label: 'Colours', value: colorLabel },
       { label: 'Fonts', value: fontLabel },
       { label: 'Style', value: mood?.name ?? 'Appdoers to choose' },

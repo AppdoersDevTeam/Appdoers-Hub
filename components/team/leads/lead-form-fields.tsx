@@ -1,6 +1,7 @@
 'use client'
 
 import { Input } from '@/components/ui/input'
+import { IndustrySelect } from '@/components/team/industry-select'
 import {
   COMPANY_SIZE_OPTIONS,
   LEAD_SOURCE_OPTIONS,
@@ -132,10 +133,10 @@ export function LeadFormFields({ form, onChange, onToggleInterest, teamMembers }
         </div>
         <div>
           <label className={leadFieldLabelClass}>Industry</label>
-          <Input
+          <IndustrySelect
+            className={leadFieldSelectClass}
             value={form.industry}
-            onChange={(e) => onChange('industry', e.target.value)}
-            placeholder="Church, retail, professional services…"
+            onChange={(industry) => onChange('industry', industry)}
           />
         </div>
       </div>

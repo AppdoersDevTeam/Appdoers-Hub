@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { IndustrySelect } from '@/components/team/industry-select'
 import { updateClientAction } from '@/lib/actions/clients'
 import { formatDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
@@ -140,10 +141,10 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Industry</label>
-              <Input
+              <IndustrySelect
+                className={selectClass}
                 value={form.industry}
-                onChange={(e) => set('industry', e.target.value)}
-                placeholder="e.g. Retail"
+                onChange={(industry) => set('industry', industry)}
               />
             </div>
             <div>

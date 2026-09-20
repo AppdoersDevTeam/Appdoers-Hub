@@ -7,8 +7,6 @@ import { Badge } from '@/components/ui/badge'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { lockClientIntakeAction } from '@/lib/actions/intakes'
 import {
-  FEATURE_OPTIONS,
-  PAGE_OPTIONS,
   REGISTRARS,
   TONE_OPTIONS,
   moodById,
@@ -17,6 +15,9 @@ import {
   resolvedColors,
   resolvedFonts,
 } from '@/lib/intake/brand-options'
+import { tldLabel } from '@/lib/intake/domain-suggestions'
+import { MAINTENANCE_PAGES_NOTE, companyTypeLabel, selectedPageOutline } from '@/lib/intake/site-structures'
+import { intakeProfile } from '@/lib/intake/profiles'
 import { INTAKE_STATUS_LABELS, type IntakeAnswers, type IntakeStatus } from '@/lib/intake/types'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -83,14 +84,10 @@ export function ClientIntakeSection({
   const pairing = answers ? pairingById(answers.brand.pairing_id) : null
   const mood = answers ? moodById(answers.brand.mood_id) : null
   const submitted = intake.status !== 'sent'
-  const pages = answers
-    ? [
-        ...PAGE_OPTIONS.filter((p) => answers.content.pages.includes(p.id)).map((p) => p.label),
-        answers.content.custom_pages,
-      ].filter(Boolean)
-    : []
-  const features = answers
-    ? FEATURE_OPTIONS.filter((f) => answers.features.items.includes(f.id)).map((f) => f.label)
+  const pageOutline = answers ? selectedPageOutline(answers.people.company_type, answers.content.pages) : []
+  const profile = answers ? intakeProfile(answers.people.company_type) : null
+  const featureLabels = answers
+    ? (profile?.features.filter((f) => answers.features.items.includes(f.id)).map((f) => f.label) ?? answers.features.items)
     : []
 
   const lock = () => {
@@ -161,9 +158,10 @@ export function ClientIntakeSection({
             )}
           </Section>
 
-          <Section title="People & business">
+          <Section title="People & organisation">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Row label="Business" value={answers.people.company_name} />
+              <Row label="Name" value={answers.people.company_name} />
+              <Row label="Industry" value={companyTypeLabel(answers.people.company_type)} />
               <Row label="Location" value={answers.people.location} />
               <Row label="What they do" value={answers.people.what_we_do} />
               <Row label="Audience" value={answers.people.audience} />
@@ -172,6 +170,17 @@ export function ClientIntakeSection({
                 value={`${answers.people.primary.name} · ${answers.people.primary.email}${answers.people.primary.phone ? ` · ${answers.people.primary.phone}` : ''}`}
               />
               <Row label="Preferred contact" value={answers.people.preferred_contact} />
+              <Row label="Denomination" value={answers.people.profile.denomination} />
+              <Row label="Attendance" value={answers.people.profile.congregation_size} />
+              <Row label="Service times" value={answers.people.profile.service_times} />
+              <Row label="Organisation kind" value={answers.people.profile.organisation_kind} />
+              <Row label="Community size" value={answers.people.profile.community_size} />
+              <Row label="Products" value={answers.people.profile.product_types} />
+              <Row label="Selling online" value={answers.people.profile.sell_online} />
+              <Row label="Trade" value={answers.people.profile.trade_type} />
+              <Row label="Years operating" value={answers.people.profile.years_operating} />
+              <Row label="YouTube" value={answers.people.profile.youtube_url} />
+              <Row label="Email mailboxes" value={answers.people.profile.mailbox_count} />
             </div>
             <Link href={`/app/clients/${clientId}?tab=overview`} className="text-xs font-medium text-blue-600">
               View contacts on Overview
@@ -191,6 +200,10 @@ export function ClientIntakeSection({
                 }
               />
               <Row label="Domain" value={answers.domain.domain_name} />
+              <Row
+                label="Preferred ending"
+                value={tldLabel(answers.domain.tld_preference)}
+              />
               <Row
                 label="Current site"
                 value={answers.domain.has_current_site === 'yes' ? answers.domain.current_site : 'None'}
@@ -213,7 +226,25 @@ export function ClientIntakeSection({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Row label="Tagline" value={answers.content.tagline} />
               <Row label="Tone" value={TONE_OPTIONS.find((t) => t.id === answers.content.tone)?.label} />
-              <Row label="Pages" value={pages.join(', ')} />
+              <div className="sm:col-span-2">
+                <p className="text-xs text-slate-500">Pages needed</p>
+                {pageOutline.length > 0 ? (
+                  <ul className="mt-1 space-y-0.5 text-sm text-slate-700">
+                    {pageOutline.map((page) => (
+                      <li key={page.id} style={{ paddingLeft: page.depth * 16 }}>
+                        {page.label}
+                        {page.optional ? ' (Optional)' : ''}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-0.5 text-sm text-slate-700">—</p>
+                )}
+                {answers.content.custom_pages ? (
+                  <p className="mt-2 text-sm text-slate-700">Other: {answers.content.custom_pages}</p>
+                ) : null}
+                <p className="mt-2 text-xs text-slate-500">{MAINTENANCE_PAGES_NOTE}</p>
+              </div>
               <Row
                 label="Copy"
                 value={
@@ -229,8 +260,18 @@ export function ClientIntakeSection({
             </div>
           </Section>
 
-          <Section title="Features">
-            <Row label="Requested features" value={features.join(', ')} />
+          <Section title="Plan, tools & references">
+            <Row
+              label="Plan interest"
+              value={
+                answers.features.plan_interest === 'full'
+                  ? 'Full Website'
+                  : answers.features.plan_interest === 'basic'
+                    ? 'Basic Website'
+                    : 'Not sure'
+              }
+            />
+            <Row label="Requested tools" value={featureLabels.join(', ')} />
             <Row label="Must-haves" value={answers.features.must_haves} />
             <Row label="Nice-to-haves" value={answers.features.nice_to_haves} />
             <Row label="References" value={answers.features.references} />
@@ -251,9 +292,6 @@ export function ClientIntakeSection({
               <Row label="Analytics" value={answers.access.analytics} />
               <Row label="Notes" value={answers.access.notes} />
             </div>
-            <Link href={`/app/clients/${clientId}?tab=credentials`} className="text-xs font-medium text-blue-600">
-              Open Credentials
-            </Link>
           </Section>
         </>
       )}

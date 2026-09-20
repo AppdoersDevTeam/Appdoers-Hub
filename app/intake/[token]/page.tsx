@@ -3,6 +3,9 @@ import { IntakeForm } from '@/components/intake/intake-form'
 import { createServiceClient } from '@/lib/supabase/server'
 import { hashIntakeToken } from '@/lib/intake/token'
 import { mergeIntakeAnswers } from '@/lib/intake/types'
+import { normalizeIndustry } from '@/lib/industries'
+import { defaultPageIds, defaultTldForIndustry } from '@/lib/intake/site-structures'
+import { defaultFeatureIds } from '@/lib/intake/profiles'
 
 function Message({ title, body }: { title: string; body: string }) {
   return (
@@ -24,7 +27,7 @@ export default async function PublicIntakePage({
 
   const { data: intake } = await service
     .from('client_intakes')
-    .select('status, answers, clients(company_name, location, website)')
+    .select('status, answers, clients(company_name, location, website, industry)')
     .eq('token_hash', hashIntakeToken(token))
     .maybeSingle()
 
@@ -50,6 +53,15 @@ export default async function PublicIntakePage({
   const answers = mergeIntakeAnswers(intake.answers)
   if (!answers.people.company_name) answers.people.company_name = client?.company_name ?? ''
   if (!answers.people.location) answers.people.location = client?.location ?? ''
+  if (!answers.people.company_type) {
+    const industry = normalizeIndustry(client?.industry)
+    if (industry) {
+      answers.people.company_type = industry
+      if (answers.content.pages.length === 0) answers.content.pages = defaultPageIds(industry)
+      if (answers.features.items.length === 0) answers.features.items = defaultFeatureIds(industry, answers.features.plan_interest)
+      if (answers.domain.tld_preference === 'unsure') answers.domain.tld_preference = defaultTldForIndustry(industry)
+    }
+  }
   if (!answers.domain.current_site && client?.website) {
     answers.domain.current_site = client.website
     answers.domain.has_current_site = 'yes'

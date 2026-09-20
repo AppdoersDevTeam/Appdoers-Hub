@@ -1,5 +1,7 @@
 import type { IntakeAnswers } from './types'
 import { moodById, paletteById, pairingById, resolvedColors, resolvedFonts } from './brand-options'
+import { tldLabel } from './domain-suggestions'
+import { industryStoredValue } from '@/lib/industries'
 import type { ClientBrandKit } from '@/lib/types/database'
 import { createServiceClient } from '@/lib/supabase/server'
 
@@ -76,6 +78,10 @@ async function upsertDomain(service: ServiceClient, clientId: string, answers: I
     answers.domain.status === 'buy' ? 'Client needs a domain purchased.' : null,
     answers.domain.status === 'own' ? 'Client already owns this domain.' : null,
     answers.domain.status === 'unsure' ? 'Domain ownership not confirmed.' : null,
+    answers.domain.tld_preference !== 'unsure'
+      ? `Preferred ending: ${tldLabel(answers.domain.tld_preference)}.`
+      : null,
+    'Domain is subject to availability.',
     answers.access.domain_login === 'later' ? 'Domain login to be sent later.' : null,
     answers.access.domain_login === 'appdoers' ? 'Appdoers to manage domain login.' : null,
   ]
@@ -163,7 +169,9 @@ export async function applyIntakeToClient(clientId: string, answers: IntakeAnswe
           ? websiteUrl(answers.domain.current_site)
           : websiteUrl(answers.domain.domain_name),
       location: answers.people.location.trim() || null,
-      industry: answers.people.what_we_do.trim().slice(0, 120) || null,
+      industry: answers.people.company_type
+        ? industryStoredValue(answers.people.company_type)
+        : answers.people.what_we_do.trim().slice(0, 120) || null,
       logo_url: answers.brand.logo_path,
       brand_kit: brandKit,
     })
@@ -196,6 +204,30 @@ export async function applyIntakeToClient(clientId: string, answers: IntakeAnswe
     .join('\n')
   if (socialNotes) {
     await upsertCredential(service, clientId, 'Social accounts', '', '', null, socialNotes)
+  }
+  const extras = answers.people.profile
+  const extraNotes = [
+    answers.features.plan_interest === 'full'
+      ? 'Plan interest: Full Website'
+      : answers.features.plan_interest === 'basic'
+        ? 'Plan interest: Basic Website'
+        : null,
+    extras.denomination && `Denomination: ${extras.denomination}`,
+    extras.congregation_size && `Sunday attendance: ${extras.congregation_size}`,
+    extras.service_times && `Service times: ${extras.service_times}`,
+    extras.organisation_kind && `Organisation kind: ${extras.organisation_kind}`,
+    extras.community_size && `Community size: ${extras.community_size}`,
+    extras.product_types && `Products: ${extras.product_types}`,
+    extras.sell_online && `Selling online: ${extras.sell_online}`,
+    extras.trade_type && `Trade: ${extras.trade_type}`,
+    extras.years_operating && `Years operating: ${extras.years_operating}`,
+    extras.youtube_url && `YouTube: ${extras.youtube_url}`,
+    extras.mailbox_count && `Business email mailboxes needed: ${extras.mailbox_count}`,
+  ]
+    .filter(Boolean)
+    .join('\n')
+  if (extraNotes) {
+    await upsertCredential(service, clientId, 'Intake extras', '', '', extras.youtube_url || null, extraNotes)
   }
   if (answers.access.google_business.trim() || answers.access.analytics.trim()) {
     await upsertCredential(

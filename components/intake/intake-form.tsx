@@ -6,22 +6,22 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   CONTACT_ROLES,
-  FEATURE_OPTIONS,
-  PAGE_OPTIONS,
   REGISTRARS,
   TONE_OPTIONS,
 } from '@/lib/intake/brand-options'
+import { isIndustryId } from '@/lib/industries'
+import { DOMAIN_TLDS, recommendedDomains } from '@/lib/intake/domain-suggestions'
+import { defaultFeatureIds, intakeProfile, type PlanInterest } from '@/lib/intake/profiles'
+import {
+  COMPANY_TYPES,
+  defaultPageIds,
+  defaultTldForIndustry,
+  toggleSitePage,
+} from '@/lib/intake/site-structures'
 import { emptyIntakeContact, type IntakeAnswers, type IntakeContact } from '@/lib/intake/types'
 import { ChoiceChip, FontPicker, MoodPicker, PalettePicker, ToggleChip } from './brand-pickers'
-
-const STEPS = [
-  { title: 'People & business', hint: 'Who you are and how we reach you' },
-  { title: 'Domain & current site', hint: 'Where the website will live' },
-  { title: 'Brand visuals', hint: 'Logo, colours, fonts, and style' },
-  { title: 'Content & voice', hint: 'Pages, tone, and copy' },
-  { title: 'Features & references', hint: 'What the site needs to do' },
-  { title: 'Access & accounts', hint: 'Logins and profiles we may need' },
-] as const
+import { IndustryDetailsFields } from './industry-details-fields'
+import { SiteStructurePicker } from './site-structure-picker'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -71,9 +71,11 @@ function TextArea({
 function ContactFields({
   contact,
   onChange,
+  roles,
 }: {
   contact: IntakeContact
   onChange: (next: IntakeContact) => void
+  roles: string[]
 }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -83,7 +85,7 @@ function ContactFields({
       <Field label="Role">
         <Select value={contact.role} onChange={(role) => onChange({ ...contact, role })}>
           <option value="">Select…</option>
-          {CONTACT_ROLES.map((role) => (
+          {roles.map((role) => (
             <option key={role} value={role}>
               {role}
             </option>
@@ -115,7 +117,21 @@ export function IntakeForm({
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
-  const progress = useMemo(() => ((step + 1) / STEPS.length) * 100, [step])
+  const profile = intakeProfile(answers.people.company_type)
+  const contactRoles = profile?.contactRoles ?? CONTACT_ROLES
+  const steps = [
+    { title: profile?.peopleTitle ?? 'People & organisation', hint: profile?.peopleHint ?? 'Who you are and how we reach you' },
+    { title: 'Domain & current site', hint: 'Where the website will live' },
+    { title: 'Brand visuals', hint: 'Logo, colours, fonts, and style' },
+    { title: 'Content & voice', hint: 'Pages, tone, and copy' },
+    { title: 'Plan, tools & references', hint: 'Basic or Full Website, and what you need' },
+    { title: 'Access & accounts', hint: 'Logins, email, and profiles we may need' },
+  ] as const
+  const progress = useMemo(() => ((step + 1) / steps.length) * 100, [step, steps.length])
+  const domainSuggestions = useMemo(
+    () => recommendedDomains(answers.people.company_name, answers.domain.tld_preference),
+    [answers.people.company_name, answers.domain.tld_preference]
+  )
 
   async function uploadLogo(file: File) {
     setUploadingLogo(true)
@@ -212,15 +228,15 @@ export function IntakeForm({
       <div className="mb-8 flex items-center justify-between gap-4">
         <AppdoersLogo variant="full" />
         <p className="text-xs text-slate-500">
-          Step {step + 1} of {STEPS.length}
+          Step {step + 1} of {steps.length}
         </p>
       </div>
       <div className="mb-6 h-1.5 overflow-hidden rounded-full bg-slate-200">
         <div className="h-full bg-blue-600 transition-all" style={{ width: `${progress}%` }} />
       </div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">{STEPS[step].title}</h1>
-        <p className="mt-1 text-sm text-slate-500">{STEPS[step].hint}</p>
+        <h1 className="text-2xl font-semibold text-slate-900">{steps[step].title}</h1>
+        <p className="mt-1 text-sm text-slate-500">{steps[step].hint}</p>
         {alreadySubmitted && (
           <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
             You already submitted this form. You can update your answers until Appdoers locks it.
@@ -231,7 +247,7 @@ export function IntakeForm({
       <div className="hub-card space-y-6">
         {step === 0 && (
           <>
-            <Field label="Business name">
+            <Field label={profile?.nameLabel ?? 'Organisation name'}>
               <Input
                 value={answers.people.company_name}
                 onChange={(e) =>
@@ -239,20 +255,62 @@ export function IntakeForm({
                 }
               />
             </Field>
-            <Field label="What does the business do?">
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">I am a…</p>
+              {profile && <p className="mb-3 text-sm text-slate-600">{profile.intro}</p>}
+              <div className="flex flex-wrap gap-2">
+                {COMPANY_TYPES.map((type) => (
+                  <ChoiceChip
+                    key={type.id}
+                    selected={answers.people.company_type === type.id}
+                    onClick={() =>
+                      setAnswers({
+                        ...answers,
+                        people: { ...answers.people, company_type: type.id },
+                        content: { ...answers.content, pages: defaultPageIds(type.id) },
+                        features: {
+                          ...answers.features,
+                          items: defaultFeatureIds(type.id, answers.features.plan_interest),
+                        },
+                        domain: {
+                          ...answers.domain,
+                          tld_preference:
+                            answers.domain.tld_preference === 'unsure'
+                              ? defaultTldForIndustry(type.id)
+                              : answers.domain.tld_preference,
+                        },
+                      })
+                    }
+                  >
+                    {type.label}
+                  </ChoiceChip>
+                ))}
+              </div>
+            </div>
+            {isIndustryId(answers.people.company_type) && (
+              <IndustryDetailsFields
+                industry={answers.people.company_type}
+                profile={answers.people.profile}
+                onChange={(nextProfile) =>
+                  setAnswers({ ...answers, people: { ...answers.people, profile: nextProfile } })
+                }
+              />
+            )}
+            <Field label={profile?.whatWeDoLabel ?? 'What do you do?'}>
               <TextArea
                 value={answers.people.what_we_do}
                 onChange={(what_we_do) => setAnswers({ ...answers, people: { ...answers.people, what_we_do } })}
-                placeholder="A sentence or two is perfect."
+                placeholder={profile?.whatWeDoPlaceholder ?? 'A sentence or two is perfect.'}
               />
             </Field>
-            <Field label="Who is it for?">
+            <Field label={profile?.audienceLabel ?? 'Who is it for?'}>
               <TextArea
                 value={answers.people.audience}
                 onChange={(audience) => setAnswers({ ...answers, people: { ...answers.people, audience } })}
+                placeholder={profile?.audiencePlaceholder}
               />
             </Field>
-            <Field label="Location / service area">
+            <Field label={profile?.locationLabel ?? 'Location / service area'}>
               <Input
                 value={answers.people.location}
                 onChange={(e) =>
@@ -280,6 +338,7 @@ export function IntakeForm({
               <p className="mb-3 text-sm font-medium text-slate-900">Primary contact</p>
               <ContactFields
                 contact={answers.people.primary}
+                roles={contactRoles}
                 onChange={(primary) => setAnswers({ ...answers, people: { ...answers.people, primary } })}
               />
             </div>
@@ -302,6 +361,7 @@ export function IntakeForm({
                 </div>
                 <ContactFields
                   contact={extra}
+                  roles={contactRoles}
                   onChange={(next) =>
                     setAnswers({
                       ...answers,
@@ -352,6 +412,62 @@ export function IntakeForm({
                 ))}
               </div>
             </div>
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Preferred domain ending</p>
+              <div className="flex flex-wrap gap-2">
+                {DOMAIN_TLDS.map((tld) => (
+                  <ChoiceChip
+                    key={tld.id}
+                    selected={answers.domain.tld_preference === tld.id}
+                    onClick={() =>
+                      setAnswers({ ...answers, domain: { ...answers.domain, tld_preference: tld.id } })
+                    }
+                  >
+                    {tld.label}
+                  </ChoiceChip>
+                ))}
+                <ChoiceChip
+                  selected={answers.domain.tld_preference === 'unsure'}
+                  onClick={() =>
+                    setAnswers({ ...answers, domain: { ...answers.domain, tld_preference: 'unsure' } })
+                  }
+                >
+                  No preference
+                </ChoiceChip>
+              </div>
+            </div>
+            {domainSuggestions.length > 0 ? (
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Recommended domain names
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {domainSuggestions.map((item) => (
+                    <ChoiceChip
+                      key={item.domain}
+                      selected={answers.domain.domain_name.toLowerCase() === item.domain}
+                      onClick={() =>
+                        setAnswers({
+                          ...answers,
+                          domain: {
+                            ...answers.domain,
+                            domain_name: item.domain,
+                            tld_preference: item.tld,
+                            status: answers.domain.status === 'own' ? 'own' : 'buy',
+                          },
+                        })
+                      }
+                    >
+                      {item.domain}
+                    </ChoiceChip>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">
+                Enter a business name on the previous step to see recommended domain names.
+              </p>
+            )}
             <Field label="Domain name">
               <Input
                 placeholder="example.co.nz"
@@ -361,6 +477,7 @@ export function IntakeForm({
                 }
               />
             </Field>
+            <p className="text-xs text-slate-500">Domain names are subject to availability.</p>
             <div>
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Current website</p>
               <div className="mb-3 flex flex-wrap gap-2">
@@ -420,7 +537,7 @@ export function IntakeForm({
                 {(
                   [
                     ['upload', 'I have a logo to upload'],
-                    ['need_designed', 'Please design one'],
+                    ['need_designed', "We'll supply a logo later"],
                     ['text_logo', 'Text / wordmark is fine'],
                     ['unsure', 'Not sure yet'],
                   ] as const
@@ -434,6 +551,9 @@ export function IntakeForm({
                   </ChoiceChip>
                 ))}
               </div>
+              <p className="mt-2 text-xs text-slate-500">
+                Appdoers does not design logos. Please upload one or send it later, ready to use.
+              </p>
               {answers.brand.logo_mode === 'upload' && (
                 <div className="mt-3">
                   <input
@@ -504,23 +624,27 @@ export function IntakeForm({
               </div>
             </div>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Pages needed</p>
-              <div className="flex flex-wrap gap-2">
-                {PAGE_OPTIONS.map((page) => (
-                  <ToggleChip
-                    key={page.id}
-                    selected={answers.content.pages.includes(page.id)}
-                    onClick={() => {
-                      const pages = answers.content.pages.includes(page.id)
-                        ? answers.content.pages.filter((id) => id !== page.id)
-                        : [...answers.content.pages, page.id]
-                      setAnswers({ ...answers, content: { ...answers.content, pages } })
-                    }}
-                  >
-                    {page.label}
-                  </ToggleChip>
-                ))}
-              </div>
+              {isIndustryId(answers.people.company_type) ? (
+                <SiteStructurePicker
+                  companyType={answers.people.company_type}
+                  selected={answers.content.pages}
+                  onToggle={(pageId) => {
+                    const companyType = answers.people.company_type
+                    if (!isIndustryId(companyType)) return
+                    setAnswers({
+                      ...answers,
+                      content: {
+                        ...answers.content,
+                        pages: toggleSitePage(companyType, answers.content.pages, pageId),
+                      },
+                    })
+                  }}
+                />
+              ) : (
+                <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  Choose Churches, Businesses, Schools & nonprofits, Shops & retail, or Trades & services in the first step to see a suggested site structure.
+                </p>
+              )}
             </div>
             <Field label="Other pages">
               <Input
@@ -557,24 +681,67 @@ export function IntakeForm({
         {step === 4 && (
           <>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Features</p>
-              <div className="flex flex-wrap gap-2">
-                {FEATURE_OPTIONS.map((feature) => (
-                  <ToggleChip
-                    key={feature.id}
-                    selected={answers.features.items.includes(feature.id)}
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Website plan</p>
+              <p className="mb-3 text-sm text-slate-600">
+                Appdoers has two website plans. Basic is a public site we update on request. Full adds member tools, admin, and extras like giving, shops, or bookings.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {(
+                  [
+                    ['basic', 'Basic Website', profile?.basicSummary ?? 'A simple public site.'],
+                    ['full', 'Full Website', profile?.fullSummary ?? 'Member tools and admin features.'],
+                    ['unsure', 'Not sure yet', 'Appdoers can recommend Basic or Full after this intake.'],
+                  ] as const
+                ).map(([id, label, hint]) => (
+                  <button
+                    key={id}
+                    type="button"
                     onClick={() => {
-                      const items = answers.features.items.includes(feature.id)
-                        ? answers.features.items.filter((id) => id !== feature.id)
-                        : [...answers.features.items, feature.id]
-                      setAnswers({ ...answers, features: { ...answers.features, items } })
+                      const plan = id as PlanInterest
+                      const industry = answers.people.company_type
+                      setAnswers({
+                        ...answers,
+                        features: {
+                          ...answers.features,
+                          plan_interest: plan,
+                          items: isIndustryId(industry) ? defaultFeatureIds(industry, plan) : answers.features.items,
+                        },
+                      })
                     }}
+                    className={`rounded-xl border p-3 text-left text-sm ${
+                      answers.features.plan_interest === id
+                        ? 'border-blue-600 bg-blue-50 text-blue-900'
+                        : 'border-slate-200 bg-white text-slate-700'
+                    }`}
                   >
-                    {feature.label}
-                  </ToggleChip>
+                    <p className="font-medium">{label}</p>
+                    <p className="mt-1 text-xs text-slate-500">{hint}</p>
+                  </button>
                 ))}
               </div>
             </div>
+            {profile && (
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Tools for your site</p>
+                <div className="flex flex-wrap gap-2">
+                  {profile.features.map((feature) => (
+                    <ToggleChip
+                      key={feature.id}
+                      selected={answers.features.items.includes(feature.id)}
+                      onClick={() => {
+                        const items = answers.features.items.includes(feature.id)
+                          ? answers.features.items.filter((id) => id !== feature.id)
+                          : [...answers.features.items, feature.id]
+                        setAnswers({ ...answers, features: { ...answers.features, items } })
+                      }}
+                    >
+                      {feature.label}
+                      {feature.plan === 'full' ? ' · Full' : ''}
+                    </ToggleChip>
+                  ))}
+                </div>
+              </div>
+            )}
             <Field label="Must-haves">
               <TextArea
                 value={answers.features.must_haves}
@@ -767,6 +934,21 @@ export function IntakeForm({
                 }
               />
             </Field>
+            <Field label="How many people need business email?">
+              <Input
+                value={answers.people.profile.mailbox_count}
+                onChange={(e) =>
+                  setAnswers({
+                    ...answers,
+                    people: {
+                      ...answers.people,
+                      profile: { ...answers.people.profile, mailbox_count: e.target.value },
+                    },
+                  })
+                }
+                placeholder="Plans include up to 5 on a 4-year website. Extra mailboxes can be added."
+              />
+            </Field>
             <Field label="Anything else">
               <TextArea
                 value={answers.access.notes}
@@ -783,7 +965,7 @@ export function IntakeForm({
         <Button type="button" variant="outline" disabled={step === 0} onClick={() => setStep(step - 1)}>
           Back
         </Button>
-        {step < STEPS.length - 1 ? (
+        {step < steps.length - 1 ? (
           <Button type="button" onClick={() => setStep(step + 1)}>
             Next
           </Button>

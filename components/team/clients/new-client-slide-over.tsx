@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { SlideOver } from '@/components/ui/slide-over'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { IndustrySelect } from '@/components/team/industry-select'
 import { createClientAction } from '@/lib/actions/clients'
 import type { SubscriptionPlan } from '@/lib/types/database'
 import { FALLBACK_PLANS, PLAN_LABELS } from '@/lib/constants/plans'
@@ -102,10 +103,10 @@ export function NewClientSlideOver({ open, onClose }: Props) {
           {/* Industry */}
           <div>
             <label className={labelClass}>Industry</label>
-            <Input
+            <IndustrySelect
+              className={selectClass}
               value={form.industry}
-              onChange={(e) => set('industry', e.target.value)}
-              placeholder="e.g. Retail"
+              onChange={(industry) => set('industry', industry)}
             />
           </div>
           {/* Location */}
