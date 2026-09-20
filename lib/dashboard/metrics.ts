@@ -326,4 +326,7 @@ export async function getDashboardAnalytics(
         'System',
       createdAt: entry.created_at as string,
     })),
- 
+  }
+}
+
+export type { DashboardPeriod }
