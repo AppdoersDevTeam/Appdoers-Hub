@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Download, Plus, Search, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,9 +9,11 @@ import { NewTaskSlideOver } from './new-task-slide-over'
 import { TaskStatusSelect } from './task-status-select'
 import { deleteTaskAction } from '@/lib/actions/tasks'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { SortableTh } from '@/components/ui/sortable-th'
 import { formatDate } from '@/lib/utils/format'
 import { TASK_STATUS_OPTIONS } from '@/lib/tasks/constants'
 import { cn } from '@/lib/utils/cn'
+import { sortRows, type SortDir, type SortValue } from '@/lib/utils/table-sort'
 import type { TeamUser } from '@/lib/types/database'
 
 type TaskRow = {
@@ -47,6 +49,21 @@ const priorityConfig: Record<string, { label: string; cls: string }> = {
   p3: { label: 'P3', cls: 'bg-slate-100 text-slate-500' },
 }
 
+const PRIORITY_ORDER: Record<string, number> = { p0: 0, p1: 1, p2: 2, p3: 3 }
+const STATUS_ORDER: Record<string, number> = { open: 0, in_progress: 1, awaiting_review: 2, closed: 3 }
+
+const TASK_SORT_GETTERS: Record<string, (t: TaskRow) => SortValue> = {
+  title: (t) => t.title,
+  type: (t) => typeConfig[t.type]?.label ?? t.type,
+  priority: (t) => PRIORITY_ORDER[t.priority] ?? 99,
+  project: (t) => t.project_name,
+  client: (t) => t.client_name,
+  assigned: (t) => t.assigned_to_name,
+  due: (t) => t.due_date,
+  time: (t) => t.time_spent,
+  status: (t) => STATUS_ORDER[t.status] ?? 99,
+}
+
 interface Props {
   tasks: TaskRow[]
   projects: { id: string; name: string }[]
@@ -80,6 +97,8 @@ export function TasksTable({
   const [deleteTarget, setDeleteTarget] = useState<TaskRow | null>(null)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [sortKey, setSortKey] = useState<string | null>(null)
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   const today = new Date().toISOString().split('T')[0]
   const showClientFilter = showProjectCol && !defaultClientId
@@ -97,18 +116,38 @@ export function TasksTable({
     }
   }
 
-  const filtered = tasks.filter((t) => {
-    const matchSearch = t.title.toLowerCase().includes(search.toLowerCase())
-    const matchClient = !showClientFilter || clientFilter === 'all' || t.client_id === clientFilter
-    const matchProject = !showProjectFilter || projectFilter === 'all' || t.project_id === projectFilter
-    const matchAssignee =
-      assigneeFilter === 'all' ||
-      (assigneeFilter === 'unassigned' ? !t.assigned_to : t.assigned_to === assigneeFilter)
-    const matchType = typeFilter === 'all' || t.type === typeFilter
-    const matchPriority = priorityFilter === 'all' || t.priority === priorityFilter
-    const matchStatus = statusFilter === 'all' || t.status === statusFilter
-    return matchSearch && matchClient && matchProject && matchAssignee && matchType && matchPriority && matchStatus
-  })
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    return tasks.filter((t) => {
+      const matchSearch = t.title.toLowerCase().includes(q)
+      const matchClient = !showClientFilter || clientFilter === 'all' || t.client_id === clientFilter
+      const matchProject = !showProjectFilter || projectFilter === 'all' || t.project_id === projectFilter
+      const matchAssignee =
+        assigneeFilter === 'all' ||
+        (assigneeFilter === 'unassigned' ? !t.assigned_to : t.assigned_to === assigneeFilter)
+      const matchType = typeFilter === 'all' || t.type === typeFilter
+      const matchPriority = priorityFilter === 'all' || t.priority === priorityFilter
+      const matchStatus = statusFilter === 'all' || t.status === statusFilter
+      return matchSearch && matchClient && matchProject && matchAssignee && matchType && matchPriority && matchStatus
+    })
+  }, [
+    tasks,
+    search,
+    showClientFilter,
+    clientFilter,
+    showProjectFilter,
+    projectFilter,
+    assigneeFilter,
+    typeFilter,
+    priorityFilter,
+    statusFilter,
+  ])
+
+  const sorted = useMemo(() => {
+    const get = sortKey ? TASK_SORT_GETTERS[sortKey] : undefined
+    if (!get) return filtered
+    return sortRows(filtered, get, sortDir)
+  }, [filtered, sortKey, sortDir])
 
   const handleDelete = () => {
     if (!deleteTarget) return
@@ -151,7 +190,7 @@ export function TasksTable({
   ].filter((item): item is { label: string; value: string } => item !== null)
 
   const handleExportPdf = async () => {
-    if (filtered.length === 0 || exporting) return
+    if (sorted.length === 0 || exporting) return
     setExportError(null)
     setExporting(true)
     try {
@@ -159,7 +198,7 @@ export function TasksTable({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ids: filtered.map((t) => t.id),
+          ids: sorted.map((t) => t.id),
           showProjectCol,
           title: exportTitle,
           filters: exportFilters,
@@ -193,7 +232,11 @@ export function TasksTable({
 
   const selectClass = 'rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
-  const cols = ['Title', 'Type', 'Priority', ...(showProjectCol ? ['Project', 'Client'] : []), 'Assigned To', 'Due Date', 'Time', 'Status', '']
+  const colCount = (showProjectCol ? 10 : 8)
+  const handleSort = (column: string, dir: SortDir) => {
+    setSortKey(column)
+    setSortDir(dir)
+  }
 
   return (
     <>
@@ -240,12 +283,12 @@ export function TasksTable({
         <Button
           variant="outline"
           onClick={handleExportPdf}
-          disabled={filtered.length === 0 || exporting}
+          disabled={sorted.length === 0 || exporting}
           loading={exporting}
           title="Export the currently filtered tasks as PDF"
         >
           <Download className="h-4 w-4" />
-          Export PDF{filtered.length > 0 ? ` (${filtered.length})` : ''}
+          Export PDF{sorted.length > 0 ? ` (${sorted.length})` : ''}
         </Button>
         <Button onClick={() => setShowNew(true)}>
           <Plus className="mr-1.5 h-4 w-4" /> New Task
@@ -258,20 +301,31 @@ export function TasksTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                {cols.map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
-                ))}
+                <SortableTh label="Title" column="title" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Type" column="type" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Priority" column="priority" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                {showProjectCol && (
+                  <>
+                    <SortableTh label="Project" column="project" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                    <SortableTh label="Client" column="client" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                  </>
+                )}
+                <SortableTh label="Assigned To" column="assigned" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Due Date" column="due" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Time" column="time" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Status" column="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filtered.length === 0 ? (
+              {sorted.length === 0 ? (
                 <tr>
-                  <td colSpan={cols.length} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={colCount} className="px-4 py-10 text-center text-slate-500">
                     {tasks.length === 0 ? 'No tasks yet.' : 'No tasks match your filters.'}
                   </td>
                 </tr>
               ) : (
-                filtered.map((t) => {
+                sorted.map((t) => {
                   const ty = typeConfig[t.type] ?? typeConfig.admin
                   const pr = priorityConfig[t.priority] ?? priorityConfig.p3
                   const isOverdue = t.due_date && t.due_date < today && t.status !== 'closed'

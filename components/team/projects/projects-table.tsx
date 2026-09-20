@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Plus, Search, Trash2 } from 'lucide-react'
@@ -9,8 +9,10 @@ import { Input } from '@/components/ui/input'
 import { NewProjectSlideOver } from './new-project-slide-over'
 import { deleteProjectAction } from '@/lib/actions/projects'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { SortableTh } from '@/components/ui/sortable-th'
 import { formatDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
+import { sortRows, type SortDir, type SortValue } from '@/lib/utils/table-sort'
 
 type ProjectRow = {
   id: string
@@ -52,6 +54,42 @@ const projectStatusConfig: Record<string, { label: string; cls: string }> = {
   cancelled: { label: 'Cancelled', cls: 'bg-red-50 text-red-700' },
 }
 
+const PHASE_ORDER: Record<string, number> = {
+  discovery: 0,
+  design: 1,
+  development: 2,
+  review_qa: 3,
+  launch: 4,
+  maintenance: 5,
+}
+
+const CLIENT_STATUS_ORDER: Record<string, number> = {
+  new: 0,
+  in_progress: 1,
+  awaiting_appdoers: 2,
+  awaiting_client: 3,
+  on_hold: 4,
+  completed: 5,
+}
+
+const PROJECT_STATUS_ORDER: Record<string, number> = {
+  active: 0,
+  on_hold: 1,
+  completed: 2,
+  cancelled: 3,
+}
+
+const PROJECT_SORT_GETTERS: Record<string, (p: ProjectRow) => SortValue> = {
+  name: (p) => p.name,
+  client: (p) => p.client_name,
+  type: (p) => p.type,
+  phase: (p) => PHASE_ORDER[p.current_phase] ?? 99,
+  clientStatus: (p) => CLIENT_STATUS_ORDER[p.client_status] ?? 99,
+  launch: (p) => p.target_launch_date,
+  hours: (p) => p.logged_hours,
+  status: (p) => PROJECT_STATUS_ORDER[p.status] ?? 99,
+}
+
 interface Props {
   projects: ProjectRow[]
   clients: { id: string; company_name: string }[]
@@ -65,14 +103,30 @@ export function ProjectsTable({ projects, clients }: Props) {
   const [statusFilter, setStatusFilter] = useState('all')
   const [showNew, setShowNew] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<ProjectRow | null>(null)
+  const [sortKey, setSortKey] = useState<string | null>(null)
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
 
-  const filtered = projects.filter((p) => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.client_name.toLowerCase().includes(search.toLowerCase())
-    const matchPhase = phaseFilter === 'all' || p.current_phase === phaseFilter
-    const matchStatus = statusFilter === 'all' || p.status === statusFilter
-    return matchSearch && matchPhase && matchStatus
-  })
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    return projects.filter((p) => {
+      const matchSearch =
+        p.name.toLowerCase().includes(q) || p.client_name.toLowerCase().includes(q)
+      const matchPhase = phaseFilter === 'all' || p.current_phase === phaseFilter
+      const matchStatus = statusFilter === 'all' || p.status === statusFilter
+      return matchSearch && matchPhase && matchStatus
+    })
+  }, [projects, search, phaseFilter, statusFilter])
+
+  const sorted = useMemo(() => {
+    const get = sortKey ? PROJECT_SORT_GETTERS[sortKey] : undefined
+    if (!get) return filtered
+    return sortRows(filtered, get, sortDir)
+  }, [filtered, sortKey, sortDir])
+
+  const handleSort = (column: string, dir: SortDir) => {
+    setSortKey(column)
+    setSortDir(dir)
+  }
 
   const selectClass =
     'rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
@@ -105,20 +159,26 @@ export function ProjectsTable({ projects, clients }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                {['Project', 'Client', 'Type', 'Phase', 'Client Status', 'Launch Date', 'Hours', 'Status', ''].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
-                ))}
+                <SortableTh label="Project" column="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Client" column="client" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Type" column="type" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Phase" column="phase" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Client Status" column="clientStatus" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Launch Date" column="launch" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Hours" column="hours" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Status" column="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filtered.length === 0 ? (
+              {sorted.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
                     {projects.length === 0 ? 'No projects yet. Create your first project.' : 'No projects match your filters.'}
                   </td>
                 </tr>
               ) : (
-                filtered.map((p) => {
+                sorted.map((p) => {
                   const cs = clientStatusConfig[p.client_status] ?? clientStatusConfig.new
                   const ps = projectStatusConfig[p.status] ?? projectStatusConfig.active
                   const hoursDisplay = p.estimated_hours
