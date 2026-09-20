@@ -6,7 +6,9 @@ import { ContactsSection } from '@/components/team/clients/contacts-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
 import { ClientDetailsCard } from '@/components/team/clients/client-details-card'
+import { ClientOverviewSnapshot } from '@/components/team/clients/client-overview-snapshot'
 import { ClientSupabaseCard } from '@/components/team/clients/client-supabase-card'
+import { getClientOverviewStats } from '@/lib/clients/overview-stats'
 import { ClientEditForm } from '@/components/team/clients/client-edit-form'
 import { ClientSlackActions } from '@/components/team/clients/client-slack-actions'
 import { ClientIntakeActions } from '@/components/team/clients/client-intake-actions'
@@ -176,17 +178,19 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
         .order('created_at', { ascending: false })
     : { data: null }
 
-  const { data: intakeRows } = await supabase
-    .from('client_intakes')
-    .select('id, status, share_token, submitted_at, last_submitted_at, locked_at, answers, created_at')
-    .eq('client_id', id)
-    .order('created_at', { ascending: false })
-
-  const { data: supabaseLinks } = await supabase
-    .from('supabase_account_projects')
-    .select('project_name, supabase_accounts(login_email)')
-    .eq('client_id', id)
-    .order('created_at', { ascending: false })
+  const [{ data: intakeRows }, { data: supabaseLinks }, overviewStats] = await Promise.all([
+    supabase
+      .from('client_intakes')
+      .select('id, status, share_token, submitted_at, last_submitted_at, locked_at, answers, created_at')
+      .eq('client_id', id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('supabase_account_projects')
+      .select('project_name, supabase_accounts(login_email)')
+      .eq('client_id', id)
+      .order('created_at', { ascending: false }),
+    tab === 'overview' ? getClientOverviewStats(supabase, id) : Promise.resolve(null),
+  ])
 
   const latestIntake = (intakeRows ?? []).find((row) => row.status !== 'locked') ?? intakeRows?.[0] ?? null
   const intakeAnswers = latestIntake ? mergeIntakeAnswers(latestIntake.answers) : null
@@ -276,8 +280,17 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
           logoUrl={intakeLogoUrl}
         />
       )}
-      {tab === 'overview' && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {tab === 'overview' && overviewStats && (
+        <div className="space-y-6">
+          <ClientOverviewSnapshot
+            clientId={id}
+            stats={overviewStats}
+            intakeStatus={(latestIntake?.status as IntakeStatus | undefined) ?? null}
+            slackChannelName={(client.slack_channel_name as string | null) ?? null}
+            contactsCount={contacts?.length ?? 0}
+            supabaseCount={supabaseLinks?.length ?? 0}
+          />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left: Client Info */}
           <div className="space-y-6 lg:col-span-2">
             <ClientDetailsCard
@@ -418,6 +431,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
               }))}
             />
           </div>
+        </div>
         </div>
       )}
 
