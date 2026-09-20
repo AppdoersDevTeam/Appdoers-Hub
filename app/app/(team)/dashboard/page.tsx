@@ -228,6 +228,7 @@ export default async function DashboardPage({
                         </span>
                       )}
                     </div>
+                    <p className="text-xs text-slate-500 mt-0.5">{sub.assignedTo}</p>
                     <p
                       className={`text-xs mt-0.5 ${isUrgent ? 'text-red-600 font-semibold' : isWarning ? 'text-amber-600 font-medium' : 'text-slate-500'}`}
                     >

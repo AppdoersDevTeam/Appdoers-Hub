@@ -10,7 +10,7 @@ export function CategoryBreakdownTable({ data }: Props) {
     <div className="hub-card overflow-hidden p-0">
       <div className="border-b border-slate-200 px-4 py-3">
         <h2 className="text-sm font-semibold text-slate-900">Category Breakdown</h2>
-        <p className="mt-0.5 text-xs text-slate-500">Monthly and projected yearly spend by category</p>
+        <p className="mt-0.5 text-xs text-slate-500">Monthly and projected yearly spend by category (all tools)</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

@@ -10,13 +10,13 @@ export function TopToolsTable({ data }: Props) {
     <div className="hub-card overflow-hidden p-0">
       <div className="border-b border-slate-200 px-4 py-3">
         <h2 className="text-sm font-semibold text-slate-900">Top Tools by Cost</h2>
-        <p className="mt-0.5 text-xs text-slate-500">Highest monthly spend across active subscriptions</p>
+        <p className="mt-0.5 text-xs text-slate-500">Highest monthly spend, with who each tool is for</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200">
-              {['Tool', 'Category', 'Monthly', '% of Spend'].map((h) => (
+              {['Tool', 'For', 'Category', 'Monthly', '% of Spend'].map((h) => (
                 <th
                   key={h}
                   className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500"
@@ -29,7 +29,7 @@ export function TopToolsTable({ data }: Props) {
           <tbody className="divide-y divide-slate-200">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
                   No active subscriptions.
                 </td>
               </tr>
@@ -37,6 +37,17 @@ export function TopToolsTable({ data }: Props) {
               data.map((row) => (
                 <tr key={row.id} className="hover:bg-slate-50/50">
                   <td className="px-4 py-3 font-medium text-slate-900">{row.name}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={
+                        row.assignedTo === 'Company-wide'
+                          ? 'rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500'
+                          : 'rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700'
+                      }
+                    >
+                      {row.assignedTo}
+                    </span>
+                  </td>
                   <td className="px-4 py-3">
                     <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
                       {row.category}

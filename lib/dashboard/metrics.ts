@@ -95,7 +95,7 @@ export async function getDashboardAnalytics(
 
     supabase
       .from('agency_subscriptions')
-      .select('id, name, plan_name, billing_cycle, cost, renewal_date, url')
+      .select('id, name, plan_name, billing_cycle, cost, renewal_date, url, clients(company_name)')
       .eq('status', 'active')
       .not('renewal_date', 'is', null)
       .lte('renewal_date', new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0])
@@ -309,14 +309,19 @@ export async function getDashboardAnalytics(
     followUpItems,
     projectHealthItems,
 
-    renewingSoon: (renewalsRes.data ?? []).map((sub) => ({
-      id: sub.id as string,
-      name: sub.name as string,
-      planName: (sub.plan_name as string) || null,
-      billingCycle: sub.billing_cycle as string,
-      cost: Number(sub.cost),
-      renewalDate: sub.renewal_date as string,
-    })),
+    renewingSoon: (renewalsRes.data ?? []).map((sub) => {
+      const nested = sub.clients as { company_name?: string } | { company_name?: string }[] | null
+      const client = Array.isArray(nested) ? nested[0] : nested
+      return {
+        id: sub.id as string,
+        name: sub.name as string,
+        planName: (sub.plan_name as string) || null,
+        billingCycle: sub.billing_cycle as string,
+        cost: Number(sub.cost),
+        renewalDate: sub.renewal_date as string,
+        assignedTo: client?.company_name ?? 'Company-wide',
+      }
+    }),
 
     activityFeed: (activityRes.data ?? []).map((entry) => ({
       id: entry.id as string,

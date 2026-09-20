@@ -18,6 +18,8 @@ interface Props {
   yearlyRevenue: number
   monthlySpend: number
   yearlySpend: number
+  clientMonthlySpend: number
+  clientYearlySpend: number
   monthlyProfit: number
   yearlyProfit: number
 }
@@ -27,6 +29,8 @@ export function RevenueVsCostChart({
   yearlyRevenue,
   monthlySpend,
   yearlySpend,
+  clientMonthlySpend,
+  clientYearlySpend,
   monthlyProfit,
   yearlyProfit,
 }: Props) {
@@ -34,22 +38,24 @@ export function RevenueVsCostChart({
     {
       period: 'Monthly',
       Revenue: parseFloat(mrr.toFixed(2)),
-      Spend: parseFloat(monthlySpend.toFixed(2)),
+      'Company spend': parseFloat(monthlySpend.toFixed(2)),
+      'Client spend': parseFloat(clientMonthlySpend.toFixed(2)),
       Profit: parseFloat(monthlyProfit.toFixed(2)),
     },
     {
       period: 'Yearly',
       Revenue: parseFloat(yearlyRevenue.toFixed(2)),
-      Spend: parseFloat(yearlySpend.toFixed(2)),
+      'Company spend': parseFloat(yearlySpend.toFixed(2)),
+      'Client spend': parseFloat(clientYearlySpend.toFixed(2)),
       Profit: parseFloat(yearlyProfit.toFixed(2)),
     },
   ]
-  const hasData = mrr > 0 || monthlySpend > 0
+  const hasData = mrr > 0 || monthlySpend > 0 || clientMonthlySpend > 0
 
   return (
     <ChartCard
       title="Revenue vs Tool Spend"
-      subtitle="Monthly and yearly profit (NZD)"
+      subtitle="Profit after company-wide spend; client tools shown separately"
       isEmpty={!hasData}
       emptyMessage="No revenue or subscription data"
     >
@@ -85,9 +91,10 @@ export function RevenueVsCostChart({
             iconType="circle"
             iconSize={8}
           />
-          <Bar dataKey="Revenue" fill="#059669" radius={[4, 4, 0, 0]} barSize={22} />
-          <Bar dataKey="Spend" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={22} />
-          <Bar dataKey="Profit" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={22} />
+          <Bar dataKey="Revenue" fill="#059669" radius={[4, 4, 0, 0]} barSize={18} />
+          <Bar dataKey="Company spend" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={18} />
+          <Bar dataKey="Client spend" fill="#d97706" radius={[4, 4, 0, 0]} barSize={18} />
+          <Bar dataKey="Profit" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={18} />
         </BarChart>
       </ResponsiveContainer>
     </ChartCard>

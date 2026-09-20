@@ -38,6 +38,8 @@ interface Subscription {
   status: string
   url: string | null
   notes: string | null
+  client_id: string | null
+  client_name: string | null
 }
 
 const CATEGORIES = ['Hosting', 'AI', 'Design', 'Dev Tools', 'Communication', 'CRM', 'Marketing', 'Finance', 'Other']
@@ -92,7 +94,22 @@ function formatCost(cost: number, cycle: string) {
 
 const emptyForm: SubscriptionInput = {
   name: '', category: 'Other', plan_name: '', billing_cycle: 'monthly',
-  cost: 0, renewal_date: '', status: 'active', url: '', notes: '',
+  cost: 0, renewal_date: '', status: 'active', url: '', notes: '', client_id: null,
+}
+
+function assigneeFromForm(clientId: string | null | undefined, clients: HubClientOption[]) {
+  if (!clientId) return { client_id: null as string | null, client_name: null as string | null }
+  return {
+    client_id: clientId,
+    client_name: clients.find(client => client.id === clientId)?.company_name ?? null,
+  }
+}
+
+function AssigneeBadge({ clientName }: { clientName: string | null }) {
+  if (!clientName) {
+    return <span className="rounded px-1.5 py-0.5 text-xs bg-slate-100 text-slate-500">Company-wide</span>
+  }
+  return <span className="rounded px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700">{clientName}</span>
 }
 
 interface Props {
@@ -117,6 +134,7 @@ export function SubscriptionsTable({
   const [form, setForm] = useState<SubscriptionInput>(emptyForm)
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('active')
+  const [assigneeFilter, setAssigneeFilter] = useState('all')
 
   const openAdd = () => { setEditing(null); setForm(emptyForm); setShowForm(true) }
   const openEdit = (s: Subscription) => {
@@ -125,7 +143,7 @@ export function SubscriptionsTable({
       name: s.name, category: s.category, plan_name: s.plan_name ?? '',
       billing_cycle: normalizeSubscriptionBillingCycle(s.billing_cycle),
       cost: s.cost, renewal_date: s.renewal_date ?? '', status: s.status as 'active' | 'paused' | 'cancelled',
-      url: s.url ?? '', notes: s.notes ?? '',
+      url: s.url ?? '', notes: s.notes ?? '', client_id: s.client_id,
     })
     setShowForm(true)
   }
@@ -139,18 +157,41 @@ export function SubscriptionsTable({
       return
     }
     startTransition(async () => {
-      const payload = { ...form, renewal_date: form.renewal_date || null, plan_name: form.plan_name || undefined, url: form.url || undefined, notes: form.notes || undefined }
+      const payload = {
+        ...form,
+        renewal_date: form.renewal_date || null,
+        plan_name: form.plan_name || undefined,
+        url: form.url || undefined,
+        notes: form.notes || undefined,
+        client_id: form.client_id || null,
+      }
       const result = editing
         ? await updateSubscriptionAction(editing.id, payload)
         : await createSubscriptionAction(payload)
 
       if (!result.success) { setError(result.error); return }
 
+      const assignee = assigneeFromForm(form.client_id, clients)
       if (editing) {
-        setSubs(prev => prev.map(s => s.id === editing.id ? { ...s, ...form, cost: Number(form.cost), renewal_date: form.renewal_date || null } : s))
+        setSubs(prev => prev.map(s => s.id === editing.id ? {
+          ...s,
+          ...form,
+          cost: Number(form.cost),
+          renewal_date: form.renewal_date || null,
+          ...assignee,
+        } : s))
       } else {
         const newId = (result as { success: true; data: { id: string } }).data.id
-        setSubs(prev => [{ ...form, id: newId, cost: Number(form.cost), plan_name: form.plan_name || null, renewal_date: form.renewal_date || null, url: form.url || null, notes: form.notes || null }, ...prev])
+        setSubs(prev => [{
+          ...form,
+          id: newId,
+          cost: Number(form.cost),
+          plan_name: form.plan_name || null,
+          renewal_date: form.renewal_date || null,
+          url: form.url || null,
+          notes: form.notes || null,
+          ...assignee,
+        }, ...prev])
       }
       setShowForm(false)
     })
@@ -167,6 +208,8 @@ export function SubscriptionsTable({
   const filtered = subs.filter(s => {
     if (categoryFilter !== 'all' && s.category !== categoryFilter) return false
     if (statusFilter !== 'all' && s.status !== statusFilter) return false
+    if (assigneeFilter === 'company' && s.client_id) return false
+    if (assigneeFilter !== 'all' && assigneeFilter !== 'company' && s.client_id !== assigneeFilter) return false
     return true
   })
 
@@ -210,6 +253,13 @@ export function SubscriptionsTable({
           <option value="all">All Statuses</option>
           {STATUS_OPTIONS.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
         </select>
+        <select className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-500 focus:outline-none" value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)}>
+          <option value="all">All assignees</option>
+          <option value="company">Company-wide</option>
+          {clients.map(client => (
+            <option key={client.id} value={client.id}>{client.company_name}</option>
+          ))}
+        </select>
         <div className="ml-auto">
           {canEdit && (
             <Button size="sm" onClick={openAdd}>
@@ -225,7 +275,7 @@ export function SubscriptionsTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                {['Tool', 'Category', 'Plan', 'Cost', 'Renewal / Expiry', 'Status', ''].map(h => (
+                {['Tool', 'Category', 'For', 'Plan', 'Cost', 'Renewal / Expiry', 'Status', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
                 ))}
               </tr>
@@ -233,7 +283,7 @@ export function SubscriptionsTable({
             <tbody className="divide-y divide-slate-200">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">No subscriptions found.</td>
+                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">No subscriptions found.</td>
                 </tr>
               ) : filtered.map(s => (
                 <tr key={s.id} className="group hover:bg-slate-100/30 transition-colors">
@@ -253,6 +303,9 @@ export function SubscriptionsTable({
                   </td>
                   <td className="px-4 py-3">
                     <span className="rounded px-1.5 py-0.5 text-xs bg-slate-100 text-slate-500">{s.category}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <AssigneeBadge clientName={s.client_name} />
                   </td>
                   <td className="px-4 py-3 text-slate-600">{s.plan_name || '—'}</td>
                   <td className="px-4 py-3 font-mono text-slate-900">{formatCost(s.cost, s.billing_cycle)}</td>
@@ -301,6 +354,23 @@ export function SubscriptionsTable({
           <div>
             <label className={labelClass}>Tool Name *</label>
             <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Vercel" />
+          </div>
+
+          <div>
+            <label className={labelClass}>Who is this for?</label>
+            <select
+              className={selectClass}
+              value={form.client_id ?? ''}
+              onChange={e => setForm(f => ({ ...f, client_id: e.target.value || null }))}
+            >
+              <option value="">Company-wide (Appdoers)</option>
+              {clients.map(client => (
+                <option key={client.id} value={client.id}>{client.company_name}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              Use company-wide for shared tools. Pick a client when this subscription is for them only.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

@@ -22,6 +22,7 @@ export interface SubscriptionInput {
   status: 'active' | 'paused' | 'cancelled'
   url?: string
   notes?: string
+  client_id?: string | null
 }
 
 function validateSubscriptionInput(input: SubscriptionInput): string | null {
@@ -53,6 +54,7 @@ export async function createSubscriptionAction(
         status: input.status,
         url: input.url || null,
         notes: input.notes || null,
+        client_id: input.client_id || null,
       })
       .select('id')
       .single()
@@ -60,6 +62,7 @@ export async function createSubscriptionAction(
     if (error) return { success: false, error: error.message }
     revalidatePath('/app/subscriptions')
     revalidatePath('/app/dashboard')
+    revalidatePath('/app/analytics')
     return { success: true, data: { id: data.id } }
   } catch (err) {
     return { success: false, error: String(err) }
@@ -86,6 +89,7 @@ export async function updateSubscriptionAction(
         status: input.status,
         url: input.url || null,
         notes: input.notes || null,
+        client_id: input.client_id || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -93,6 +97,7 @@ export async function updateSubscriptionAction(
     if (error) return { success: false, error: error.message }
     revalidatePath('/app/subscriptions')
     revalidatePath('/app/dashboard')
+    revalidatePath('/app/analytics')
     return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: String(err) }
@@ -112,6 +117,7 @@ export async function deleteSubscriptionAction(
     if (error) return { success: false, error: error.message }
     revalidatePath('/app/subscriptions')
     revalidatePath('/app/dashboard')
+    revalidatePath('/app/analytics')
     return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: String(err) }

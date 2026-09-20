@@ -30,7 +30,7 @@ export function SpendByCategoryChart({ data }: Props) {
   return (
     <ChartCard
       title="Spend by Category"
-      subtitle="Active tools normalized to monthly NZD"
+      subtitle="All active tools, company-wide and client-assigned"
       isEmpty={!hasData}
       emptyMessage="No active subscriptions"
     >

@@ -46,6 +46,7 @@ export interface RenewalItem {
   billingCycle: string
   cost: number
   renewalDate: string
+  assignedTo: string
 }
 
 export interface ActivityItem {

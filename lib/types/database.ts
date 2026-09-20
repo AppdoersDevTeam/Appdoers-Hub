@@ -284,6 +284,7 @@ export interface AgencySubscription {
   status: 'active' | 'paused' | 'cancelled' | string
   url: string | null
   notes: string | null
+  client_id: string | null
   created_at: string
   updated_at: string
 }

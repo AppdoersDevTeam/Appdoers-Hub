@@ -37,7 +37,7 @@ export default async function SubscriptionsPage() {
   ] = await Promise.all([
     supabase
       .from('agency_subscriptions')
-      .select('id, name, category, plan_name, billing_cycle, cost, renewal_date, status, url, notes')
+      .select('id, name, category, plan_name, billing_cycle, cost, renewal_date, status, url, notes, client_id, clients(company_name)')
       .order('status')
       .order('name'),
     supabase
@@ -96,18 +96,25 @@ export default async function SubscriptionsPage() {
         )}
       </div>
       <SubscriptionsTable
-        subscriptions={(subscriptions ?? []).map(s => ({
-          id: s.id as string,
-          name: s.name as string,
-          category: s.category as string,
-          plan_name: s.plan_name as string | null,
-          billing_cycle: s.billing_cycle as string,
-          cost: Number(s.cost),
-          renewal_date: s.renewal_date as string | null,
-          status: s.status as string,
-          url: s.url as string | null,
-          notes: s.notes as string | null,
-        }))}
+        subscriptions={(subscriptions ?? []).map(s => {
+          const nested = s.clients as { company_name?: string } | { company_name?: string }[] | null
+          const client = Array.isArray(nested) ? nested[0] : nested
+          const client_id = (s.client_id as string | null) ?? null
+          return {
+            id: s.id as string,
+            name: s.name as string,
+            category: s.category as string,
+            plan_name: s.plan_name as string | null,
+            billing_cycle: s.billing_cycle as string,
+            cost: Number(s.cost),
+            renewal_date: s.renewal_date as string | null,
+            status: s.status as string,
+            url: s.url as string | null,
+            notes: s.notes as string | null,
+            client_id,
+            client_name: client?.company_name ?? (client_id ? clientNameById.get(client_id) ?? null : null),
+          }
+        })}
         canEdit={can(effective, 'subscriptions', 'edit')}
         supabaseAccounts={accountsWithProjects}
         clients={hubClients}

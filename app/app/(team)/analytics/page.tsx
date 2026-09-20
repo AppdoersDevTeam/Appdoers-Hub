@@ -4,7 +4,6 @@ import {
   DollarSign,
   TrendingDown,
   TrendingUp,
-  Calendar,
   Users,
   UserCheck,
   Percent,
@@ -68,13 +67,13 @@ export default async function AnalyticsPage() {
     {
       label: 'Monthly Profit',
       value: formatCurrency(metrics.monthlyProfit),
-      sub: 'MRR minus monthly tool spend',
+      sub: 'MRR minus company-wide tool spend',
       ...profitTone(metrics.monthlyProfit),
     },
     {
       label: 'Yearly Profit',
       value: formatCurrency(metrics.yearlyProfit),
-      sub: 'Yearly revenue minus projected yearly spend',
+      sub: 'Yearly revenue minus company-wide yearly spend',
       ...profitTone(metrics.yearlyProfit),
     },
     {
@@ -90,8 +89,8 @@ export default async function AnalyticsPage() {
       value: formatPercent(metrics.grossMarginPercent),
       sub:
         metrics.toolCostAsPercentOfRevenue !== null
-          ? `Tools are ${metrics.toolCostAsPercentOfRevenue.toFixed(1)}% of revenue`
-          : 'Revenue vs tool spend',
+          ? `Company tools are ${metrics.toolCostAsPercentOfRevenue.toFixed(1)}% of revenue`
+          : 'Revenue vs company-wide tool spend',
       icon: Percent,
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
@@ -108,20 +107,20 @@ export default async function AnalyticsPage() {
       bg: 'bg-emerald-50',
     },
     {
-      label: 'Monthly Tool Spend',
-      value: formatCurrency(metrics.monthlySpend),
-      sub: `${metrics.activeToolCount} active tool${metrics.activeToolCount !== 1 ? 's' : ''}`,
+      label: 'Company-wide Spend',
+      value: formatCurrency(metrics.companyMonthlySpend),
+      sub: `${metrics.companyToolCount} shared tool${metrics.companyToolCount !== 1 ? 's' : ''} · ${formatCurrency(metrics.companyYearlySpend)}/yr`,
       icon: TrendingDown,
       color: 'text-red-600',
       bg: 'bg-red-50',
     },
     {
-      label: 'Projected Yearly Spend',
-      value: formatCurrency(metrics.yearlyProjected),
-      sub: 'Based on active subscriptions',
-      icon: Calendar,
-      color: 'text-slate-600',
-      bg: 'bg-slate-100',
+      label: 'Client-assigned Spend',
+      value: formatCurrency(metrics.clientMonthlySpend),
+      sub: `${metrics.clientToolCount} client tool${metrics.clientToolCount !== 1 ? 's' : ''} · ${formatCurrency(metrics.clientYearlySpend)}/yr`,
+      icon: CreditCard,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50',
     },
     {
       label: 'Paying Clients',
@@ -137,7 +136,7 @@ export default async function AnalyticsPage() {
     {
       label: 'Cost per Paying Client',
       value: formatNullableCurrency(metrics.costPerPayingClient),
-      sub: 'Tool spend ÷ paying clients',
+      sub: 'Company-wide tool spend ÷ paying clients',
       icon: UserCheck,
       color: 'text-amber-600',
       bg: 'bg-amber-50',
@@ -161,7 +160,7 @@ export default async function AnalyticsPage() {
     {
       label: 'Tool Cost of Revenue',
       value: formatPercent(metrics.toolCostAsPercentOfRevenue),
-      sub: 'Monthly tool spend ÷ MRR',
+      sub: 'Company-wide tool spend ÷ MRR',
       icon: Percent,
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
@@ -178,17 +177,17 @@ export default async function AnalyticsPage() {
       <div className="space-y-6">
         <KpiSection
           title="Profit"
-          description="Monthly and yearly profit after tool spend"
+          description="Monthly and yearly profit after company-wide tool spend"
           cards={profitKpis}
         />
         <KpiSection
           title="Revenue & costs"
-          description="MRR, tool spend, and paying client base"
+          description="MRR plus company-wide vs client-assigned tool spend"
           cards={revenueCostKpis}
         />
         <KpiSection
           title="Unit economics"
-          description="Per-client costs and margins"
+          description="Per-client costs using company-wide overhead only"
           cards={unitEconomicsKpis}
         />
       </div>
@@ -198,8 +197,10 @@ export default async function AnalyticsPage() {
         <RevenueVsCostChart
           mrr={metrics.mrr}
           yearlyRevenue={metrics.yearlyRevenue}
-          monthlySpend={metrics.monthlySpend}
-          yearlySpend={metrics.yearlyProjected}
+          monthlySpend={metrics.companyMonthlySpend}
+          yearlySpend={metrics.companyYearlySpend}
+          clientMonthlySpend={metrics.clientMonthlySpend}
+          clientYearlySpend={metrics.clientYearlySpend}
           monthlyProfit={metrics.monthlyProfit}
           yearlyProfit={metrics.yearlyProfit}
         />
