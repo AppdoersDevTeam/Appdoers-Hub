@@ -106,6 +106,10 @@ export function hubClientUrl(clientId: string): string {
   return hubAppUrl(`/app/clients/${clientId}`)
 }
 
+export function hubClientIntakeUrl(clientId: string): string {
+  return hubAppUrl(`/app/clients/${clientId}?tab=intake`)
+}
+
 export function hubLeadUrl(leadId: string): string {
   return hubAppUrl(`/app/leads/${leadId}`)
 }

@@ -108,8 +108,26 @@ export interface Client {
   slack_channel_id: string | null
   slack_channel_name: string | null
   slack_canvas_id: string | null
+  brand_kit: ClientBrandKit | null
   created_at: string
   updated_at: string
+}
+
+export interface ClientBrandKit {
+  logo_path?: string | null
+  color_mode?: 'palette' | 'custom' | 'unsure'
+  palette_id?: string | null
+  colors?: {
+    primary: string
+    secondary: string
+    accent: string
+    background: string
+  }
+  font_mode?: 'pairing' | 'custom' | 'unsure'
+  pairing_id?: string | null
+  heading_font?: string | null
+  body_font?: string | null
+  mood_id?: string | null
 }
 
 export interface ClientContact {

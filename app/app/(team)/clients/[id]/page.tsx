@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { ContactsSection } from '@/components/team/clients/contacts-section'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -8,6 +8,8 @@ import { formatCurrency, formatDate } from '@/lib/utils/format'
 import { ClientDetailsCard } from '@/components/team/clients/client-details-card'
 import { ClientEditForm } from '@/components/team/clients/client-edit-form'
 import { ClientSlackActions } from '@/components/team/clients/client-slack-actions'
+import { ClientIntakeActions } from '@/components/team/clients/client-intake-actions'
+import { ClientIntakeSection } from '@/components/team/clients/client-intake-section'
 import { ArrowLeft, FolderOpen } from 'lucide-react'
 import { TasksTable } from '@/components/team/tasks/tasks-table'
 import { NotesSection } from '@/components/team/notes/notes-section'
@@ -17,11 +19,14 @@ import { DocumentTracker, type TrackedDocument } from '@/components/team/documen
 import { cn } from '@/lib/utils/cn'
 
 import { PLAN_LABELS } from '@/lib/constants/plans'
+import { intakePublicUrl } from '@/lib/intake/token'
+import { mergeIntakeAnswers, type IntakeStatus } from '@/lib/intake/types'
 
 const planLabels: Record<string, string> = { ...PLAN_LABELS, none: '—' }
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
+  { key: 'intake', label: 'Intake' },
   { key: 'projects', label: 'Projects' },
   { key: 'tasks', label: 'Tasks' },
   { key: 'proposals', label: 'Proposals' },
@@ -170,6 +175,23 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
         .order('created_at', { ascending: false })
     : { data: null }
 
+  const { data: intakeRows } = await supabase
+    .from('client_intakes')
+    .select('id, status, share_token, submitted_at, last_submitted_at, locked_at, answers, created_at')
+    .eq('client_id', id)
+    .order('created_at', { ascending: false })
+
+  const latestIntake = (intakeRows ?? []).find((row) => row.status !== 'locked') ?? intakeRows?.[0] ?? null
+  const intakeAnswers = latestIntake ? mergeIntakeAnswers(latestIntake.answers) : null
+  let intakeLogoUrl: string | null = null
+  if (tab === 'intake' && intakeAnswers?.brand.logo_path) {
+    const admin = await createServiceClient()
+    const { data: signed } = await admin.storage
+      .from('client-files')
+      .createSignedUrl(intakeAnswers.brand.logo_path, 3600)
+    intakeLogoUrl = signed?.signedUrl ?? null
+  }
+
   return (
     <div className="space-y-6">
       {/* Back link */}
@@ -184,12 +206,26 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
         title={client.company_name}
         subtitle={planDisplayName}
         action={
-          <ClientSlackActions
-            clientId={id}
-            planLabel={planDisplayName}
-            slackChannelId={(client.slack_channel_id as string | null) ?? null}
-            slackChannelName={(client.slack_channel_name as string | null) ?? null}
-          />
+          <div className="flex flex-col items-end gap-3">
+            <ClientIntakeActions
+              clientId={id}
+              intake={
+                latestIntake
+                  ? {
+                      id: latestIntake.id,
+                      status: latestIntake.status as IntakeStatus,
+                      url: intakePublicUrl(latestIntake.share_token),
+                    }
+                  : null
+              }
+            />
+            <ClientSlackActions
+              clientId={id}
+              planLabel={planDisplayName}
+              slackChannelId={(client.slack_channel_id as string | null) ?? null}
+              slackChannelName={(client.slack_channel_name as string | null) ?? null}
+            />
+          </div>
         }
       />
 
@@ -214,6 +250,25 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
       </div>
 
       {/* Tab Content */}
+      {tab === 'intake' && (
+        <ClientIntakeSection
+          clientId={id}
+          intake={
+            latestIntake
+              ? {
+                  id: latestIntake.id,
+                  status: latestIntake.status as IntakeStatus,
+                  url: intakePublicUrl(latestIntake.share_token),
+                  submitted_at: latestIntake.submitted_at,
+                  last_submitted_at: latestIntake.last_submitted_at,
+                  locked_at: latestIntake.locked_at,
+                }
+              : null
+          }
+          answers={intakeAnswers}
+          logoUrl={intakeLogoUrl}
+        />
+      )}
       {tab === 'overview' && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left: Client Info */}
@@ -501,12 +556,4 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
             hosting_provider: d.hosting_provider as string | null,
             vercel_project_name: d.vercel_project_name as string | null,
             ssl_status: d.ssl_status as string | null,
-            tech_stack: (d.tech_stack as string[]) ?? [],
-            dns_notes: d.dns_notes as string | null,
-          }))}
-          clientId={id}
-        />
-      )}
-    </div>
-  )
-}
+            tech_stack: (d.tech_stack as stri

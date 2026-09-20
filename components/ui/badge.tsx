@@ -73,6 +73,9 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   paid: { label: 'Paid', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
   overdue: { label: 'Overdue', className: 'bg-red-50 text-red-700 border border-red-200' },
   void: { label: 'Void', className: 'bg-slate-100 text-slate-500 border border-slate-200' },
+  submitted: { label: 'Submitted', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+  updated: { label: 'Updated', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
+  locked: { label: 'Locked', className: 'bg-slate-100 text-slate-600 border border-slate-200' },
 
   // Client statuses
   inactive: { label: 'Inactive', className: 'bg-yellow-50 text-yellow-700 border border-yellow-200' },
