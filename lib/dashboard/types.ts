@@ -94,9 +94,9 @@ export interface DashboardAnalytics {
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   new: 'New',
   contacted: 'Contacted',
-  qualified: 'Qualified',
+  in_conversation: 'In Conversation',
   proposal_sent: 'Proposal Sent',
-  negotiating: 'Negotiating',
+  contract_sent: 'Contract Sent',
   won: 'Won',
   lost: 'Lost',
 }
@@ -104,9 +104,9 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
 export const PIPELINE_LEAD_STATUSES: LeadStatus[] = [
   'new',
   'contacted',
-  'qualified',
+  'in_conversation',
   'proposal_sent',
-  'negotiating',
+  'contract_sent',
 ]
 
 export const WORKFLOW_STAGE_ORDER: WorkflowStage[] = [

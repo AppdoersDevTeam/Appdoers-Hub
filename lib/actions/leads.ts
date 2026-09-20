@@ -5,27 +5,98 @@ import { redirect } from 'next/navigation'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
 import { hubLeadUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
-import type { LeadSource, LeadStatus, LostReason } from '@/lib/types/database'
+import { LEAD_STATUS_LABELS } from '@/lib/leads/constants'
+import type { CompanySize, LeadSource, LeadStatus, LostReason } from '@/lib/types/database'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
   | { success: false; error: string }
 
-// ─── Create Lead ──────────────────────────────────────────────────────────────
+function emptyToNull(value?: string | null): string | null {
+  if (value === undefined || value === null) return null
+  const trimmed = value.trim()
+  return trimmed ? trimmed : null
+}
 
 export interface CreateLeadInput {
   contact_name: string
   company_name?: string
   email?: string
   phone?: string
+  website?: string
+  location?: string
+  industry?: string
+  company_size?: CompanySize | ''
+  contact_role?: string
+  service_interest?: string[]
+  budget_notes?: string
+  needed_by?: string
+  timeline_notes?: string
   source: LeadSource
   referral_name?: string
-  estimated_setup_fee?: number
-  estimated_monthly?: number
+  estimated_setup_fee?: number | null
+  estimated_monthly?: number | null
   assigned_to?: string
   next_action?: string
   next_action_date?: string
 }
+
+function leadRowFromInput(input: CreateLeadInput | Partial<CreateLeadInput>, forUpdate: boolean) {
+  const row: Record<string, unknown> = {}
+
+  const setText = (key: string, value?: string | null) => {
+    if (forUpdate && value === undefined) return
+    row[key] = emptyToNull(value)
+  }
+
+  if (!forUpdate || input.contact_name !== undefined) {
+    row.contact_name = input.contact_name?.trim()
+  }
+
+  setText('company_name', input.company_name)
+  setText('email', input.email)
+  setText('phone', input.phone)
+  setText('website', input.website)
+  setText('location', input.location)
+  setText('industry', input.industry)
+  setText('contact_role', input.contact_role)
+  setText('budget_notes', input.budget_notes)
+  setText('timeline_notes', input.timeline_notes)
+  setText('next_action', input.next_action)
+  setText('referral_name', input.referral_name)
+
+  if (!forUpdate || input.company_size !== undefined) {
+    row.company_size = emptyToNull(input.company_size)
+  }
+  if (!forUpdate || input.needed_by !== undefined) {
+    row.needed_by = emptyToNull(input.needed_by)
+  }
+  if (!forUpdate || input.next_action_date !== undefined) {
+    row.next_action_date = emptyToNull(input.next_action_date)
+  }
+  if (!forUpdate || input.assigned_to !== undefined) {
+    row.assigned_to = emptyToNull(input.assigned_to)
+  }
+  if (!forUpdate || input.source !== undefined) {
+    row.source = input.source
+  }
+  if (!forUpdate || input.service_interest !== undefined) {
+    row.service_interest =
+      input.service_interest && input.service_interest.length > 0
+        ? input.service_interest
+        : null
+  }
+  if (!forUpdate || input.estimated_setup_fee !== undefined) {
+    row.estimated_setup_fee = input.estimated_setup_fee ?? null
+  }
+  if (!forUpdate || input.estimated_monthly !== undefined) {
+    row.estimated_monthly = input.estimated_monthly ?? null
+  }
+
+  return row
+}
+
+// ─── Create Lead ──────────────────────────────────────────────────────────────
 
 export async function createLeadAction(
   input: CreateLeadInput
@@ -40,7 +111,7 @@ export async function createLeadAction(
     const { data, error } = await supabase
       .from('leads')
       .insert({
-        ...input,
+        ...leadRowFromInput(input, false),
         status: 'new' as LeadStatus,
         estimated_value: estimated_value || null,
       })
@@ -72,7 +143,7 @@ export async function updateLeadAction(
   try {
     const supabase = await createSupabaseClient()
 
-    const updates: Record<string, unknown> = { ...input }
+    const updates = leadRowFromInput(input, true)
     if (
       input.estimated_setup_fee !== undefined ||
       input.estimated_monthly !== undefined
@@ -84,9 +155,13 @@ export async function updateLeadAction(
         .single()
 
       const setup =
-        input.estimated_setup_fee ?? current?.estimated_setup_fee ?? 0
+        input.estimated_setup_fee !== undefined
+          ? input.estimated_setup_fee ?? 0
+          : current?.estimated_setup_fee ?? 0
       const monthly =
-        input.estimated_monthly ?? current?.estimated_monthly ?? 0
+        input.estimated_monthly !== undefined
+          ? input.estimated_monthly ?? 0
+          : current?.estimated_monthly ?? 0
       updates.estimated_value = setup + monthly * 12
     }
 
@@ -131,7 +206,7 @@ export async function updateLeadStatusAction(
       entityType: 'lead',
       entityId: id,
       action: 'status_changed',
-      description: `Lead "${name}" status → ${status.replace('_', ' ')}`,
+      description: `Lead "${name}" status → ${LEAD_STATUS_LABELS[status]}`,
     })
 
     revalidatePath(`/app/leads/${id}`)
@@ -259,11 +334,13 @@ export async function convertLeadToClientAction(id: string): Promise<void> {
 
   if (leadError || !lead) throw new Error('Lead not found')
 
-  // Create client
   const { data: client, error: clientError } = await supabase
     .from('clients')
     .insert({
       company_name: lead.company_name || lead.contact_name,
+      industry: lead.industry,
+      website: lead.website,
+      location: lead.location,
       subscription_plan: 'none',
       monthly_fee: lead.estimated_monthly ?? 0,
       setup_fee: lead.estimated_setup_fee ?? 0,
@@ -275,19 +352,18 @@ export async function convertLeadToClientAction(id: string): Promise<void> {
 
   if (clientError || !client) throw new Error('Failed to create client')
 
-  // Create primary contact from lead
   if (lead.contact_name) {
     await supabase.from('client_contacts').insert({
       client_id: client.id,
       full_name: lead.contact_name,
-      email: lead.email,
+      email: lead.email || '',
       phone: lead.phone,
+      role: lead.contact_role,
       is_primary: true,
       has_portal_access: false,
     })
   }
 
-  // Link lead to client
   await supabase
     .from('leads')
     .update({ status: 'won', converted_client_id: client.id })

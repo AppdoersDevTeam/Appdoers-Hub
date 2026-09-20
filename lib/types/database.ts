@@ -3,11 +3,13 @@ export type TeamRole = 'director' | 'account_manager' | 'developer' | 'designer'
 export type LeadStatus =
   | 'new'
   | 'contacted'
-  | 'qualified'
+  | 'in_conversation'
   | 'proposal_sent'
-  | 'negotiating'
+  | 'contract_sent'
   | 'won'
   | 'lost'
+
+export type CompanySize = 'solo' | '2-10' | '11-50' | '51+'
 
 export type LeadSource =
   | 'word_of_mouth'
@@ -127,6 +129,15 @@ export interface Lead {
   company_name: string | null
   email: string | null
   phone: string | null
+  website: string | null
+  location: string | null
+  industry: string | null
+  company_size: CompanySize | null
+  contact_role: string | null
+  service_interest: string[] | null
+  budget_notes: string | null
+  needed_by: string | null
+  timeline_notes: string | null
   source: LeadSource
   referral_name: string | null
   status: LeadStatus
