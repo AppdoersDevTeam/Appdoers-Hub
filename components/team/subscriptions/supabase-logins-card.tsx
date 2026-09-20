@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,12 +10,15 @@ import {
   createSupabaseAccountAction,
   updateSupabaseAccountAction,
   deleteSupabaseAccountAction,
+  type HubClientOption,
   type SupabaseAccountInput,
   type SupabaseAccountWithProjects,
+  type SupabaseLinkedProject,
 } from '@/lib/actions/supabase-accounts'
 import { cn } from '@/lib/utils/cn'
 
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
+const selectClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
 function SlotBadge({ used, limit }: { used: number; limit: number }) {
   const full = used >= limit
@@ -35,9 +39,11 @@ function SlotBadge({ used, limit }: { used: number; limit: number }) {
   )
 }
 
-function padNames(names: string[], limit: number) {
-  const next = names.slice(0, limit)
-  while (next.length < limit) next.push('')
+const emptySlot = { name: '', client_id: '' }
+
+function padProjects(projects: { name: string; client_id: string }[], limit: number) {
+  const next = projects.slice(0, limit)
+  while (next.length < limit) next.push({ ...emptySlot })
   return next
 }
 
@@ -45,12 +51,13 @@ const emptyForm = (subscriptionId: string): SupabaseAccountInput => ({
   subscription_id: subscriptionId,
   login_email: '',
   project_slot_limit: 2,
-  project_names: ['', ''],
+  projects: [{ ...emptySlot }, { ...emptySlot }],
 })
 
 interface Props {
   subscriptionId: string
   accounts: SupabaseAccountWithProjects[]
+  clients: HubClientOption[]
   canEdit: boolean
   onAccountsChange?: (accounts: SupabaseAccountWithProjects[]) => void
 }
@@ -58,6 +65,7 @@ interface Props {
 export function SupabaseLoginsCard({
   subscriptionId,
   accounts: initial,
+  clients,
   canEdit,
   onAccountsChange,
 }: Props) {
@@ -68,10 +76,21 @@ export function SupabaseLoginsCard({
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState<SupabaseAccountInput>(emptyForm(subscriptionId))
 
+  const clientNameById = new Map(clients.map(client => [client.id, client.company_name]))
+
   const commitAccounts = (next: SupabaseAccountWithProjects[]) => {
     setAccounts(next)
     onAccountsChange?.(next)
   }
+
+  const toSavedProjects = (projects: { name: string; client_id: string }[]): SupabaseLinkedProject[] =>
+    projects
+      .map(project => ({
+        name: project.name.trim(),
+        client_id: project.client_id || null,
+        client_name: project.client_id ? (clientNameById.get(project.client_id) ?? null) : null,
+      }))
+      .filter(project => Boolean(project.name))
 
   const openAdd = () => {
     setEditing(null)
@@ -86,7 +105,13 @@ export function SupabaseLoginsCard({
       subscription_id: subscriptionId,
       login_email: account.login_email,
       project_slot_limit: account.project_slot_limit,
-      project_names: padNames(account.project_names, account.project_slot_limit),
+      projects: padProjects(
+        account.projects.map(project => ({
+          name: project.name,
+          client_id: project.client_id ?? '',
+        })),
+        account.project_slot_limit
+      ),
     })
     setError(null)
     setShowForm(true)
@@ -97,24 +122,28 @@ export function SupabaseLoginsCard({
     setForm(current => ({
       ...current,
       project_slot_limit: nextLimit,
-      project_names: padNames(current.project_names, nextLimit),
+      projects: padProjects(current.projects, nextLimit),
     }))
   }
 
-  const setProjectName = (index: number, value: string) => {
+  const setProjectField = (index: number, field: 'name' | 'client_id', value: string) => {
     setForm(current => {
-      const project_names = [...current.project_names]
-      project_names[index] = value
-      return { ...current, project_names }
+      const projects = current.projects.map((project, i) => (
+        i === index ? { ...project, [field]: value } : project
+      ))
+      return { ...current, projects }
     })
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    const names = form.project_names.map(name => name.trim()).filter(Boolean)
+    const projects = toSavedProjects(form.projects).map(project => ({
+      name: project.name,
+      client_id: project.client_id ?? '',
+    }))
     startTransition(async () => {
-      const payload = { ...form, project_names: names }
+      const payload = { ...form, projects }
       const result = editing
         ? await updateSupabaseAccountAction(editing.id, payload)
         : await createSupabaseAccountAction(payload)
@@ -129,7 +158,7 @@ export function SupabaseLoginsCard({
         subscription_id: subscriptionId,
         login_email: form.login_email.trim().toLowerCase(),
         project_slot_limit: form.project_slot_limit,
-        project_names: names,
+        projects: toSavedProjects(form.projects),
       }
 
       if (editing) {
@@ -158,7 +187,7 @@ export function SupabaseLoginsCard({
           <div>
             <h2 className="text-sm font-semibold text-slate-900">Supabase logins</h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Which Supabase projects sit on each login, and how many free-tier slots remain.
+              Which Supabase projects sit on each login, which Hub client they belong to, and how many slots remain.
             </p>
           </div>
           {canEdit && (
@@ -170,7 +199,7 @@ export function SupabaseLoginsCard({
 
         {accounts.length === 0 ? (
           <p className="text-sm text-slate-500">
-            No logins yet. Add a login and the project names on that account.
+            No logins yet. Add a login, the project names, and the Hub client for each.
           </p>
         ) : (
           <ul className="divide-y divide-slate-200 border border-slate-200 rounded-md">
@@ -180,18 +209,24 @@ export function SupabaseLoginsCard({
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-slate-900 break-all">{account.login_email}</span>
-                      <SlotBadge used={account.project_names.length} limit={account.project_slot_limit} />
+                      <SlotBadge used={account.projects.length} limit={account.project_slot_limit} />
                     </div>
-                    {account.project_names.length === 0 ? (
+                    {account.projects.length === 0 ? (
                       <p className="text-xs text-slate-500 mt-1">No projects listed</p>
                     ) : (
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {account.project_names.map(name => (
+                        {account.projects.map(project => (
                           <span
-                            key={name}
+                            key={`${project.client_id ?? 'none'}-${project.name}`}
                             className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
                           >
-                            {name}
+                            {project.client_id ? (
+                              <Link href={`/app/clients/${project.client_id}`} className="hover:text-slate-900">
+                                {project.client_name ?? 'Client'} — {project.name}
+                              </Link>
+                            ) : (
+                              project.name
+                            )}
                           </span>
                         ))}
                       </div>
@@ -229,6 +264,7 @@ export function SupabaseLoginsCard({
         open={showForm}
         onClose={() => setShowForm(false)}
         title={editing ? 'Edit Supabase login' : 'Add Supabase login'}
+        width="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
           {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
@@ -255,15 +291,26 @@ export function SupabaseLoginsCard({
             <p className="text-xs text-slate-500 mt-1">Free tier allows 2 projects per login.</p>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <label className={labelClass}>Projects</label>
-            {form.project_names.map((name, index) => (
-              <Input
-                key={index}
-                value={name}
-                onChange={e => setProjectName(index, e.target.value)}
-                placeholder={`Project ${index + 1} name`}
-              />
+            {form.projects.map((project, index) => (
+              <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Input
+                  value={project.name}
+                  onChange={e => setProjectField(index, 'name', e.target.value)}
+                  placeholder={`Project ${index + 1} name`}
+                />
+                <select
+                  className={selectClass}
+                  value={project.client_id}
+                  onChange={e => setProjectField(index, 'client_id', e.target.value)}
+                >
+                  <option value="">Hub client</option>
+                  {clients.map(client => (
+                    <option key={client.id} value={client.id}>{client.company_name}</option>
+                  ))}
+                </select>
+              </div>
             ))}
           </div>
 
@@ -281,8 +328,8 @@ export function SupabaseLoginsCard({
 
 export function supabaseLoginSummary(accounts: SupabaseAccountWithProjects[]) {
   const loginCount = accounts.length
-  const used = accounts.reduce((sum, account) => sum + account.project_names.length, 0)
+  const used = accounts.reduce((sum, account) => sum + account.projects.length, 0)
   const limit = accounts.reduce((sum, account) => sum + account.project_slot_limit, 0)
-  const anyFull = accounts.some(account => account.project_names.length >= account.project_slot_limit)
+  const anyFull = accounts.some(account => account.projects.length >= account.project_slot_limit)
   return { loginCount, used, limit, anyFull }
 }

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/ui/page-header'
 import { SubscriptionsTable } from '@/components/team/subscriptions/subscriptions-table'
 import { getEffectivePermissions, can } from '@/lib/permissions'
-import type { SupabaseAccountWithProjects } from '@/lib/actions/supabase-accounts'
+import type { HubClientOption, SupabaseAccountWithProjects } from '@/lib/actions/supabase-accounts'
 
 export default async function SubscriptionsPage() {
   const supabase = await createClient()
@@ -32,6 +32,8 @@ export default async function SubscriptionsPage() {
   const [
     { data: subscriptions },
     { data: supabaseAccounts },
+    { data: accountProjects },
+    { data: clients },
   ] = await Promise.all([
     supabase
       .from('agency_subscriptions')
@@ -40,18 +42,41 @@ export default async function SubscriptionsPage() {
       .order('name'),
     supabase
       .from('supabase_accounts')
-      .select('id, subscription_id, login_email, project_slot_limit, project_names')
+      .select('id, subscription_id, login_email, project_slot_limit')
       .order('login_email'),
+    supabase
+      .from('supabase_account_projects')
+      .select('account_id, project_name, client_id, clients(company_name)'),
+    supabase
+      .from('clients')
+      .select('id, company_name')
+      .order('company_name'),
   ])
+
+  const hubClients: HubClientOption[] = (clients ?? []).map(client => ({
+    id: client.id as string,
+    company_name: client.company_name as string,
+  }))
+
+  const clientNameById = new Map(hubClients.map(client => [client.id, client.company_name]))
 
   const accountsWithProjects: SupabaseAccountWithProjects[] = (supabaseAccounts ?? []).map(account => ({
     id: account.id as string,
     subscription_id: account.subscription_id as string,
     login_email: account.login_email as string,
     project_slot_limit: Number(account.project_slot_limit),
-    project_names: Array.isArray(account.project_names)
-      ? (account.project_names as string[]).filter(name => Boolean(name?.trim()))
-      : [],
+    projects: (accountProjects ?? [])
+      .filter(link => link.account_id === account.id)
+      .map(link => {
+        const nested = link.clients as { company_name?: string } | { company_name?: string }[] | null
+        const client = Array.isArray(nested) ? nested[0] : nested
+        const client_id = (link.client_id as string | null) ?? null
+        return {
+          name: link.project_name as string,
+          client_id,
+          client_name: client?.company_name ?? (client_id ? clientNameById.get(client_id) ?? null : null),
+        }
+      }),
   }))
 
   return (
@@ -85,6 +110,7 @@ export default async function SubscriptionsPage() {
         }))}
         canEdit={can(effective, 'subscriptions', 'edit')}
         supabaseAccounts={accountsWithProjects}
+        clients={hubClients}
       />
     </div>
   )

@@ -6,6 +6,7 @@ import { ContactsSection } from '@/components/team/clients/contacts-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
 import { ClientDetailsCard } from '@/components/team/clients/client-details-card'
+import { ClientSupabaseCard } from '@/components/team/clients/client-supabase-card'
 import { ClientEditForm } from '@/components/team/clients/client-edit-form'
 import { ClientSlackActions } from '@/components/team/clients/client-slack-actions'
 import { ClientIntakeActions } from '@/components/team/clients/client-intake-actions'
@@ -181,6 +182,12 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
     .eq('client_id', id)
     .order('created_at', { ascending: false })
 
+  const { data: supabaseLinks } = await supabase
+    .from('supabase_account_projects')
+    .select('project_name, supabase_accounts(login_email)')
+    .eq('client_id', id)
+    .order('created_at', { ascending: false })
+
   const latestIntake = (intakeRows ?? []).find((row) => row.status !== 'locked') ?? intakeRows?.[0] ?? null
   const intakeAnswers = latestIntake ? mergeIntakeAnswers(latestIntake.answers) : null
   let intakeLogoUrl: string | null = null
@@ -284,6 +291,17 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
                 status: client.status,
                 created_at: client.created_at,
               }}
+            />
+
+            <ClientSupabaseCard
+              links={(supabaseLinks ?? []).map(link => {
+                const account = link.supabase_accounts as { login_email?: string } | { login_email?: string }[] | null
+                const row = Array.isArray(account) ? account[0] : account
+                return {
+                  project_name: link.project_name as string,
+                  login_email: row?.login_email ?? '—',
+                }
+              })}
             />
 
             {/* Contacts */}
