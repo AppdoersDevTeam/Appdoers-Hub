@@ -16,7 +16,6 @@ import { ClientIntakeSection } from '@/components/team/clients/client-intake-sec
 import { ArrowLeft, FolderOpen } from 'lucide-react'
 import { TasksTable } from '@/components/team/tasks/tasks-table'
 import { NotesSection } from '@/components/team/notes/notes-section'
-import { CredentialsSection } from '@/components/team/clients/credentials-section'
 import { DomainsSection } from '@/components/team/clients/domains-section'
 import { DocumentTracker, type TrackedDocument } from '@/components/team/documents/document-tracker'
 import { cn } from '@/lib/utils/cn'
@@ -35,7 +34,6 @@ const TABS = [
   { key: 'proposals', label: 'Proposals' },
   { key: 'contracts', label: 'Contracts' },
   { key: 'notes', label: 'Notes' },
-  { key: 'credentials', label: 'Credentials' },
   { key: 'domains', label: 'Domains' },
 ]
 
@@ -46,7 +44,8 @@ interface Props {
 
 export default async function ClientDetailPage({ params, searchParams }: Props) {
   const { id } = await params
-  const { tab = 'overview' } = await searchParams
+  const { tab: requestedTab = 'overview' } = await searchParams
+  const tab = TABS.some((item) => item.key === requestedTab) ? requestedTab : 'overview'
   const supabase = await createClient()
 
   const { data: client } = await supabase
@@ -111,15 +110,6 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
         .select('id, content, type, created_at, team_users(full_name)')
         .eq('entity_type', 'client')
         .eq('entity_id', id)
-        .order('created_at', { ascending: false })
-    : { data: null }
-
-  // Fetch credentials only when on credentials tab
-  const { data: clientCredentials } = tab === 'credentials'
-    ? await supabase
-        .from('client_credentials')
-        .select('id, platform, username, password_encrypted, url, notes')
-        .eq('client_id', id)
         .order('created_at', { ascending: false })
     : { data: null }
 
@@ -561,19 +551,6 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
           entityId={id}
         />
       )}
-      {tab === 'credentials' && (
-        <CredentialsSection
-          credentials={(clientCredentials ?? []).map((c) => ({
-            id: c.id as string,
-            platform: c.platform as string,
-            username: c.username as string | null,
-            password_encrypted: c.password_encrypted as string | null,
-            url: c.url as string | null,
-            notes: c.notes as string | null,
-          }))}
-          clientId={id}
-        />
-      )}
       {tab === 'domains' && (
         <DomainsSection
           domains={(clientDomains ?? []).map((d) => ({
@@ -594,3 +571,4 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
     </div>
   )
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
