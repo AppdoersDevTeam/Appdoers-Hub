@@ -11,7 +11,7 @@ export default async function LeadsPage() {
     .from('leads')
     .select(`
       id, contact_name, company_name, status, estimated_value,
-      source, assigned_to, next_action_date, updated_at,
+      source, assigned_to, next_action_date, updated_at, converted_client_id,
       team_users(full_name)
     `)
     .order('updated_at', { ascending: false })
@@ -103,6 +103,7 @@ export default async function LeadsPage() {
             (l.team_users as { full_name?: string } | null)?.full_name ?? null,
           next_action_date: l.next_action_date,
           updated_at: l.updated_at,
+          converted_client_id: l.converted_client_id,
         }))}
         teamMembers={teamMembers ?? []}
       />

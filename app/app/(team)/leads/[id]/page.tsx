@@ -322,8 +322,10 @@ export default async function LeadDetailPage({ params }: Props) {
 
           <LeadActions
             leadId={id}
+            leadName={lead.company_name || lead.contact_name}
             currentStatus={status}
             hasConvertedClient={!!lead.converted_client_id}
+            convertedClientId={lead.converted_client_id}
             teamMembers={teamMembers ?? []}
           />
         </div>

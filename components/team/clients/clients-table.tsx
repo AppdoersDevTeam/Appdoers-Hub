@@ -6,6 +6,8 @@ import { Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NewClientSlideOver } from './new-client-slide-over'
+import { DeleteRecordButton } from '@/components/ui/delete-record-button'
+import { deleteClientAction } from '@/lib/actions/clients'
 import { formatRecurringFee, recurringFeeToMonthly } from '@/lib/clients/billing'
 import { SortableTh } from '@/components/ui/sortable-th'
 import { formatRelativeTime } from '@/lib/utils/format'
@@ -131,13 +133,16 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                 <SortableTh label="Active Projects" column="projects" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <SortableTh label="Status" column="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <SortableTh label="Last Activity" column="activity" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {sorted.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-10 text-center text-slate-500"
                   >
                     {clients.length === 0
@@ -185,6 +190,16 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                       </td>
                       <td className="px-4 py-3 text-slate-500">
                         {formatRelativeTime(c.updated_at)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <DeleteRecordButton
+                          iconOnly
+                          title="Delete client"
+                          message={`Delete "${c.company_name}"? Projects, invoices, documents, and contacts for this client will also be deleted. Converted leads will be unlinked. This cannot be undone.`}
+                          confirmLabel="Delete Client"
+                          buttonLabel={`Delete ${c.company_name}`}
+                          onDelete={() => deleteClientAction(c.id)}
+                        />
                       </td>
                     </tr>
                   )

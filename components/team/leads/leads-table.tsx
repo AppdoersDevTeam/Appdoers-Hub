@@ -6,6 +6,9 @@ import { Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NewLeadSlideOver } from './new-lead-slide-over'
+import { ConvertLeadButton } from './convert-lead-button'
+import { DeleteRecordButton } from '@/components/ui/delete-record-button'
+import { deleteLeadAction } from '@/lib/actions/leads'
 import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import {
@@ -26,6 +29,7 @@ type LeadRow = {
   assigned_to_name: string | null
   next_action_date: string | null
   updated_at: string
+  converted_client_id: string | null
 }
 
 const sourceLabels = LEAD_SOURCE_LABELS
@@ -112,6 +116,7 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                   'Assigned To',
                   'Next Action',
                   'Last Updated',
+                  'Actions',
                 ].map((h) => (
                   <th
                     key={h}
@@ -126,7 +131,7 @@ export function LeadsTable({ leads, teamMembers }: Props) {
               {filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-10 text-center text-slate-500"
                   >
                     {leads.length === 0
@@ -180,6 +185,34 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                       </td>
                       <td className="px-4 py-3 text-slate-500">
                         {formatRelativeTime(l.updated_at)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {l.converted_client_id ? (
+                            <Link
+                              href={`/app/clients/${l.converted_client_id}`}
+                              className="text-xs font-medium text-emerald-700 hover:underline"
+                            >
+                              View client
+                            </Link>
+                          ) : status === 'lost' ? (
+                            <span className="text-xs text-slate-400">—</span>
+                          ) : (
+                            <ConvertLeadButton
+                              leadId={l.id}
+                              leadName={l.company_name || l.contact_name}
+                              size="sm"
+                            />
+                          )}
+                          <DeleteRecordButton
+                            iconOnly
+                            title="Delete lead"
+                            message={`Delete "${l.contact_name}"? This cannot be undone.`}
+                            confirmLabel="Delete Lead"
+                            buttonLabel={`Delete ${l.contact_name}`}
+                            onDelete={() => deleteLeadAction(l.id)}
+                          />
+                        </div>
                       </td>
                     </tr>
                   )

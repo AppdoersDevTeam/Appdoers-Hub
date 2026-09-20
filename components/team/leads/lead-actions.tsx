@@ -2,12 +2,15 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { ConvertLeadButton } from './convert-lead-button'
+import { DeleteRecordButton } from '@/components/ui/delete-record-button'
 import {
   updateLeadStatusAction,
   markLeadLostAction,
   markLeadWonAction,
-  convertLeadToClientAction,
+  deleteLeadAction,
 } from '@/lib/actions/leads'
 import type { LeadStatus, LostReason, TeamUser } from '@/lib/types/database'
 import {
@@ -33,15 +36,19 @@ const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 
 interface Props {
   leadId: string
+  leadName: string
   currentStatus: LeadStatus
   hasConvertedClient: boolean
+  convertedClientId?: string | null
   teamMembers: Pick<TeamUser, 'id' | 'full_name'>[]
 }
 
 export function LeadActions({
   leadId,
+  leadName,
   currentStatus,
   hasConvertedClient,
+  convertedClientId,
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -82,12 +89,6 @@ export function LeadActions({
     })
   }
 
-  const convert = () => {
-    startTransition(async () => {
-      await convertLeadToClientAction(leadId)
-    })
-  }
-
   return (
     <div className="hub-card space-y-3">
       <h3 className="text-sm font-semibold text-slate-900">Actions</h3>
@@ -95,6 +96,15 @@ export function LeadActions({
       {error && (
         <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
           {error}
+        </div>
+      )}
+
+      {!hasConvertedClient && currentStatus !== 'lost' && (
+        <div className="space-y-1">
+          <ConvertLeadButton leadId={leadId} leadName={leadName} fullWidth />
+          <p className="text-center text-xs text-slate-500">
+            Creates a client and marks this lead as won
+          </p>
         </div>
       )}
 
@@ -127,7 +137,7 @@ export function LeadActions({
       {isOpen && (
         <>
           <Button
-            variant="success"
+            variant="outline"
             onClick={markWon}
             disabled={isPending}
             className="w-full"
@@ -191,20 +201,17 @@ export function LeadActions({
         </form>
       )}
 
-      {currentStatus === 'won' && !hasConvertedClient && (
-        <Button
-          variant="success"
-          onClick={convert}
-          disabled={isPending}
-          className="w-full"
-        >
-          {isPending ? 'Converting…' : 'Convert to Client'}
-        </Button>
-      )}
-
-      {currentStatus === 'won' && hasConvertedClient && (
+      {hasConvertedClient && (
         <p className="text-center text-xs text-emerald-600">
           Converted to client
+          {convertedClientId && (
+            <>
+              {' · '}
+              <Link href={`/app/clients/${convertedClientId}`} className="font-medium hover:underline">
+                View client
+              </Link>
+            </>
+          )}
         </p>
       )}
 
@@ -228,6 +235,14 @@ export function LeadActions({
           Refresh
         </button>
       </div>
+
+      <DeleteRecordButton
+        title="Delete lead"
+        message={`Delete "${leadName}"? Notes and lead-only proposals will also be deleted. This cannot be undone.`}
+        confirmLabel="Delete Lead"
+        onDelete={() => deleteLeadAction(leadId)}
+        redirectTo="/app/leads"
+      />
     </div>
   )
 }

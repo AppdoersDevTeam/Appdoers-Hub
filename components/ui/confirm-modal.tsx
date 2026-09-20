@@ -8,6 +8,7 @@ interface Props {
   title?: string
   message: string
   confirmLabel?: string
+  pendingLabel?: string
   onConfirm: () => void
   onCancel: () => void
   isPending?: boolean
@@ -19,6 +20,7 @@ export function ConfirmModal({
   title = 'Are you sure?',
   message,
   confirmLabel = 'Delete',
+  pendingLabel = 'Deleting…',
   onConfirm,
   onCancel,
   isPending = false,
@@ -56,7 +58,7 @@ export function ConfirmModal({
                 : 'flex-1'
             }
           >
-            {isPending ? 'Deleting…' : confirmLabel}
+            {isPending ? pendingLabel : confirmLabel}
           </Button>
           <Button variant="outline" onClick={onCancel} disabled={isPending}>
             Cancel

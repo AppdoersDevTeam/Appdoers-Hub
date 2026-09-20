@@ -13,6 +13,8 @@ import { getClientOverviewStats } from '@/lib/clients/overview-stats'
 import { ClientEditForm } from '@/components/team/clients/client-edit-form'
 import { ClientSlackActions } from '@/components/team/clients/client-slack-actions'
 import { ClientIntakeActions } from '@/components/team/clients/client-intake-actions'
+import { DeleteRecordButton } from '@/components/ui/delete-record-button'
+import { deleteClientAction } from '@/lib/actions/clients'
 import { ClientIntakeSection } from '@/components/team/clients/client-intake-section'
 import { ArrowLeft, FolderOpen } from 'lucide-react'
 import { TasksTable } from '@/components/team/tasks/tasks-table'
@@ -226,6 +228,13 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
               planLabel={planDisplayName}
               slackChannelId={(client.slack_channel_id as string | null) ?? null}
               slackChannelName={(client.slack_channel_name as string | null) ?? null}
+            />
+            <DeleteRecordButton
+              title="Delete client"
+              message={`Delete "${client.company_name}"? Projects, invoices, documents, and contacts for this client will also be deleted. Converted leads will be unlinked. This cannot be undone.`}
+              confirmLabel="Delete Client"
+              onDelete={deleteClientAction.bind(null, id)}
+              redirectTo="/app/clients"
             />
           </div>
         }

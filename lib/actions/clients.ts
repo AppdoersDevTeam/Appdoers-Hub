@@ -429,3 +429,61 @@ export async function sendClientWeeklyDigestAction(
     return { success: false, error: String(err) }
   }
 }
+
+export async function deleteClientAction(id: string): Promise<ActionResult<undefined>> {
+  try {
+    const supabase = await createSupabaseClient()
+    const { data: client, error: loadError } = await supabase
+      .from('clients')
+      .select('id, company_name')
+      .eq('id', id)
+      .single()
+
+    if (loadError || !client) return { success: false, error: 'Client not found' }
+
+    const { data: contacts } = await supabase
+      .from('client_contacts')
+      .select('id')
+      .eq('client_id', id)
+    const contactIds = (contacts ?? []).map((row) => row.id)
+
+    if (contactIds.length > 0) {
+      await supabase
+        .from('activity_log')
+        .update({ performed_by_client_contact_id: null })
+        .in('performed_by_client_contact_id', contactIds)
+      await supabase
+        .from('files')
+        .update({ uploaded_by_client_contact_id: null })
+        .in('uploaded_by_client_contact_id', contactIds)
+    }
+
+    await supabase.from('activity_log').update({ client_id: null }).eq('client_id', id)
+    await supabase.from('leads').update({ converted_client_id: null }).eq('converted_client_id', id)
+    await supabase.from('notes').delete().eq('entity_type', 'client').eq('entity_id', id)
+    await supabase
+      .from('proposals')
+      .update({ client_id: null })
+      .eq('client_id', id)
+      .not('lead_id', 'is', null)
+
+    await logActivity({
+      entityType: 'client',
+      entityId: id,
+      action: 'deleted',
+      description: `Client "${client.company_name}" deleted`,
+    })
+
+    const { error } = await supabase.from('clients').delete().eq('id', id)
+    if (error) return { success: false, error: error.message }
+
+    revalidatePath('/app/clients')
+    revalidatePath('/app/leads')
+    revalidatePath('/app/projects')
+    revalidatePath('/app/proposals')
+    revalidatePath('/app/dashboard')
+    return { success: true, data: undefined }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}

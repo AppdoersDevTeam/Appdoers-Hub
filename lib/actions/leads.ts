@@ -1,10 +1,10 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { hubLeadUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
+import { hubClientUrl, hubLeadUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
 import { LEAD_STATUS_LABELS } from '@/lib/leads/constants'
 import type { CompanySize, LeadSource, LeadStatus, LostReason } from '@/lib/types/database'
 
@@ -323,7 +323,9 @@ export async function markLeadWonAction(id: string): Promise<ActionResult<undefi
 
 // ─── Convert to Client ────────────────────────────────────────────────────────
 
-export async function convertLeadToClientAction(id: string): Promise<void> {
+export async function convertLeadToClientAction(
+  id: string
+): Promise<ActionResult<{ id: string }>> {
   const supabase = await createSupabaseClient()
 
   const { data: lead, error: leadError } = await supabase
@@ -332,16 +334,23 @@ export async function convertLeadToClientAction(id: string): Promise<void> {
     .eq('id', id)
     .single()
 
-  if (leadError || !lead) throw new Error('Lead not found')
+  if (leadError || !lead) return { success: false, error: 'Lead not found' }
+
+  if (lead.converted_client_id) {
+    return { success: true, data: { id: lead.converted_client_id } }
+  }
+
+  const companyName = lead.company_name || lead.contact_name
 
   const { data: client, error: clientError } = await supabase
     .from('clients')
     .insert({
-      company_name: lead.company_name || lead.contact_name,
+      company_name: companyName,
       industry: lead.industry,
       website: lead.website,
       location: lead.location,
       subscription_plan: 'none',
+      billing_cycle: 'monthly',
       monthly_fee: lead.estimated_monthly ?? 0,
       setup_fee: lead.estimated_setup_fee ?? 0,
       payment_terms: 7,
@@ -350,7 +359,9 @@ export async function convertLeadToClientAction(id: string): Promise<void> {
     .select('id')
     .single()
 
-  if (clientError || !client) throw new Error('Failed to create client')
+  if (clientError || !client) {
+    return { success: false, error: clientError?.message || 'Failed to create client' }
+  }
 
   if (lead.contact_name) {
     await supabase.from('client_contacts').insert({
@@ -364,22 +375,52 @@ export async function convertLeadToClientAction(id: string): Promise<void> {
     })
   }
 
-  await supabase
+  const { error: wonError } = await supabase
     .from('leads')
     .update({ status: 'won', converted_client_id: client.id })
     .eq('id', id)
+
+  if (wonError) {
+    return {
+      success: false,
+      error: `Client was created, but the lead could not be marked won: ${wonError.message}`,
+    }
+  }
+
+  await supabase.from('proposals').update({ client_id: client.id }).eq('lead_id', id)
+
+  const name = `${lead.contact_name}${lead.company_name ? ` (${lead.company_name})` : ''}`
 
   await logActivity({
     entityType: 'lead',
     entityId: id,
     clientId: client.id,
     action: 'converted',
-    description: `Lead converted to client — ${lead.company_name || lead.contact_name}`,
+    description: `Lead converted to client — ${companyName}`,
+  })
+
+  after(() => {
+    void sendSlackAlert('leads', {
+      text: `Lead converted to client: ${name}`,
+      title: 'Lead converted to client',
+      fields: [
+        { label: 'Lead', value: name },
+        { label: 'Client', value: companyName },
+        ...(lead.estimated_value
+          ? [{ label: 'Est. value', value: `$${Number(lead.estimated_value).toLocaleString()}` }]
+          : []),
+      ],
+      action: slackOpenHub(hubClientUrl(client.id) || hubLeadUrl(id)),
+    })
   })
 
   revalidatePath('/app/leads')
+  revalidatePath(`/app/leads/${id}`)
   revalidatePath('/app/clients')
-  redirect(`/app/clients/${client.id}`)
+  revalidatePath(`/app/clients/${client.id}`)
+  revalidatePath('/app/dashboard')
+  revalidatePath('/app/proposals')
+  return { success: true, data: { id: client.id } }
 }
 
 // ─── Lead Notes ───────────────────────────────────────────────────────────────
@@ -405,6 +446,42 @@ export async function addLeadNoteAction(
     if (error) return { success: false, error: error.message }
 
     revalidatePath(`/app/leads/${leadId}`)
+    return { success: true, data: undefined }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
+
+export async function deleteLeadAction(id: string): Promise<ActionResult<undefined>> {
+  try {
+    const supabase = await createSupabaseClient()
+    const { data: lead, error: loadError } = await supabase
+      .from('leads')
+      .select('id, contact_name, company_name')
+      .eq('id', id)
+      .single()
+
+    if (loadError || !lead) return { success: false, error: 'Lead not found' }
+
+    await supabase.from('proposals').update({ lead_id: null }).eq('lead_id', id).not('client_id', 'is', null)
+    await supabase.from('proposals').delete().eq('lead_id', id).is('client_id', null)
+    await supabase.from('notes').delete().eq('entity_type', 'lead').eq('entity_id', id)
+
+    const name = `${lead.contact_name}${lead.company_name ? ` (${lead.company_name})` : ''}`
+    await logActivity({
+      entityType: 'lead',
+      entityId: id,
+      action: 'deleted',
+      description: `Lead "${name}" deleted`,
+    })
+
+    const { error } = await supabase.from('leads').delete().eq('id', id)
+    if (error) return { success: false, error: error.message }
+
+    revalidatePath('/app/leads')
+    revalidatePath('/app/clients')
+    revalidatePath('/app/proposals')
+    revalidatePath('/app/dashboard')
     return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: String(err) }
