@@ -74,9 +74,6 @@ function validateInput(input: SupabaseAccountInput): string | null {
   if (projects.length > input.project_slot_limit) {
     return `This login only has ${input.project_slot_limit} project slot${input.project_slot_limit === 1 ? '' : 's'}`
   }
-  if (projects.some(project => !project.client_id)) {
-    return 'Choose a Hub client for each named project'
-  }
   return null
 }
 

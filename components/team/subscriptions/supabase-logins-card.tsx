@@ -187,7 +187,7 @@ export function SupabaseLoginsCard({
           <div>
             <h2 className="text-sm font-semibold text-slate-900">Supabase logins</h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Which Supabase projects sit on each login, which Hub client they belong to, and how many slots remain.
+              Which Supabase projects sit on each login, an optional Hub client for each, and how many slots remain.
             </p>
           </div>
           {canEdit && (
@@ -199,7 +199,7 @@ export function SupabaseLoginsCard({
 
         {accounts.length === 0 ? (
           <p className="text-sm text-slate-500">
-            No logins yet. Add a login, the project names, and the Hub client for each.
+            No logins yet. Add a login and project names. Hub client is optional.
           </p>
         ) : (
           <ul className="divide-y divide-slate-200 border border-slate-200 rounded-md">
@@ -305,7 +305,7 @@ export function SupabaseLoginsCard({
                   value={project.client_id}
                   onChange={e => setProjectField(index, 'client_id', e.target.value)}
                 >
-                  <option value="">Hub client</option>
+                  <option value="">Hub client (optional)</option>
                   {clients.map(client => (
                     <option key={client.id} value={client.id}>{client.company_name}</option>
                   ))}
@@ -333,3 +333,4 @@ export function supabaseLoginSummary(accounts: SupabaseAccountWithProjects[]) {
   const anyFull = accounts.some(account => account.projects.length >= account.project_slot_limit)
   return { loginCount, used, limit, anyFull }
 }
+
