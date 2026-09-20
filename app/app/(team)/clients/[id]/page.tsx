@@ -556,4 +556,12 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
             hosting_provider: d.hosting_provider as string | null,
             vercel_project_name: d.vercel_project_name as string | null,
             ssl_status: d.ssl_status as string | null,
-            tech_stack: (d.tech_stack as stri
+            tech_stack: (d.tech_stack as string[]) ?? [],
+            dns_notes: d.dns_notes as string | null,
+          }))}
+          clientId={id}
+        />
+      )}
+    </div>
+  )
+}
