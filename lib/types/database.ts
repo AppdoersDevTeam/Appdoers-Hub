@@ -232,3 +232,18 @@ export interface ActivityLogEntry {
   performed_by: string | null
   created_at: string
 }
+
+export type LibraryKind = 'document' | 'template' | 'workflow'
+
+export interface HubLibraryItem {
+  id: string
+  kind: LibraryKind
+  title: string
+  summary: string | null
+  body: string
+  link_url: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}

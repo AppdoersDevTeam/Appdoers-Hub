@@ -11,6 +11,7 @@ import {
   FileText,
   ScrollText,
   BarChart2,
+  BookOpen,
   PieChart,
   Settings,
   CreditCard,
@@ -29,6 +30,7 @@ const navItems = [
   { href: '/app/proposals', label: 'Proposals', icon: FileText },
   { href: '/app/contracts', label: 'Contracts', icon: ScrollText },
   { href: '/app/recaps', label: 'Recaps', icon: BarChart2 },
+  { href: '/app/library', label: 'Library', icon: BookOpen },
   { href: '/app/subscriptions', label: 'Subscriptions', icon: CreditCard },
   { href: '/app/settings', label: 'Settings', icon: Settings },
 ]
