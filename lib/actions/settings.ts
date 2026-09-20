@@ -25,6 +25,7 @@ export async function updateSettingAction(
 
     if (error) return { success: false, error: error.message }
     revalidatePath('/app/settings')
+    revalidatePath('/app/dashboard')
     return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: String(err) }

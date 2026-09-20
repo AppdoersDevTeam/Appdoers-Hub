@@ -6,7 +6,21 @@ import {
   createServiceClient,
 } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import type { SubscriptionPlan } from '@/lib/types/database'
+import { PLAN_LABELS } from '@/lib/constants/plans'
+import { buildClientWeeklyDigest } from '@/lib/client-weekly-digest'
+import {
+  addChannelBookmark,
+  buildClientChannelCanvasMarkdown,
+  createChannelCanvas,
+  createPublicChannel,
+  findPublicChannelByName,
+  hubClientUrl,
+  joinPublicChannel,
+  postToSlackChannel,
+  setChannelPurpose,
+  slugifyClientChannelName,
+  withHttpUrl,
+} from '@/lib/slack'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -262,6 +276,154 @@ export async function revokePortalAccessAction(
 
     revalidatePath(`/app/clients/${clientId}`)
     return { success: true, data: undefined }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
+
+// ─── Slack channel ────────────────────────────────────────────────────────────
+
+export async function createClientSlackChannelAction(
+  clientId: string,
+  planLabel?: string
+): Promise<ActionResult<{ channelName: string; warning?: string }>> {
+  try {
+    const supabase = await createSupabaseClient()
+    const { data: client, error } = await supabase
+      .from('clients')
+      .select(
+        'id, company_name, website, status, subscription_plan, slack_channel_id, slack_channel_name, slack_canvas_id'
+      )
+      .eq('id', clientId)
+      .single()
+
+    if (error || !client) return { success: false, error: 'Client not found.' }
+
+    if (client.slack_channel_id && client.slack_channel_name) {
+      return { success: true, data: { channelName: client.slack_channel_name } }
+    }
+
+    const name = slugifyClientChannelName(client.company_name, client.id)
+    let channel = await createPublicChannel(name)
+    if (!channel.ok && channel.code === 'name_taken') {
+      channel = await findPublicChannelByName(name)
+    }
+    if (!channel.ok) return { success: false, error: channel.error }
+
+    await joinPublicChannel(channel.id)
+
+    const resolvedPlan =
+      planLabel?.trim() ||
+      PLAN_LABELS[client.subscription_plan] ||
+      client.subscription_plan
+    const hubUrl = hubClientUrl(client.id)
+    const warnings: string[] = []
+
+    const purpose = await setChannelPurpose(
+      channel.id,
+      `${client.company_name} · ${resolvedPlan} · internal only`
+    )
+    if (!purpose.ok) warnings.push(purpose.error)
+
+    let canvasId = client.slack_canvas_id as string | null
+    if (!canvasId) {
+      const canvas = await createChannelCanvas(
+        channel.id,
+        buildClientChannelCanvasMarkdown({
+          companyName: client.company_name,
+          planLabel: resolvedPlan,
+          status: client.status,
+          website: client.website,
+          hubUrl,
+        })
+      )
+      if (canvas.ok) {
+        canvasId = canvas.canvasId
+      } else if (canvas.code !== 'channel_canvas_already_exists') {
+        warnings.push(canvas.error)
+      }
+    }
+
+    const hubBookmark = await addChannelBookmark(channel.id, 'Open in Hub', hubUrl)
+    if (!hubBookmark.ok && hubBookmark.code !== 'already_exists') {
+      warnings.push(hubBookmark.error)
+    }
+
+    if (client.website) {
+      const siteBookmark = await addChannelBookmark(
+        channel.id,
+        'Website',
+        withHttpUrl(client.website)
+      )
+      if (!siteBookmark.ok && siteBookmark.code !== 'already_exists') {
+        warnings.push(siteBookmark.error)
+      }
+    }
+
+    const welcome = await postToSlackChannel(
+      channel.id,
+      `This is the internal channel for ${client.company_name}. Use it for back-and-forth about this client.\n\n• Todos and a short brief live in the channel canvas (top right)\n• Project work stays in Hub Tasks\n• Do not invite the client`
+    )
+    if (!welcome.ok) warnings.push(welcome.error)
+
+    const { error: updateError } = await supabase
+      .from('clients')
+      .update({
+        slack_channel_id: channel.id,
+        slack_channel_name: channel.name,
+        slack_canvas_id: canvasId,
+      })
+      .eq('id', clientId)
+
+    if (updateError) return { success: false, error: updateError.message }
+
+    await logActivity({
+      entityType: 'client',
+      entityId: clientId,
+      clientId,
+      action: 'slack_channel_created',
+      description: `Slack channel #${channel.name} created`,
+    })
+
+    revalidatePath(`/app/clients/${clientId}`)
+    return {
+      success: true,
+      data: {
+        channelName: channel.name,
+        ...(warnings[0] ? { warning: warnings[0] } : {}),
+      },
+    }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
+
+export async function sendClientWeeklyDigestAction(
+  clientId: string
+): Promise<ActionResult<{ posted: true }>> {
+  try {
+    const supabase = await createSupabaseClient()
+    const { data: client, error } = await supabase
+      .from('clients')
+      .select('id, company_name, slack_channel_id')
+      .eq('id', clientId)
+      .single()
+
+    if (error || !client) return { success: false, error: 'Client not found.' }
+    if (!client.slack_channel_id) {
+      return { success: false, error: 'Create a Slack channel for this client first.' }
+    }
+
+    const digest = await buildClientWeeklyDigest(supabase, client)
+    if (!digest) {
+      return { success: false, error: 'No time logged or closed tasks this week.' }
+    }
+
+    const posted = await postToSlackChannel(client.slack_channel_id, digest.text, digest.blocks)
+    if (!posted.ok) return { success: false, error: posted.error }
+
+    revalidatePath(`/app/clients/${clientId}`)
+    return { success: true, data: { posted: true } }
   } catch (err) {
     return { success: false, error: String(err) }
   }

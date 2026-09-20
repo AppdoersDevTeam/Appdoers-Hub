@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useTransition } from 'react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { testSlackChannelAction, updateSettingAction } from '@/lib/actions/settings'
@@ -10,6 +11,13 @@ import {
   ALL_SLACK_CHANNELS,
   type SlackChannel,
 } from '@/lib/slack-channels'
+import {
+  OUTBOUND_LINK_DEFS,
+  OUTBOUND_LINK_GROUPS,
+  parseCustomOutboundLinks,
+  parseOutboundLinkValues,
+  type CustomOutboundLink,
+} from '@/lib/outbound-links'
 
 const ALL_CHANNELS = ALL_SLACK_CHANNELS
 
@@ -69,6 +77,49 @@ export function SettingsEditor({ settings }: Props) {
       setCompanySaved(true)
       setTimeout(() => setCompanySaved(false), 3000)
     })
+  }
+
+  // ── Outbound links ────────────────────────────────────────
+  const savedOutbound = get('outbound_links')
+  const [outboundLinks, setOutboundLinks] = useState(() => parseOutboundLinkValues(savedOutbound))
+  const [customLinks, setCustomLinks] = useState<CustomOutboundLink[]>(() =>
+    parseCustomOutboundLinks(savedOutbound.custom)
+  )
+  const [outboundSaved, setOutboundSaved] = useState(false)
+
+  const saveOutboundLinks = () => {
+    startTransition(async () => {
+      const result = await updateSettingAction('outbound_links', {
+        ...outboundLinks,
+        custom: customLinks
+          .map((link) => ({
+            id: link.id,
+            label: link.label.trim(),
+            url: link.url.trim(),
+          }))
+          .filter((link) => link.label || link.url),
+      })
+      if (!result.success) return
+      setOutboundSaved(true)
+      setTimeout(() => setOutboundSaved(false), 3000)
+    })
+  }
+
+  const addCustomLink = () => {
+    setCustomLinks((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), label: '', url: '' },
+    ])
+  }
+
+  const updateCustomLink = (id: string, field: 'label' | 'url', value: string) => {
+    setCustomLinks((prev) =>
+      prev.map((link) => (link.id === id ? { ...link, [field]: value } : link))
+    )
+  }
+
+  const removeCustomLink = (id: string) => {
+    setCustomLinks((prev) => prev.filter((link) => link.id !== id))
   }
 
   // ── Billing ───────────────────────────────────────────────
@@ -178,6 +229,80 @@ export function SettingsEditor({ settings }: Props) {
           </div>
         </div>
         <SaveBar isPending={isPending} saved={companySaved} onSave={saveCompany} />
+      </Section>
+
+      {/* Quick links */}
+      <Section title="Quick Links">
+        <p className="text-xs text-slate-500">
+          These appear on the dashboard as quick links. Leave a field blank to hide it.
+          The company website is taken from Company Info above.
+        </p>
+        {OUTBOUND_LINK_GROUPS.map((group) => (
+          <div key={group.title} className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {group.title}
+            </h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {group.keys.map((key) => (
+                <div key={key}>
+                  <label className={labelClass}>{OUTBOUND_LINK_DEFS[key].label}</label>
+                  <Input
+                    type="text"
+                    inputMode="url"
+                    value={outboundLinks[key]}
+                    onChange={(e) =>
+                      setOutboundLinks((prev) => ({ ...prev, [key]: e.target.value }))
+                    }
+                    placeholder={OUTBOUND_LINK_DEFS[key].placeholder}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Custom links
+          </h3>
+          {customLinks.length === 0 ? (
+            <p className="text-xs text-slate-500">No extra links yet. Add any other tool or profile URL.</p>
+          ) : (
+            <div className="space-y-2">
+              {customLinks.map((link) => (
+                <div key={link.id} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Input
+                    value={link.label}
+                    onChange={(e) => updateCustomLink(link.id, 'label', e.target.value)}
+                    placeholder="Label"
+                    className="sm:w-48 sm:shrink-0"
+                  />
+                  <Input
+                    type="text"
+                    inputMode="url"
+                    value={link.url}
+                    onChange={(e) => updateCustomLink(link.id, 'url', e.target.value)}
+                    placeholder="https://..."
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeCustomLink(link.id)}
+                    aria-label={`Remove ${link.label || 'custom link'}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-slate-500" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          <Button type="button" variant="outline" size="sm" onClick={addCustomLink}>
+            <Plus className="h-3.5 w-3.5" />
+            Add custom link
+          </Button>
+        </div>
+        <SaveBar isPending={isPending} saved={outboundSaved} onSave={saveOutboundLinks} />
       </Section>
 
       {/* Billing */}

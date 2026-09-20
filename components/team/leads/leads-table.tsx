@@ -8,7 +8,13 @@ import { Input } from '@/components/ui/input'
 import { NewLeadSlideOver } from './new-lead-slide-over'
 import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
-import type { TeamUser } from '@/lib/types/database'
+import {
+  ALL_LEAD_STATUSES,
+  LEAD_SOURCE_LABELS,
+  LEAD_STATUS_LABELS,
+  LEAD_STATUS_STYLES,
+} from '@/lib/leads/constants'
+import type { LeadSource, LeadStatus, TeamUser } from '@/lib/types/database'
 
 type LeadRow = {
   id: string
@@ -22,24 +28,7 @@ type LeadRow = {
   updated_at: string
 }
 
-const statusConfig: Record<string, { label: string; cls: string }> = {
-  new: { label: 'New', cls: 'bg-slate-100 text-slate-500' },
-  contacted: { label: 'Contacted', cls: 'bg-blue-50 text-blue-700' },
-  qualified: { label: 'Qualified', cls: 'bg-amber-50 text-amber-700' },
-  proposal_sent: { label: 'Proposal Sent', cls: 'bg-purple-50 text-purple-700' },
-  negotiating: { label: 'Negotiating', cls: 'bg-orange-50 text-orange-700' },
-  won: { label: 'Won', cls: 'bg-emerald-50 text-emerald-700' },
-  lost: { label: 'Lost', cls: 'bg-red-50 text-red-700' },
-}
-
-const sourceLabels: Record<string, string> = {
-  word_of_mouth: 'Word of Mouth',
-  referral: 'Referral',
-  website: 'Website',
-  social: 'Social',
-  cold_outreach: 'Cold Outreach',
-  other: 'Other',
-}
+const sourceLabels = LEAD_SOURCE_LABELS
 
 interface Props {
   leads: LeadRow[]
@@ -85,9 +74,9 @@ export function LeadsTable({ leads, teamMembers }: Props) {
           onChange={(e) => setStatusFilter(e.target.value)}
         >
           <option value="all">All Statuses</option>
-          {Object.entries(statusConfig).map(([v, { label }]) => (
-            <option key={v} value={v}>
-              {label}
+          {ALL_LEAD_STATUSES.map((status) => (
+            <option key={status} value={status}>
+              {LEAD_STATUS_LABELS[status]}
             </option>
           ))}
         </select>
@@ -147,7 +136,9 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                 </tr>
               ) : (
                 filtered.map((l) => {
-                  const st = statusConfig[l.status] ?? statusConfig.new
+                  const status = l.status as LeadStatus
+                  const stLabel = LEAD_STATUS_LABELS[status] ?? l.status
+                  const stCls = LEAD_STATUS_STYLES[status] ?? LEAD_STATUS_STYLES.new
                   return (
                     <tr key={l.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-slate-900">
@@ -165,10 +156,10 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                         <span
                           className={cn(
                             'rounded-full px-2.5 py-0.5 text-xs font-medium',
-                            st.cls
+                            stCls
                           )}
                         >
-                          {st.label}
+                          {stLabel}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-slate-600">
@@ -177,7 +168,7 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                           : '—'}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {sourceLabels[l.source] ?? l.source}
+                        {sourceLabels[l.source as LeadSource] ?? l.source}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
                         {l.assigned_to_name ?? '—'}

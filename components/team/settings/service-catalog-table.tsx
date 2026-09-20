@@ -1,11 +1,18 @@
 ﻿'use client'
 
 import { useState, useTransition } from 'react'
-import { Plus, Edit2, Power } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Plus, Edit2, Power, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SlideOver } from '@/components/ui/slide-over'
-import { createServiceAction, updateServiceAction, toggleServiceActiveAction } from '@/lib/actions/service-catalog'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
+import {
+  createServiceAction,
+  updateServiceAction,
+  toggleServiceActiveAction,
+  deleteServiceAction,
+} from '@/lib/actions/service-catalog'
 import { formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 
@@ -27,9 +34,11 @@ const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 const selectClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 
 export function ServiceCatalogTable({ services }: { services: Service[] }) {
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Service | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Service | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const emptyForm = {
@@ -88,9 +97,27 @@ export function ServiceCatalogTable({ services }: { services: Service[] }) {
     })
   }
 
+  const handleDelete = () => {
+    if (!deleteTarget) return
+    setError(null)
+    startTransition(async () => {
+      const result = await deleteServiceAction(deleteTarget.id)
+      if (!result.success) {
+        setError(result.error)
+        setDeleteTarget(null)
+        return
+      }
+      setDeleteTarget(null)
+      router.refresh()
+    })
+  }
+
   return (
     <>
       <div className="hub-card overflow-hidden p-0">
+        {error && !showForm && (
+          <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>
+        )}
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <p className="text-sm text-slate-500">{services.length} service{services.length !== 1 ? 's' : ''}</p>
           <Button size="sm" onClick={openAdd}>
@@ -143,6 +170,14 @@ export function ServiceCatalogTable({ services }: { services: Service[] }) {
                       <button onClick={() => handleToggle(s)} disabled={isPending} title={s.is_active ? 'Deactivate' : 'Activate'} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600">
                         <Power className="h-3.5 w-3.5" />
                       </button>
+                      <button
+                        onClick={() => { setError(null); setDeleteTarget(s) }}
+                        disabled={isPending}
+                        title="Delete"
+                        className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -151,6 +186,16 @@ export function ServiceCatalogTable({ services }: { services: Service[] }) {
           </table>
         </div>
       </div>
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete service"
+        message={`Delete "${deleteTarget?.name}" from the catalog? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+        isPending={isPending}
+      />
 
       <SlideOver open={showForm} onClose={() => setShowForm(false)} title={editing ? 'Edit Service' : 'New Service'}>
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">

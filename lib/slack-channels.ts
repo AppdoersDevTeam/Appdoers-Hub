@@ -7,6 +7,7 @@ export type SlackChannel =
   | 'clients'
   | 'leads'
   | 'proposals'
+  | 'alerts'
 
 export const ALL_SLACK_CHANNELS: SlackChannel[] = [
   'general',
@@ -16,6 +17,7 @@ export const ALL_SLACK_CHANNELS: SlackChannel[] = [
   'clients',
   'leads',
   'proposals',
+  'alerts',
 ]
 
 export const SLACK_CHANNEL_LABELS: Record<SlackChannel, string> = {
@@ -26,6 +28,7 @@ export const SLACK_CHANNEL_LABELS: Record<SlackChannel, string> = {
   clients: 'Clients',
   leads: 'Leads',
   proposals: 'Proposals',
+  alerts: 'Alerts',
 }
 
 export const SLACK_CHANNEL_DESCRIPTIONS: Record<SlackChannel, string> = {
@@ -36,4 +39,5 @@ export const SLACK_CHANNEL_DESCRIPTIONS: Record<SlackChannel, string> = {
   clients: 'New clients added, status changes',
   leads: 'New leads, lead status changes',
   proposals: 'Proposals sent to clients',
+  alerts: 'Supabase project events — paused, restored, disk, shutdown',
 }

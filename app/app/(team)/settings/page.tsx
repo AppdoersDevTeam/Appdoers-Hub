@@ -67,7 +67,7 @@ export default async function SettingsPage() {
       <div className="space-y-4">
         <div>
           <h2 className="text-base font-semibold text-slate-900">Service Catalog</h2>
-          <p className="text-sm text-slate-500">Manage plans and add-ons used in proposals.</p>
+          <p className="text-sm text-slate-500">Website plans and add-ons from appdoers.co.nz, used in proposals.</p>
         </div>
         <ServiceCatalogTable services={services ?? []} />
       </div>

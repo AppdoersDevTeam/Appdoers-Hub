@@ -69,3 +69,38 @@ export async function toggleServiceActiveAction(
     return { success: false, error: String(err) }
   }
 }
+
+export async function deleteServiceAction(id: string): Promise<ActionResult<undefined>> {
+  try {
+    const supabase = await createSupabaseClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    const { data: caller } = await supabase
+      .from('team_users')
+      .select('role')
+      .eq('id', user?.id ?? '')
+      .single()
+
+    if (caller?.role !== 'director') {
+      return { success: false, error: 'Only directors can delete catalog services' }
+    }
+
+    const { error } = await supabase.from('service_catalog').delete().eq('id', id)
+    if (error) {
+      if (error.code === '23503') {
+        return {
+          success: false,
+          error: 'This service is assigned to a client and cannot be deleted.',
+        }
+      }
+      return { success: false, error: error.message }
+    }
+
+    revalidatePath('/app/settings')
+    revalidatePath('/app/clients')
+    return { success: true, data: undefined }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}

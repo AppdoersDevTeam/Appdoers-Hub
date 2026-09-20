@@ -11,8 +11,11 @@ import {
   deleteSubscriptionAction,
   type SubscriptionInput,
 } from '@/lib/actions/subscriptions'
+import type { HubProjectOption, SupabaseAccountWithProjects } from '@/lib/actions/supabase-accounts'
+import { isSupabaseSubscription } from '@/lib/types/database'
 import { cn } from '@/lib/utils/cn'
 import { formatDate } from '@/lib/utils/format'
+import { SupabaseLoginsCard, supabaseLoginSummary } from '@/components/team/subscriptions/supabase-logins-card'
 
 interface Subscription {
   id: string
@@ -61,6 +64,18 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
+function LoginSummaryLine({ accounts }: { accounts: SupabaseAccountWithProjects[] }) {
+  const summary = supabaseLoginSummary(accounts)
+  if (summary.loginCount === 0) {
+    return <p className="text-xs text-slate-500 mt-0.5">No logins tracked</p>
+  }
+  return (
+    <p className={cn('text-xs mt-0.5', summary.anyFull ? 'text-amber-600' : 'text-slate-500')}>
+      {summary.loginCount} login{summary.loginCount === 1 ? '' : 's'} · {summary.used}/{summary.limit} slots
+    </p>
+  )
+}
+
 function formatCost(cost: number, cycle: string) {
   const formatted = new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD' }).format(cost)
   return `${formatted}/${cycle === 'yearly' ? 'yr' : 'mo'}`
@@ -74,11 +89,19 @@ const emptyForm: SubscriptionInput = {
 interface Props {
   subscriptions: Subscription[]
   canEdit: boolean
+  supabaseAccounts?: SupabaseAccountWithProjects[]
+  pickerProjects?: HubProjectOption[]
 }
 
-export function SubscriptionsTable({ subscriptions: initial, canEdit }: Props) {
+export function SubscriptionsTable({
+  subscriptions: initial,
+  canEdit,
+  supabaseAccounts = [],
+  pickerProjects = [],
+}: Props) {
   const [isPending, startTransition] = useTransition()
   const [subs, setSubs] = useState(initial)
+  const [accounts, setAccounts] = useState(supabaseAccounts)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Subscription | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -208,6 +231,9 @@ export function SubscriptionsTable({ subscriptions: initial, canEdit }: Props) {
                         </a>
                       )}
                     </div>
+                    {isSupabaseSubscription(s.name) && (
+                      <LoginSummaryLine accounts={accounts.filter(a => a.subscription_id === s.id)} />
+                    )}
                     {s.notes && <p className="text-xs text-slate-500 mt-0.5 truncate max-w-[200px]">{s.notes}</p>}
                   </td>
                   <td className="px-4 py-3">
@@ -237,6 +263,20 @@ export function SubscriptionsTable({ subscriptions: initial, canEdit }: Props) {
           </table>
         </div>
       </div>
+
+      {filtered.filter(s => isSupabaseSubscription(s.name)).map(s => (
+        <SupabaseLoginsCard
+          key={s.id}
+          subscriptionId={s.id}
+          accounts={accounts.filter(a => a.subscription_id === s.id)}
+          pickerProjects={pickerProjects}
+          canEdit={canEdit}
+          onAccountsChange={next => setAccounts(prev => [
+            ...prev.filter(a => a.subscription_id !== s.id),
+            ...next,
+          ])}
+        />
+      ))}
 
       {/* Slide-over */}
       <SlideOver open={showForm} onClose={() => setShowForm(false)} title={editing ? 'Edit Subscription' : 'Add Subscription'}>

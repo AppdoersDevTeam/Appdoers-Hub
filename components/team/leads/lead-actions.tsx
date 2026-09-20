@@ -10,17 +10,13 @@ import {
   convertLeadToClientAction,
 } from '@/lib/actions/leads'
 import type { LeadStatus, LostReason, TeamUser } from '@/lib/types/database'
+import {
+  ALL_LEAD_STATUSES,
+  LEAD_STATUS_FLOW,
+  LEAD_STATUS_LABELS,
+  PIPELINE_LEAD_STATUSES,
+} from '@/lib/leads/constants'
 import { cn } from '@/lib/utils/cn'
-
-const STATUS_FLOW: Record<string, { next: LeadStatus; label: string } | null> = {
-  new: { next: 'contacted', label: 'Mark Contacted' },
-  contacted: { next: 'qualified', label: 'Mark Qualified' },
-  qualified: { next: 'proposal_sent', label: 'Proposal Sent' },
-  proposal_sent: { next: 'negotiating', label: 'Move to Negotiating' },
-  negotiating: null,
-  won: null,
-  lost: null,
-}
 
 const LOST_REASONS: { value: LostReason; label: string }[] = [
   { value: 'price', label: 'Price' },
@@ -37,7 +33,7 @@ const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 
 interface Props {
   leadId: string
-  currentStatus: string
+  currentStatus: LeadStatus
   hasConvertedClient: boolean
   teamMembers: Pick<TeamUser, 'id' | 'full_name'>[]
 }
@@ -54,13 +50,13 @@ export function LeadActions({
   const [lostReason, setLostReason] = useState<LostReason>('other')
   const [lostNotes, setLostNotes] = useState('')
 
-  const nextStep = STATUS_FLOW[currentStatus]
+  const nextStep = LEAD_STATUS_FLOW[currentStatus]
+  const isOpen = PIPELINE_LEAD_STATUSES.includes(currentStatus)
 
-  const advance = () => {
-    if (!nextStep) return
+  const setStatus = (status: LeadStatus) => {
     setError(null)
     startTransition(async () => {
-      const result = await updateLeadStatusAction(leadId, nextStep.next)
+      const result = await updateLeadStatusAction(leadId, status)
       if (!result.success) setError(result.error)
     })
   }
@@ -102,19 +98,33 @@ export function LeadActions({
         </div>
       )}
 
-      {/* Advance Status */}
       {nextStep && (
-        <Button
-          onClick={advance}
-          disabled={isPending}
-          className="w-full"
-        >
+        <Button onClick={() => setStatus(nextStep.next)} disabled={isPending} className="w-full">
           {isPending ? 'Updating…' : nextStep.label}
         </Button>
       )}
 
-      {/* Won / Lost (show when negotiating) */}
-      {currentStatus === 'negotiating' && (
+      {currentStatus !== 'won' && currentStatus !== 'lost' && (
+        <div>
+          <label className={labelClass}>Move to status</label>
+          <select
+            className={selectClass}
+            value={currentStatus}
+            disabled={isPending}
+            onChange={(e) => setStatus(e.target.value as LeadStatus)}
+          >
+            {ALL_LEAD_STATUSES.filter((status) => status !== 'won' && status !== 'lost').map(
+              (status) => (
+                <option key={status} value={status}>
+                  {LEAD_STATUS_LABELS[status]}
+                </option>
+              )
+            )}
+          </select>
+        </div>
+      )}
+
+      {isOpen && (
         <>
           <Button
             variant="success"
@@ -122,7 +132,7 @@ export function LeadActions({
             disabled={isPending}
             className="w-full"
           >
-            🎉 Mark as Won
+            Mark as Won
           </Button>
           <Button
             variant="destructive"
@@ -135,7 +145,6 @@ export function LeadActions({
         </>
       )}
 
-      {/* Lost form */}
       {showLostForm && (
         <form onSubmit={markLost} className="space-y-3 rounded-lg border border-red-200 bg-red-50/50 p-3">
           <div>
@@ -182,7 +191,6 @@ export function LeadActions({
         </form>
       )}
 
-      {/* Convert to Client (won, not yet converted) */}
       {currentStatus === 'won' && !hasConvertedClient && (
         <Button
           variant="success"
@@ -190,13 +198,13 @@ export function LeadActions({
           disabled={isPending}
           className="w-full"
         >
-          {isPending ? 'Converting…' : '→ Convert to Client'}
+          {isPending ? 'Converting…' : 'Convert to Client'}
         </Button>
       )}
 
       {currentStatus === 'won' && hasConvertedClient && (
         <p className="text-center text-xs text-emerald-600">
-          ✓ Converted to client
+          Converted to client
         </p>
       )}
 
@@ -206,12 +214,11 @@ export function LeadActions({
         </p>
       )}
 
-      {/* Status indicator */}
       <div className="border-t border-slate-200 pt-2">
         <p className="text-xs text-slate-500">
           Current status:{' '}
           <span className="font-medium text-slate-600">
-            {currentStatus.replace('_', ' ')}
+            {LEAD_STATUS_LABELS[currentStatus] ?? currentStatus}
           </span>
         </p>
         <button
