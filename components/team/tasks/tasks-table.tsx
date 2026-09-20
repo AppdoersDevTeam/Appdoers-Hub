@@ -75,7 +75,7 @@ export function TasksTable({
   const [assigneeFilter, setAssigneeFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('open')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [showNew, setShowNew] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<TaskRow | null>(null)
 
