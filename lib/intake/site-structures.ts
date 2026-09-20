@@ -205,7 +205,10 @@ export function pageLabel(type: IndustryId | '', pageId: string) {
   return pageId.replaceAll('-', ' ')
 }
 
-export function selectedPageOutline(type: IndustryId | '', selected: string[]) {
+export function selectedPageOutline(
+  type: IndustryId | '',
+  selected: string[]
+): { id: string; label: string; depth: number; optional?: boolean }[] {
   const industry = normalizeIndustry(type)
   const nodes = industry ? SITE_STRUCTURES[industry] : []
   const out: { id: string; label: string; depth: number; optional?: boolean }[] = []
@@ -222,7 +225,7 @@ export function selectedPageOutline(type: IndustryId | '', selected: string[]) {
   walk(nodes, 0)
 
   if (out.length === 0) {
-    return selected.map((id) => ({ id, label: pageLabel(industry, id), depth: 0 as const }))
+    return selected.map((id) => ({ id, label: pageLabel(industry, id), depth: 0 }))
   }
   return out
 }
