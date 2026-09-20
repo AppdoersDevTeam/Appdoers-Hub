@@ -247,3 +247,22 @@ export interface HubLibraryItem {
   created_at: string
   updated_at: string
 }
+
+export interface AgencySubscription {
+  id: string
+  name: string
+  category: string
+  plan_name: string | null
+  billing_cycle: 'monthly' | 'yearly' | string
+  cost: number
+  renewal_date: string | null
+  status: 'active' | 'paused' | 'cancelled' | string
+  url: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export function isSupabaseSubscription(name: string): boolean {
+  return name.trim().toLowerCase().includes('supabase')
+}
