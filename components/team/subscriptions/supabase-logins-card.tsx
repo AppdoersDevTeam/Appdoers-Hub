@@ -169,7 +169,11 @@ export function SupabaseLoginsCard({
             : account
         )))
       } else {
-        const newId = (result as { success: true; data: { id: string } }).data.id
+        const newId = result.data?.id
+        if (!newId) {
+          setError('Could not create account')
+          return
+        }
         commitAccounts([
           ...accounts,
           {
