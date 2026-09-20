@@ -30,9 +30,9 @@ type ActionResult<T = undefined> =
 
 export interface CreateClientInput {
   company_name: string
-  industry?: string
-  website?: string
-  location?: string
+  industry?: string | null
+  website?: string | null
+  location?: string | null
   subscription_plan: string
   contract_months?: number | null
   plan_service_id?: string | null

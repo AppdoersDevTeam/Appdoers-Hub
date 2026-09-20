@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { ContactsSection } from '@/components/team/clients/contacts-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
+import { ClientDetailsCard } from '@/components/team/clients/client-details-card'
 import { ClientEditForm } from '@/components/team/clients/client-edit-form'
 import { ClientSlackActions } from '@/components/team/clients/client-slack-actions'
 import { ArrowLeft, FolderOpen } from 'lucide-react'
@@ -217,42 +218,18 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left: Client Info */}
           <div className="space-y-6 lg:col-span-2">
-            {/* Details Card */}
-            <div className="hub-card space-y-4">
-              <h3 className="text-sm font-semibold text-slate-900">Details</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <InfoRow label="Industry" value={client.industry ?? '—'} />
-                <InfoRow label="Location" value={client.location ?? '—'} />
-                <InfoRow
-                  label="Website"
-                  value={
-                    client.website ? (
-                      <a
-                        href={client.website}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        {client.website}
-                      </a>
-                    ) : (
-                      '—'
-                    )
-                  }
-                />
-                <InfoRow label="Status" value={
-                  <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium',
-                    client.status === 'active' ? 'bg-emerald-50 text-emerald-700' :
-                    client.status === 'churned' ? 'bg-red-50 text-red-700' :
-                    'bg-slate-100 text-slate-500'
-                  )}>
-                    {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
-                  </span>
-                } />
-                <InfoRow label="Client Since" value={formatDate(client.created_at)} />
-                <InfoRow label="Payment Terms" value={`${client.payment_terms} days`} />
-              </div>
-            </div>
+            <ClientDetailsCard
+              client={{
+                id: client.id,
+                company_name: client.company_name,
+                industry: client.industry,
+                website: client.website,
+                location: client.location,
+                payment_terms: client.payment_terms,
+                status: client.status,
+                created_at: client.created_at,
+              }}
+            />
 
             {/* Contacts */}
             <div className="hub-card">
@@ -530,21 +507,6 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
           clientId={id}
         />
       )}
-    </div>
-  )
-}
-
-function InfoRow({
-  label,
-  value,
-}: {
-  label: string
-  value: React.ReactNode
-}) {
-  return (
-    <div>
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-0.5 text-slate-600">{value}</p>
     </div>
   )
 }

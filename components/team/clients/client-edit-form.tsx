@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { updateClientAction } from '@/lib/actions/clients'
@@ -77,24 +78,19 @@ export function ClientEditForm({
   catalogAddons: CatalogServiceOption[]
   clientServices: ClientServiceRecord[]
 }) {
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
   const [form, setForm] = useState({
-    company_name: client.company_name,
-    industry: client.industry ?? '',
-    website: client.website ?? '',
-    location: client.location ?? '',
     plan_service_id: client.plan_service_id ?? '',
     subscription_plan: client.subscription_plan,
     contract_months: client.contract_months,
     monthly_fee: client.monthly_fee,
     setup_fee: client.setup_fee,
     setup_upfront: client.setup_upfront ?? 0,
-    payment_terms: client.payment_terms,
-    status: client.status as 'active' | 'inactive' | 'churned',
   })
 
   const [addons, setAddons] = useState<Record<string, AddonSelection>>(() =>
@@ -171,18 +167,12 @@ export function ClientEditForm({
     setSuccess(false)
     startTransition(async () => {
       const result = await updateClientAction(client.id, {
-        company_name: form.company_name,
-        industry: form.industry || undefined,
-        website: form.website || undefined,
-        location: form.location || undefined,
         subscription_plan: form.subscription_plan,
         contract_months: form.contract_months,
         plan_service_id: form.plan_service_id || null,
         monthly_fee: form.monthly_fee,
         setup_fee: form.setup_fee,
         setup_upfront: form.setup_upfront,
-        payment_terms: form.payment_terms,
-        status: form.status,
       })
       if (!result.success) {
         setError(result.error)
@@ -204,13 +194,14 @@ export function ClientEditForm({
 
       setSuccess(true)
       setOpen(false)
+      router.refresh()
     })
   }
 
   if (!open) {
     return (
       <Button variant="outline" onClick={() => setOpen(true)} className="w-full">
-        Edit Client
+        Edit plan & services
       </Button>
     )
   }
@@ -223,7 +214,7 @@ export function ClientEditForm({
 
   return (
     <div className="hub-card space-y-4">
-      <h3 className="text-sm font-semibold text-slate-900">Edit Client</h3>
+      <h3 className="text-sm font-semibold text-slate-900">Edit plan & services</h3>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
@@ -235,13 +226,6 @@ export function ClientEditForm({
             Saved!
           </div>
         )}
-        <div>
-          <label className={labelClass}>Company Name</label>
-          <Input
-            value={form.company_name}
-            onChange={(e) => set('company_name', e.target.value)}
-          />
-        </div>
         <div>
           <label className={labelClass}>Website Plan</label>
           <select
@@ -360,18 +344,6 @@ export function ClientEditForm({
               {addonSetupTotal > 0 && ` · +${formatCurrency(addonSetupTotal)} setup`}
             </p>
           )}
-        </div>
-        <div>
-          <label className={labelClass}>Status</label>
-          <select
-            className={selectClass}
-            value={form.status}
-            onChange={(e) => set('status', e.target.value)}
-          >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="churned">Churned</option>
-          </select>
         </div>
         <div className="flex gap-2">
           <Button type="submit" disabled={isPending} className="flex-1">
