@@ -1,5 +1,6 @@
 'use client'
 
+import { FieldLabel } from '@/components/intake/field'
 import { cn } from '@/lib/utils/cn'
 import {
   MAINTENANCE_PAGES_NOTE,
@@ -70,7 +71,11 @@ export function SiteStructurePicker({
   const nodes = SITE_STRUCTURES[companyType]
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium text-slate-900">Suggested site structure</p>
+      <p>
+        <FieldLabel help="Tick the pages you want. This is a starting map — we can add or drop pages later.">
+          Suggested site structure
+        </FieldLabel>
+      </p>
       <div className="space-y-1.5">
         {nodes.map((node) => (
           <PageRow key={node.id} node={node} selected={selected} depth={0} onToggle={onToggle} />

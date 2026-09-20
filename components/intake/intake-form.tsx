@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AppdoersLogo } from '@/components/brand/appdoers-logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,17 +20,9 @@ import {
 } from '@/lib/intake/site-structures'
 import { emptyIntakeContact, type IntakeAnswers, type IntakeContact } from '@/lib/intake/types'
 import { ChoiceChip, FontPicker, MoodPicker, PalettePicker, ToggleChip } from './brand-pickers'
+import { Field, FieldHelp, FieldLabel } from './field'
 import { IndustryDetailsFields } from './industry-details-fields'
 import { SiteStructurePicker } from './site-structure-picker'
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</span>
-      {children}
-    </label>
-  )
-}
 
 function Select({
   value,
@@ -68,21 +60,66 @@ function TextArea({
   )
 }
 
+function IntakeThankYou({ onEdit }: { onEdit: () => void }) {
+  useEffect(() => {
+    const jump = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+    jump()
+    const frame = requestAnimationFrame(jump)
+    const timeout = window.setTimeout(jump, 50)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.clearTimeout(timeout)
+    }
+  }, [])
+
+  return (
+    <div className="mx-auto max-w-lg px-4 py-16 text-center">
+      <AppdoersLogo variant="full" className="mx-auto" />
+      <h1 className="mt-6 text-2xl font-semibold text-slate-900">Thank you</h1>
+      <p className="mt-2 text-sm text-slate-600">
+        We have your kickoff details. The Appdoers team has been notified and will use this to start your project.
+      </p>
+      <Button className="mt-6" variant="outline" onClick={onEdit}>
+        Edit my answers
+      </Button>
+    </div>
+  )
+}
+
 function ContactFields({
   contact,
   onChange,
   roles,
+  required,
+  extra,
 }: {
   contact: IntakeContact
   onChange: (next: IntakeContact) => void
   roles: string[]
+  required?: boolean
+  extra?: boolean
 }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <Field label="Name">
+      <Field
+        label="Name"
+        required={required}
+        help={
+          extra
+            ? 'So we know who this extra person is if we need to include them in project emails.'
+            : 'The person we should address in emails and meetings about this website.'
+        }
+      >
         <Input value={contact.name} onChange={(e) => onChange({ ...contact, name: e.target.value })} />
       </Field>
-      <Field label="Role">
+      <Field
+        label="Role"
+        help="Helps us know who signs off, who handles day-to-day, and who to ask about content."
+      >
         <Select value={contact.role} onChange={(role) => onChange({ ...contact, role })}>
           <option value="">Select…</option>
           {roles.map((role) => (
@@ -92,10 +129,21 @@ function ContactFields({
           ))}
         </Select>
       </Field>
-      <Field label="Email">
+      <Field
+        label="Email"
+        required={required}
+        help={
+          extra
+            ? 'An extra inbox we can copy in. Skip this if you only want one contact.'
+            : 'The inbox we will use for project updates, drafts, and questions.'
+        }
+      >
         <Input type="email" value={contact.email} onChange={(e) => onChange({ ...contact, email: e.target.value })} />
       </Field>
-      <Field label="Phone">
+      <Field
+        label="Phone"
+        help="A backup if email is slow, or if you prefer a quick call. Optional."
+      >
         <Input value={contact.phone} onChange={(e) => onChange({ ...contact, phone: e.target.value })} />
       </Field>
     </div>
@@ -132,6 +180,11 @@ export function IntakeForm({
     () => recommendedDomains(answers.people.company_name, answers.domain.tld_preference),
     [answers.people.company_name, answers.domain.tld_preference]
   )
+
+  useEffect(() => {
+    if (!done) return
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
+  }, [done])
 
   async function uploadLogo(file: File) {
     setUploadingLogo(true)
@@ -201,6 +254,7 @@ export function IntakeForm({
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Could not submit')
       setDone(true)
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -209,18 +263,7 @@ export function IntakeForm({
   }
 
   if (done) {
-    return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center">
-        <AppdoersLogo variant="full" className="mx-auto" />
-        <h1 className="mt-6 text-2xl font-semibold text-slate-900">Thank you</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          We have your kickoff details. The Appdoers team has been notified and will use this to start your project.
-        </p>
-        <Button className="mt-6" variant="outline" onClick={() => setDone(false)}>
-          Edit my answers
-        </Button>
-      </div>
-    )
+    return <IntakeThankYou onEdit={() => setDone(false)} />
   }
 
   return (
@@ -237,6 +280,11 @@ export function IntakeForm({
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-slate-900">{steps[step].title}</h1>
         <p className="mt-1 text-sm text-slate-500">{steps[step].hint}</p>
+        <p className="mt-2 text-xs text-slate-500">
+          <span className="font-medium text-red-600">*</span> Required
+          <span className="mx-2 text-slate-300">·</span>
+          Fields marked optional can be skipped
+        </p>
         {alreadySubmitted && (
           <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
             You already submitted this form. You can update your answers until Appdoers locks it.
@@ -247,7 +295,11 @@ export function IntakeForm({
       <div className="hub-card space-y-6">
         {step === 0 && (
           <>
-            <Field label={profile?.nameLabel ?? 'Organisation name'}>
+            <Field
+              label={profile?.nameLabel ?? 'Organisation name'}
+              required
+              help="The name we should use on the website, emails, and your Hub record. Use the name people already know you by."
+            >
               <Input
                 value={answers.people.company_name}
                 onChange={(e) =>
@@ -256,7 +308,14 @@ export function IntakeForm({
               />
             </Field>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">I am a…</p>
+              <p className="mb-2">
+                <FieldLabel
+                  required
+                  help="Choose the closest match. This unlocks the right questions, page list, and website features for your kind of organisation."
+                >
+                  I am a…
+                </FieldLabel>
+              </p>
               {profile && <p className="mb-3 text-sm text-slate-600">{profile.intro}</p>}
               <div className="flex flex-wrap gap-2">
                 {COMPANY_TYPES.map((type) => (
@@ -296,21 +355,30 @@ export function IntakeForm({
                 }
               />
             )}
-            <Field label={profile?.whatWeDoLabel ?? 'What do you do?'}>
+            <Field
+              label={profile?.whatWeDoLabel ?? 'What do you do?'}
+              help="A sentence or two about who you are and what you do. We use this to shape homepage copy and understand the project."
+            >
               <TextArea
                 value={answers.people.what_we_do}
                 onChange={(what_we_do) => setAnswers({ ...answers, people: { ...answers.people, what_we_do } })}
                 placeholder={profile?.whatWeDoPlaceholder ?? 'A sentence or two is perfect.'}
               />
             </Field>
-            <Field label={profile?.audienceLabel ?? 'Who is it for?'}>
+            <Field
+              label={profile?.audienceLabel ?? 'Who is it for?'}
+              help="Who the website should speak to first. This helps us pick the right tone, pages, and calls to action."
+            >
               <TextArea
                 value={answers.people.audience}
                 onChange={(audience) => setAnswers({ ...answers, people: { ...answers.people, audience } })}
                 placeholder={profile?.audiencePlaceholder}
               />
             </Field>
-            <Field label={profile?.locationLabel ?? 'Location / service area'}>
+            <Field
+              label={profile?.locationLabel ?? 'Location / service area'}
+              help="Where you are based or the area you serve. Often shown on the contact page, footer, and Google listing."
+            >
               <Input
                 value={answers.people.location}
                 onChange={(e) =>
@@ -319,7 +387,11 @@ export function IntakeForm({
               />
             </Field>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Preferred contact method</p>
+              <p className="mb-2">
+                <FieldLabel help="How you would like Appdoers to reach you while we build the site.">
+                  Preferred contact method
+                </FieldLabel>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {(['email', 'phone', 'both'] as const).map((method) => (
                   <ChoiceChip
@@ -335,17 +407,29 @@ export function IntakeForm({
               </div>
             </div>
             <div>
-              <p className="mb-3 text-sm font-medium text-slate-900">Primary contact</p>
+              <p className="mb-3">
+                <FieldLabel
+                  required
+                  help="The main person we should talk to about this website — decisions, drafts, and go-live."
+                >
+                  Primary contact
+                </FieldLabel>
+              </p>
               <ContactFields
                 contact={answers.people.primary}
                 roles={contactRoles}
+                required
                 onChange={(primary) => setAnswers({ ...answers, people: { ...answers.people, primary } })}
               />
             </div>
             {answers.people.extras.map((extra, index) => (
               <div key={index} className="rounded-lg border border-slate-200 p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-sm font-medium text-slate-900">Extra contact {index + 1}</p>
+                  <p>
+                    <FieldLabel help="Someone else we can include if needed, such as a second decision-maker, admin, or tech contact.">
+                      Extra contact {index + 1}
+                    </FieldLabel>
+                  </p>
                   <button
                     type="button"
                     className="text-xs text-slate-500 hover:text-red-600"
@@ -362,6 +446,7 @@ export function IntakeForm({
                 <ContactFields
                   contact={extra}
                   roles={contactRoles}
+                  extra
                   onChange={(next) =>
                     setAnswers({
                       ...answers,
@@ -393,7 +478,14 @@ export function IntakeForm({
         {step === 1 && (
           <>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Domain</p>
+              <p className="mb-2">
+                <FieldLabel
+                  required
+                  help="Whether you already have a web address, or we should help you choose and buy one."
+                >
+                  Domain
+                </FieldLabel>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {(
                   [
@@ -413,7 +505,11 @@ export function IntakeForm({
               </div>
             </div>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Preferred domain ending</p>
+              <p className="mb-2">
+                <FieldLabel help="The ending you want, such as .nz or .com. We recommend names that match this choice.">
+                  Preferred domain ending
+                </FieldLabel>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {DOMAIN_TLDS.map((tld) => (
                   <ChoiceChip
@@ -438,8 +534,10 @@ export function IntakeForm({
             </div>
             {domainSuggestions.length > 0 ? (
               <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Recommended domain names
+                <p className="mb-2">
+                  <FieldLabel help="Ideas based on your organisation name. Tap one to use it — names are subject to availability.">
+                    Recommended domain names
+                  </FieldLabel>
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {domainSuggestions.map((item) => (
@@ -468,7 +566,11 @@ export function IntakeForm({
                 Enter a business name on the previous step to see recommended domain names.
               </p>
             )}
-            <Field label="Domain name">
+            <Field
+              label="Domain name"
+              required={answers.domain.status === 'own'}
+              help="The web address the site will use, like example.co.nz. We need this to set up hosting, email, and DNS."
+            >
               <Input
                 placeholder="example.co.nz"
                 value={answers.domain.domain_name}
@@ -479,7 +581,11 @@ export function IntakeForm({
             </Field>
             <p className="text-xs text-slate-500">Domain names are subject to availability.</p>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Current website</p>
+              <p className="mb-2">
+                <FieldLabel help="If you already have a site, we can review it for content, redirects, and what to keep.">
+                  Current website
+                </FieldLabel>
+              </p>
               <div className="mb-3 flex flex-wrap gap-2">
                 <ChoiceChip
                   selected={answers.domain.has_current_site === 'yes'}
@@ -504,7 +610,10 @@ export function IntakeForm({
                 />
               )}
             </div>
-            <Field label="Registrar">
+            <Field
+              label="Registrar"
+              help="The company that currently holds your domain, so we know where to make DNS changes."
+            >
               <Select
                 value={answers.domain.registrar}
                 onChange={(registrar) => setAnswers({ ...answers, domain: { ...answers.domain, registrar } })}
@@ -517,7 +626,10 @@ export function IntakeForm({
               </Select>
             </Field>
             {answers.domain.registrar === 'other' && (
-              <Field label="Registrar name">
+              <Field
+                label="Registrar name"
+                help="If your registrar is not in the list, type the company name here."
+              >
                 <Input
                   value={answers.domain.registrar_other}
                   onChange={(e) =>
@@ -532,7 +644,11 @@ export function IntakeForm({
         {step === 2 && (
           <>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Logo</p>
+              <p className="mb-2">
+                <FieldLabel help="Appdoers does not design logos. Upload one you already have, or tell us you will send it later.">
+                  Logo
+                </FieldLabel>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {(
                   [
@@ -573,18 +689,33 @@ export function IntakeForm({
               )}
             </div>
             <div>
-              <p className="mb-2 text-sm font-medium text-slate-900">Colours</p>
+              <p className="mb-2">
+                <FieldLabel help="Pick a palette close to your brand so the site feels like you from day one.">
+                  Colours
+                </FieldLabel>
+              </p>
               <PalettePicker answers={answers} onChange={setAnswers} />
             </div>
             <div>
-              <p className="mb-2 text-sm font-medium text-slate-900">Fonts</p>
+              <p className="mb-2">
+                <FieldLabel help="Heading and body fonts. Choose a pairing, or name the fonts you already use.">
+                  Fonts
+                </FieldLabel>
+              </p>
               <FontPicker answers={answers} onChange={setAnswers} />
             </div>
             <div>
-              <p className="mb-2 text-sm font-medium text-slate-900">Style mood</p>
+              <p className="mb-2">
+                <FieldLabel help="The overall feel — warm, modern, classic, and so on — so design choices stay consistent.">
+                  Style mood
+                </FieldLabel>
+              </p>
               <MoodPicker answers={answers} onChange={setAnswers} />
             </div>
-            <Field label="Sites whose look you like (optional)">
+            <Field
+              label="Sites whose look you like"
+              help="Paste a few websites whose look you like. We use these as visual references, not copies."
+            >
               <TextArea
                 value={answers.brand.sites_i_like}
                 onChange={(sites_i_like) => setAnswers({ ...answers, brand: { ...answers.brand, sites_i_like } })}
@@ -596,7 +727,10 @@ export function IntakeForm({
 
         {step === 3 && (
           <>
-            <Field label="Tagline / one-liner (optional)">
+            <Field
+              label="Tagline / one-liner"
+              help="A short line that can sit under your name on the homepage. Skip it if you do not have one yet."
+            >
               <Input
                 value={answers.content.tagline}
                 onChange={(e) =>
@@ -605,7 +739,11 @@ export function IntakeForm({
               />
             </Field>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Tone</p>
+              <p className="mb-2">
+                <FieldLabel help="How the website should sound when we write or edit copy.">
+                  Tone
+                </FieldLabel>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {TONE_OPTIONS.map((tone) => (
                   <ChoiceChip
@@ -646,7 +784,10 @@ export function IntakeForm({
                 </p>
               )}
             </div>
-            <Field label="Other pages">
+            <Field
+              label="Other pages"
+              help="Anything extra that is not in the list, such as a special campaign, shop, or resource hub."
+            >
               <Input
                 value={answers.content.custom_pages}
                 onChange={(e) =>
@@ -655,7 +796,11 @@ export function IntakeForm({
               />
             </Field>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Website copy</p>
+              <p className="mb-2">
+                <FieldLabel help="Whether you will supply the words, or you would like Appdoers to draft them from this intake.">
+                  Website copy
+                </FieldLabel>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {(
                   [
@@ -681,7 +826,11 @@ export function IntakeForm({
         {step === 4 && (
           <>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Website plan</p>
+              <p className="mb-2">
+                <FieldLabel help="Basic is a public site we update for you. Full adds member tools, admin, and extras like shops, bookings, or giving.">
+                  Website plan
+                </FieldLabel>
+              </p>
               <p className="mb-3 text-sm text-slate-600">
                 Appdoers has two website plans. Basic is a public site we update on request. Full adds member tools, admin, and extras like giving, shops, or bookings.
               </p>
@@ -722,7 +871,11 @@ export function IntakeForm({
             </div>
             {profile && (
               <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Tools for your site</p>
+                <p className="mb-2">
+                  <FieldLabel help="Features we can include. Items marked Full usually need the Full Website plan.">
+                    Tools for your site
+                  </FieldLabel>
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {profile.features.map((feature) => (
                     <ToggleChip
@@ -742,13 +895,19 @@ export function IntakeForm({
                 </div>
               </div>
             )}
-            <Field label="Must-haves">
+            <Field
+              label="Must-haves"
+              help="The things the website must do on day one. Be specific if something is a deal-breaker."
+            >
               <TextArea
                 value={answers.features.must_haves}
                 onChange={(must_haves) => setAnswers({ ...answers, features: { ...answers.features, must_haves } })}
               />
             </Field>
-            <Field label="Nice-to-haves">
+            <Field
+              label="Nice-to-haves"
+              help="Useful extras we can phase in later if budget or time allows."
+            >
               <TextArea
                 value={answers.features.nice_to_haves}
                 onChange={(nice_to_haves) =>
@@ -756,7 +915,10 @@ export function IntakeForm({
                 }
               />
             </Field>
-            <Field label="Reference websites">
+            <Field
+              label="Reference websites"
+              help="Sites you like for layout, features, or content — not necessarily the same industry."
+            >
               <TextArea
                 value={answers.features.references}
                 onChange={(references) => setAnswers({ ...answers, features: { ...answers.features, references } })}
@@ -772,9 +934,13 @@ export function IntakeForm({
                   }
                 />
                 No deadline
+                <FieldHelp text="Tick this if go-live is flexible. We will still build in a sensible order, without a hard date." />
               </label>
               {!answers.features.no_deadline && (
-                <Field label="Launch date">
+                <Field
+                  label="Launch date"
+                  help="A target go-live date so we can plan the build. Tick “No deadline” above if it is flexible."
+                >
                   <Input
                     type="date"
                     value={answers.features.launch_date}
@@ -791,7 +957,11 @@ export function IntakeForm({
         {step === 5 && (
           <>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Hosting</p>
+              <p className="mb-2">
+                <FieldLabel help="Where the website files will live. Appdoers can host it, or we can use what you already have.">
+                  Hosting
+                </FieldLabel>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {(
                   [
@@ -811,7 +981,11 @@ export function IntakeForm({
               </div>
             </div>
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Domain login</p>
+              <p className="mb-2">
+                <FieldLabel help="Access to the domain account so we can point it at the new site and set up email. You can send details later.">
+                  Domain login
+                </FieldLabel>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {(
                   [
@@ -832,7 +1006,10 @@ export function IntakeForm({
             </div>
             {answers.access.domain_login === 'have' && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field label="Registrar username">
+                <Field
+                  label="Registrar username"
+                  help="Only if you can share it now. We use this to connect the domain — you can send it later instead."
+                >
                   <Input
                     value={answers.access.registrar_username}
                     onChange={(e) =>
@@ -840,7 +1017,10 @@ export function IntakeForm({
                     }
                   />
                 </Field>
-                <Field label="Registrar password">
+                <Field
+                  label="Registrar password"
+                  help="Stored for the project team only. Skip this and send it later if you would rather not type it here."
+                >
                   <Input
                     type="password"
                     value={answers.access.registrar_password}
@@ -853,7 +1033,10 @@ export function IntakeForm({
             )}
             {answers.access.hosting === 'have' && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field label="Hosting username">
+                <Field
+                  label="Hosting username"
+                  help="Only if you already have hosting and can share the login now."
+                >
                   <Input
                     value={answers.access.hosting_username}
                     onChange={(e) =>
@@ -861,7 +1044,10 @@ export function IntakeForm({
                     }
                   />
                 </Field>
-                <Field label="Hosting password">
+                <Field
+                  label="Hosting password"
+                  help="Stored for the project team only. Skip this if you would rather send hosting access later."
+                >
                   <Input
                     type="password"
                     value={answers.access.hosting_password}
@@ -873,7 +1059,10 @@ export function IntakeForm({
               </div>
             )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Instagram">
+              <Field
+                label="Instagram"
+                help="Your Instagram URL or @handle so we can link it in the header, footer, or contact page."
+              >
                 <Input
                   value={answers.access.socials.instagram}
                   onChange={(e) =>
@@ -884,7 +1073,10 @@ export function IntakeForm({
                   }
                 />
               </Field>
-              <Field label="Facebook">
+              <Field
+                label="Facebook"
+                help="Your Facebook page URL so visitors can find you there from the new site."
+              >
                 <Input
                   value={answers.access.socials.facebook}
                   onChange={(e) =>
@@ -895,7 +1087,10 @@ export function IntakeForm({
                   }
                 />
               </Field>
-              <Field label="LinkedIn">
+              <Field
+                label="LinkedIn"
+                help="Your LinkedIn page or profile if you want it linked from the site. Skip if you do not use it."
+              >
                 <Input
                   value={answers.access.socials.linkedin}
                   onChange={(e) =>
@@ -906,7 +1101,10 @@ export function IntakeForm({
                   }
                 />
               </Field>
-              <Field label="Other social">
+              <Field
+                label="Other social"
+                help="YouTube, TikTok, or any other profile we should link."
+              >
                 <Input
                   value={answers.access.socials.other}
                   onChange={(e) =>
@@ -918,7 +1116,10 @@ export function IntakeForm({
                 />
               </Field>
             </div>
-            <Field label="Google Business (URL or notes)">
+            <Field
+              label="Google Business (URL or notes)"
+              help="Your Google listing URL or notes, so we can match name, address, and hours on the site."
+            >
               <Input
                 value={answers.access.google_business}
                 onChange={(e) =>
@@ -926,7 +1127,10 @@ export function IntakeForm({
                 }
               />
             </Field>
-            <Field label="Analytics / Search Console">
+            <Field
+              label="Analytics / Search Console"
+              help="If you already have Google Analytics or Search Console, we can connect them to the new site."
+            >
               <Input
                 value={answers.access.analytics}
                 onChange={(e) =>
@@ -934,7 +1138,10 @@ export function IntakeForm({
                 }
               />
             </Field>
-            <Field label="How many people need business email?">
+            <Field
+              label="How many people need business email?"
+              help="How many @yourdomain emails you need. Plans include up to 5 on a 4-year website; extras can be added."
+            >
               <Input
                 value={answers.people.profile.mailbox_count}
                 onChange={(e) =>
@@ -949,7 +1156,10 @@ export function IntakeForm({
                 placeholder="Plans include up to 5 on a 4-year website. Extra mailboxes can be added."
               />
             </Field>
-            <Field label="Anything else">
+            <Field
+              label="Anything else"
+              help="Brand rules, logins we missed, or anything else the team should know before we start."
+            >
               <TextArea
                 value={answers.access.notes}
                 onChange={(notes) => setAnswers({ ...answers, access: { ...answers.access, notes } })}
@@ -971,7 +1181,7 @@ export function IntakeForm({
           </Button>
         ) : (
           <Button type="button" loading={saving} onClick={() => void submit()}>
-            Submit intake
+            {alreadySubmitted ? 'Update intake' : 'Submit intake'}
           </Button>
         )}
       </div>

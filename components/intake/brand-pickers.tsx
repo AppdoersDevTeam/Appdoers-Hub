@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils/cn'
 import { COLOR_PALETTES, FONT_PAIRINGS, STYLE_MOODS } from '@/lib/intake/brand-options'
 import type { IntakeAnswers } from '@/lib/intake/types'
+import { Field } from './field'
 
 function CardButton({
   selected,
@@ -131,8 +132,19 @@ export function PalettePicker({
               ['background', 'Background'],
             ] as const
           ).map(([key, label]) => (
-            <label key={key} className="space-y-1 text-xs font-medium text-slate-500">
-              {label}
+            <Field
+              key={key}
+              label={label}
+              help={
+                key === 'primary'
+                  ? 'Your main brand colour — used for buttons, links, and key highlights.'
+                  : key === 'secondary'
+                    ? 'A supporting colour for headings, sections, or secondary buttons.'
+                    : key === 'accent'
+                      ? 'A contrast colour for calls to action or small highlights.'
+                      : 'The page background. Usually a light cream, off-white, or dark base.'
+              }
+            >
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -162,7 +174,7 @@ export function PalettePicker({
                   className="hub-input font-mono text-xs"
                 />
               </div>
-            </label>
+            </Field>
           ))}
         </div>
       )}
@@ -215,26 +227,30 @@ export function FontPicker({
       </div>
       {brand.font_mode === 'custom' && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="space-y-1 text-xs font-medium uppercase tracking-wide text-slate-500">
-            Heading font
+          <Field
+            label="Heading font"
+            help="The font for titles. If you already have brand fonts, type the name here."
+          >
             <input
-              className="hub-input normal-case"
+              className="hub-input"
               value={brand.custom_heading_font}
               onChange={(e) =>
                 onChange({ ...answers, brand: { ...brand, custom_heading_font: e.target.value } })
               }
               placeholder="e.g. Georgia"
             />
-          </label>
-          <label className="space-y-1 text-xs font-medium uppercase tracking-wide text-slate-500">
-            Body font
+          </Field>
+          <Field
+            label="Body font"
+            help="The font for paragraphs and everyday text."
+          >
             <input
-              className="hub-input normal-case"
+              className="hub-input"
               value={brand.custom_body_font}
               onChange={(e) => onChange({ ...answers, brand: { ...brand, custom_body_font: e.target.value } })}
               placeholder="e.g. Helvetica"
             />
-          </label>
+          </Field>
         </div>
       )}
     </div>
