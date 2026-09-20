@@ -1,4 +1,4 @@
-﻿import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { ServiceCatalogTable } from '@/components/team/settings/service-catalog-table'
 import { SettingsEditor } from '@/components/team/settings/settings-editor'

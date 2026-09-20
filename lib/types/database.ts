@@ -266,7 +266,3 @@ export interface AgencySubscription {
   updated_at: string
 }
 
-export function isSupabaseSubscription(name: string): boolean {
-  return name.trim().toLowerCase().includes('supabase')
-}
-

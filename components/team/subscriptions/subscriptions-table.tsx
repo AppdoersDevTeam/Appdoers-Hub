@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useTransition } from 'react'
 import { Plus, Edit2, Trash2, ExternalLink } from 'lucide-react'
@@ -12,10 +12,13 @@ import {
   type SubscriptionInput,
 } from '@/lib/actions/subscriptions'
 import type { HubProjectOption, SupabaseAccountWithProjects } from '@/lib/actions/supabase-accounts'
-import { isSupabaseSubscription } from '@/lib/types/database'
 import { cn } from '@/lib/utils/cn'
 import { formatDate } from '@/lib/utils/format'
 import { SupabaseLoginsCard, supabaseLoginSummary } from '@/components/team/subscriptions/supabase-logins-card'
+
+function isSupabaseSubscription(name: string): boolean {
+  return name.trim().toLowerCase().includes('supabase')
+}
 
 interface Subscription {
   id: string

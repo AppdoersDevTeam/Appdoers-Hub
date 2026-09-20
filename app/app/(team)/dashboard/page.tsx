@@ -1,4 +1,4 @@
-﻿import { Suspense } from 'react'
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { CreditCard } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
