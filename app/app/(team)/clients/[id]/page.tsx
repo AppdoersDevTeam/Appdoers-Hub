@@ -6,6 +6,7 @@ import { ContactsSection } from '@/components/team/clients/contacts-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
 import { ClientEditForm } from '@/components/team/clients/client-edit-form'
+import { ClientSlackActions } from '@/components/team/clients/client-slack-actions'
 import { ArrowLeft, FolderOpen } from 'lucide-react'
 import { TasksTable } from '@/components/team/tasks/tasks-table'
 import { NotesSection } from '@/components/team/notes/notes-section'
@@ -181,6 +182,14 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
       <PageHeader
         title={client.company_name}
         subtitle={planDisplayName}
+        action={
+          <ClientSlackActions
+            clientId={id}
+            planLabel={planDisplayName}
+            slackChannelId={(client.slack_channel_id as string | null) ?? null}
+            slackChannelName={(client.slack_channel_name as string | null) ?? null}
+          />
+        }
       />
 
       {/* Tabs */}

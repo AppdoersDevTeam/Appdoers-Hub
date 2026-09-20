@@ -105,6 +105,9 @@ export interface Client {
   setup_upfront: number
   payment_terms: number
   status: 'active' | 'inactive' | 'churned'
+  slack_channel_id: string | null
+  slack_channel_name: string | null
+  slack_canvas_id: string | null
   created_at: string
   updated_at: string
 }
