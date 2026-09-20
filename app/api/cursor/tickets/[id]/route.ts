@@ -7,6 +7,7 @@ import { hubTaskUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
 import { getTeamMemberName, slackPeopleContext } from '@/lib/team-member'
 import { getTaskHoursLogged, logCursorTaskTime } from '@/lib/cursor-time'
 import { setTaskTimeSpent } from '@/lib/task-time'
+import { closedAtForStatus } from '@/lib/tasks/closed-at'
 
 const updateTicketSchema = z.object({
   project_id: z.string().uuid().optional(),
@@ -105,7 +106,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const payload = parsed.data
   const { data: existing, error: existingError } = await auth.service
     .from('tasks')
-    .select('id, project_id, title, status, workflow_stage, assigned_to, created_by')
+    .select('id, project_id, title, status, workflow_stage, assigned_to, created_by, closed_at')
     .eq('id', id)
     .single()
 
@@ -139,6 +140,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (payload.stage !== undefined) {
     updateData.workflow_stage = payload.stage
     updateData.status = stageToTaskStatus(payload.stage)
+    updateData.closed_at = closedAtForStatus(
+      stageToTaskStatus(payload.stage),
+      existing.status,
+      existing.closed_at
+    )
   }
   if (Object.keys(updateData).length > 0 || payload.note || payload.claim) {
     updateData.updated_at = new Date().toISOString()

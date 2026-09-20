@@ -136,8 +136,8 @@ export async function getClientOverviewStats(
         .select('id, title, status, due_date, updated_at, projects(name), team_users!assigned_to(full_name)')
         .in('project_id', projectIds)
         .eq('status', 'closed')
-        .gte('updated_at', week.startIso)
-        .order('updated_at', { ascending: false }),
+        .gte('closed_at', week.startIso)
+        .order('closed_at', { ascending: false }),
       supabase
         .from('time_entries')
         .select('hours')

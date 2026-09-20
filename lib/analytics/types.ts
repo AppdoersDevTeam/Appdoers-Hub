@@ -15,14 +15,7 @@ export interface TopToolByCost {
   percentOfSpend: number
 }
 
-export interface BillingCycleSplit {
-  cycle: string
-  count: number
-  monthlySpend: number
-}
-
 export interface FinanceAnalytics {
-  // Cost side
   monthlySpend: number
   yearlyProjected: number
   activeToolCount: number
@@ -34,21 +27,12 @@ export interface FinanceAnalytics {
   clientToolCount: number
   spendByCategory: CategorySpend[]
   topToolsByCost: TopToolByCost[]
-  billingCycleSplit: BillingCycleSplit[]
 
-  // Revenue side
   mrr: number
-  yearlyRevenue: number
+  projectedArr: number
   payingClientCount: number
-  avgRevenuePerPayingClient: number | null
+  avgMrrPerPayingClient: number | null
 
-  // Profit
-  monthlyProfit: number
-  yearlyProfit: number
-
-  // Unit economics
-  costPerPayingClient: number | null
-  marginPerPayingClient: number | null
-  grossMarginPercent: number | null
-  toolCostAsPercentOfRevenue: number | null
+  runRateAfterCompanyTools: number
+  toolMarginPercent: number | null
 }

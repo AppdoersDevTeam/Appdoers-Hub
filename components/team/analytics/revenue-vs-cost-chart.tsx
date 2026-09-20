@@ -15,47 +15,32 @@ import { formatCurrency } from '@/lib/utils/format'
 
 interface Props {
   mrr: number
-  yearlyRevenue: number
-  monthlySpend: number
-  yearlySpend: number
+  companyMonthlySpend: number
   clientMonthlySpend: number
-  clientYearlySpend: number
-  monthlyProfit: number
-  yearlyProfit: number
+  runRateAfterCompanyTools: number
 }
 
 export function RevenueVsCostChart({
   mrr,
-  yearlyRevenue,
-  monthlySpend,
-  yearlySpend,
+  companyMonthlySpend,
   clientMonthlySpend,
-  clientYearlySpend,
-  monthlyProfit,
-  yearlyProfit,
+  runRateAfterCompanyTools,
 }: Props) {
   const chartData = [
     {
-      period: 'Monthly',
+      label: 'Monthly run-rate',
       Revenue: parseFloat(mrr.toFixed(2)),
-      'Company spend': parseFloat(monthlySpend.toFixed(2)),
+      'Company spend': parseFloat(companyMonthlySpend.toFixed(2)),
       'Client spend': parseFloat(clientMonthlySpend.toFixed(2)),
-      Profit: parseFloat(monthlyProfit.toFixed(2)),
-    },
-    {
-      period: 'Yearly',
-      Revenue: parseFloat(yearlyRevenue.toFixed(2)),
-      'Company spend': parseFloat(yearlySpend.toFixed(2)),
-      'Client spend': parseFloat(clientYearlySpend.toFixed(2)),
-      Profit: parseFloat(yearlyProfit.toFixed(2)),
+      'After company tools': parseFloat(runRateAfterCompanyTools.toFixed(2)),
     },
   ]
-  const hasData = mrr > 0 || monthlySpend > 0 || clientMonthlySpend > 0
+  const hasData = mrr > 0 || companyMonthlySpend > 0 || clientMonthlySpend > 0
 
   return (
     <ChartCard
       title="Revenue vs Tool Spend"
-      subtitle="Profit after company-wide spend; client tools shown separately"
+      subtitle="Monthly run-rate. Client tools are pass-through and not subtracted."
       isEmpty={!hasData}
       emptyMessage="No revenue or subscription data"
     >
@@ -66,7 +51,7 @@ export function RevenueVsCostChart({
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis
-            dataKey="period"
+            dataKey="label"
             tick={{ fontSize: 10, fill: '#64748b' }}
             tickLine={false}
             axisLine={false}
@@ -94,7 +79,7 @@ export function RevenueVsCostChart({
           <Bar dataKey="Revenue" fill="#059669" radius={[4, 4, 0, 0]} barSize={18} />
           <Bar dataKey="Company spend" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={18} />
           <Bar dataKey="Client spend" fill="#d97706" radius={[4, 4, 0, 0]} barSize={18} />
-          <Bar dataKey="Profit" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={18} />
+          <Bar dataKey="After company tools" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={18} />
         </BarChart>
       </ResponsiveContainer>
     </ChartCard>

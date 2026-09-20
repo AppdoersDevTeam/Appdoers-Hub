@@ -28,6 +28,15 @@ export function recurringFeeToMonthly(amount: number, cycle: string | null | und
   return fee
 }
 
+/** Monthly run-rate for one client: cycle-normalized plan fee plus add-on monthly fees. */
+export function clientRunRateMrr(
+  planFee: number,
+  cycle: string | null | undefined,
+  addonMonthlyTotal = 0
+): number {
+  return recurringFeeToMonthly(planFee, cycle) + (Number(addonMonthlyTotal) || 0)
+}
+
 export function formatRecurringFee(amount: number, cycle: string | null | undefined): string {
   return `${formatCurrency(Number(amount) || 0)}${CYCLE_SUFFIX[normalizeBillingCycle(cycle)]}`
 }

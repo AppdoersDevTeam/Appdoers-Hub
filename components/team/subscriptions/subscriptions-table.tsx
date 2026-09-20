@@ -215,11 +215,21 @@ export function SubscriptionsTable({
 
   // Summary totals (active only)
   const active = subs.filter(s => s.status === 'active')
-  const monthlyTotal = active.reduce(
+  const companyActive = active.filter(s => !s.client_id)
+  const clientActive = active.filter(s => Boolean(s.client_id))
+  const companyMonthly = companyActive.reduce(
     (sum, s) => sum + subscriptionCostToMonthly(s.cost, s.billing_cycle),
     0
   )
-  const yearlyTotal = active.reduce(
+  const clientMonthly = clientActive.reduce(
+    (sum, s) => sum + subscriptionCostToMonthly(s.cost, s.billing_cycle),
+    0
+  )
+  const companyYearly = companyActive.reduce(
+    (sum, s) => sum + subscriptionCostToYearly(s.cost, s.billing_cycle),
+    0
+  )
+  const clientYearly = clientActive.reduce(
     (sum, s) => sum + subscriptionCostToYearly(s.cost, s.billing_cycle),
     0
   )
@@ -230,16 +240,21 @@ export function SubscriptionsTable({
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4">
         <div className="hub-card text-center">
-          <p className="text-xs text-slate-500 mb-1">Monthly Spend</p>
-          <p className="text-xl font-semibold text-emerald-600">{fmt(monthlyTotal)}</p>
+          <p className="text-xs text-slate-500 mb-1">Company-wide /mo</p>
+          <p className="text-xl font-semibold text-red-600">{fmt(companyMonthly)}</p>
+          <p className="mt-0.5 text-xs text-slate-500">{fmt(companyYearly)}/yr projected</p>
         </div>
         <div className="hub-card text-center">
-          <p className="text-xs text-slate-500 mb-1">Yearly Spend</p>
-          <p className="text-xl font-semibold text-slate-900">{fmt(yearlyTotal)}</p>
+          <p className="text-xs text-slate-500 mb-1">Client-assigned /mo</p>
+          <p className="text-xl font-semibold text-amber-600">{fmt(clientMonthly)}</p>
+          <p className="mt-0.5 text-xs text-slate-500">{fmt(clientYearly)}/yr projected · pass-through</p>
         </div>
         <div className="hub-card text-center">
           <p className="text-xs text-slate-500 mb-1">Active Tools</p>
           <p className="text-xl font-semibold text-slate-900">{active.length}</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {companyActive.length} company · {clientActive.length} client
+          </p>
         </div>
       </div>
 

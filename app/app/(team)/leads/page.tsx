@@ -35,7 +35,7 @@ export default async function LeadsPage() {
 
   const summaryCards = [
     {
-      label: 'Pipeline Value',
+      label: 'Est. 12-month pipeline',
       value: formatCurrency(pipelineValue),
       icon: TrendingUp,
       color: 'text-blue-600',

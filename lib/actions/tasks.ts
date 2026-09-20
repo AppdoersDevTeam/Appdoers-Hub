@@ -9,6 +9,7 @@ import type { TaskStatus, TaskType, TaskPriority, WorkflowStage } from '@/lib/ty
 import { stageToTaskStatus } from '@/lib/cursor-workflow'
 import { WORKFLOW_STAGE_CONFIG, TASK_STATUS_CONFIG } from '@/lib/tasks/constants'
 import { setTaskTimeSpent } from '@/lib/task-time'
+import { closedAtForStatus } from '@/lib/tasks/closed-at'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -225,7 +226,7 @@ export async function updateTaskDetailsAction(
 
     const { data: existing } = await supabase
       .from('tasks')
-      .select('title, project_id, status, workflow_stage, time_spent, created_by')
+      .select('title, project_id, status, workflow_stage, time_spent, created_by, closed_at')
       .eq('id', id)
       .single()
 
@@ -248,6 +249,20 @@ export async function updateTaskDetailsAction(
       updateData.status = input.status ?? stageToTaskStatus(input.workflow_stage)
     } else if (input.status !== undefined) {
       updateData.status = input.status
+    }
+
+    const nextStatus =
+      input.workflow_stage !== undefined
+        ? (input.status ?? stageToTaskStatus(input.workflow_stage))
+        : input.status !== undefined
+          ? input.status
+          : existing.status
+    if (input.workflow_stage !== undefined || input.status !== undefined) {
+      updateData.closed_at = closedAtForStatus(
+        nextStatus as TaskStatus,
+        existing.status,
+        existing.closed_at
+      )
     }
 
     const nextProjectId = input.project_id ?? existing.project_id
@@ -333,12 +348,6 @@ export async function updateTaskDetailsAction(
       })
     }
 
-    const nextStatus =
-      input.workflow_stage !== undefined
-        ? (input.status ?? stageToTaskStatus(input.workflow_stage))
-        : input.status !== undefined
-          ? input.status
-          : existing.status
     const statusChanged = nextStatus !== existing.status
     const slackChanges = changes.filter((change) => !change.startsWith('workflow →'))
     if (statusChanged && !slackChanges.some((change) => change.startsWith('status →'))) {
@@ -394,13 +403,17 @@ export async function updateTaskStatusAction(
 
     const { data: task } = await supabase
       .from('tasks')
-      .select('title, created_by')
+      .select('title, created_by, status, closed_at')
       .eq('id', id)
       .single()
 
     const { error } = await supabase
       .from('tasks')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update({
+        status,
+        closed_at: closedAtForStatus(status, task?.status, task?.closed_at),
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', id)
 
     if (error) return { success: false, error: error.message }
@@ -445,7 +458,7 @@ export async function updateTaskWorkflowStageAction(
 
     const { data: task } = await supabase
       .from('tasks')
-      .select('title, created_by, status')
+      .select('title, created_by, status, closed_at')
       .eq('id', id)
       .single()
 
@@ -456,6 +469,7 @@ export async function updateTaskWorkflowStageAction(
       .update({
         workflow_stage: workflowStage,
         status,
+        closed_at: closedAtForStatus(status, task?.status, task?.closed_at),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

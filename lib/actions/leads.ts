@@ -6,6 +6,7 @@ import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
 import { hubClientUrl, hubLeadUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
 import { LEAD_STATUS_LABELS } from '@/lib/leads/constants'
+import { outcomeAtForStatus } from '@/lib/leads/outcome-at'
 import type { CompanySize, LeadSource, LeadStatus, LostReason } from '@/lib/types/database'
 
 type ActionResult<T = undefined> =
@@ -187,13 +188,16 @@ export async function updateLeadStatusAction(
 
     const { data: lead } = await supabase
       .from('leads')
-      .select('contact_name, company_name')
+      .select('contact_name, company_name, status, outcome_at')
       .eq('id', id)
       .single()
 
     const { error } = await supabase
       .from('leads')
-      .update({ status })
+      .update({
+        status,
+        outcome_at: outcomeAtForStatus(status, lead?.status, lead?.outcome_at),
+      })
       .eq('id', id)
 
     if (error) return { success: false, error: error.message }
@@ -229,13 +233,18 @@ export async function markLeadLostAction(
 
     const { data: lead } = await supabase
       .from('leads')
-      .select('contact_name, company_name, estimated_value')
+      .select('contact_name, company_name, estimated_value, status, outcome_at')
       .eq('id', id)
       .single()
 
     const { error } = await supabase
       .from('leads')
-      .update({ status: 'lost', lost_reason: reason, lost_notes: notes ?? null })
+      .update({
+        status: 'lost',
+        lost_reason: reason,
+        lost_notes: notes ?? null,
+        outcome_at: outcomeAtForStatus('lost', lead?.status, lead?.outcome_at),
+      })
       .eq('id', id)
 
     if (error) return { success: false, error: error.message }
@@ -279,13 +288,16 @@ export async function markLeadWonAction(id: string): Promise<ActionResult<undefi
 
     const { data: lead } = await supabase
       .from('leads')
-      .select('contact_name, company_name, estimated_value')
+      .select('contact_name, company_name, estimated_value, status, outcome_at')
       .eq('id', id)
       .single()
 
     const { error } = await supabase
       .from('leads')
-      .update({ status: 'won' })
+      .update({
+        status: 'won',
+        outcome_at: outcomeAtForStatus('won', lead?.status, lead?.outcome_at),
+      })
       .eq('id', id)
 
     if (error) return { success: false, error: error.message }
@@ -377,7 +389,11 @@ export async function convertLeadToClientAction(
 
   const { error: wonError } = await supabase
     .from('leads')
-    .update({ status: 'won', converted_client_id: client.id })
+    .update({
+      status: 'won',
+      converted_client_id: client.id,
+      outcome_at: outcomeAtForStatus('won', lead.status, lead.outcome_at),
+    })
     .eq('id', id)
 
   if (wonError) {

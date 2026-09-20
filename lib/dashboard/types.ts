@@ -68,6 +68,7 @@ export interface DashboardAnalytics {
   openTasks: number
   overdueTasks: number
   billableWipValue: number
+  billableWipHours: number
 
   // Period KPIs
   hoursLogged: number

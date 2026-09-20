@@ -1,16 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { recurringFeeToMonthly } from '@/lib/clients/billing'
+import { aggregateClientMrr } from '@/lib/analytics/mrr'
 import {
-  SUBSCRIPTION_BILLING_CYCLES,
   subscriptionCostToMonthly,
   subscriptionCostToYearly,
 } from '@/lib/subscriptions/billing'
-import type {
-  BillingCycleSplit,
-  CategorySpend,
-  FinanceAnalytics,
-  TopToolByCost,
-} from './types'
+import type { CategorySpend, FinanceAnalytics, TopToolByCost } from './types'
 
 interface SubscriptionRow {
   id: string
@@ -52,17 +46,18 @@ function sumYearly(subs: SubscriptionRow[]): number {
 export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
   const supabase = await createClient()
 
-  const [subsRes, clientsRes] =
-    await Promise.all([
-      supabase
-        .from('agency_subscriptions')
-        .select('id, name, category, billing_cycle, cost, status, client_id, clients(company_name)'),
+  const [subsRes, clientsRes, addonsRes] = await Promise.all([
+    supabase
+      .from('agency_subscriptions')
+      .select('id, name, category, billing_cycle, cost, status, client_id, clients(company_name)'),
 
-      supabase
-        .from('clients')
-        .select('monthly_fee, billing_cycle, status')
-        .eq('status', 'active'),
-    ])
+    supabase
+      .from('clients')
+      .select('id, monthly_fee, billing_cycle, status')
+      .eq('status', 'active'),
+
+    supabase.from('client_services').select('client_id, monthly_fee'),
+  ])
 
   const allSubs: SubscriptionRow[] = (subsRes.data ?? []).map((row) => {
     const client_id = (row.client_id as string | null) ?? null
@@ -106,8 +101,7 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
       monthly: data.monthly,
       yearly: data.yearly,
       toolCount: data.toolCount,
-      percentOfSpend:
-        monthlySpend > 0 ? (data.monthly / monthlySpend) * 100 : 0,
+      percentOfSpend: monthlySpend > 0 ? (data.monthly / monthlySpend) * 100 : 0,
     }))
     .sort((a, b) => b.monthly - a.monthly)
 
@@ -126,42 +120,21 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
     .sort((a, b) => b.monthly - a.monthly)
     .slice(0, 8)
 
-  const billingCycleSplit: BillingCycleSplit[] = SUBSCRIPTION_BILLING_CYCLES.map(
-    (cycle) => {
-      const matching = activeSubs.filter((s) => s.billing_cycle === cycle)
-      return {
-        cycle,
-        count: matching.length,
-        monthlySpend: matching.reduce(
-          (sum, s) => sum + subscriptionCostToMonthly(Number(s.cost), s.billing_cycle),
-          0
-        ),
-      }
-    }
-  ).filter((row) => row.count > 0)
-
-  const activeClients = clientsRes.data ?? []
-  const payingClients = activeClients.filter((c) => Number(c.monthly_fee) > 0)
-  const mrr = activeClients.reduce(
-    (sum, c) =>
-      sum + recurringFeeToMonthly(Number(c.monthly_fee), c.billing_cycle),
-    0
-  )
-  const payingClientCount = payingClients.length
-  const yearlyRevenue = mrr * 12
-  const monthlyProfit = mrr - companyMonthlySpend
-  const yearlyProfit = yearlyRevenue - companyYearlySpend
-  const avgRevenuePerPayingClient = safeDivide(mrr, payingClientCount)
-
-  const costPerPayingClient = safeDivide(companyMonthlySpend, payingClientCount)
-  const marginPerPayingClient =
-    avgRevenuePerPayingClient !== null && costPerPayingClient !== null
-      ? avgRevenuePerPayingClient - costPerPayingClient
-      : null
-  const grossMarginPercent =
+  const activeClients = (clientsRes.data ?? []).map((c) => ({
+    id: c.id as string,
+    monthly_fee: Number(c.monthly_fee),
+    billing_cycle: (c.billing_cycle as string | null) ?? null,
+  }))
+  const addons = (addonsRes.data ?? []).map((row) => ({
+    client_id: row.client_id as string,
+    monthly_fee: Number(row.monthly_fee),
+  }))
+  const { mrr, payingClientCount } = aggregateClientMrr(activeClients, addons)
+  const projectedArr = mrr * 12
+  const avgMrrPerPayingClient = safeDivide(mrr, payingClientCount)
+  const runRateAfterCompanyTools = mrr - companyMonthlySpend
+  const toolMarginPercent =
     mrr > 0 ? ((mrr - companyMonthlySpend) / mrr) * 100 : null
-  const toolCostAsPercentOfRevenue =
-    mrr > 0 ? (companyMonthlySpend / mrr) * 100 : null
 
   return {
     monthlySpend,
@@ -175,16 +148,11 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
     clientToolCount: clientSubs.length,
     spendByCategory,
     topToolsByCost,
-    billingCycleSplit,
     mrr,
-    yearlyRevenue,
+    projectedArr,
     payingClientCount,
-    avgRevenuePerPayingClient,
-    monthlyProfit,
-    yearlyProfit,
-    costPerPayingClient,
-    marginPerPayingClient,
-    grossMarginPercent,
-    toolCostAsPercentOfRevenue,
+    avgMrrPerPayingClient,
+    runRateAfterCompanyTools,
+    toolMarginPercent,
   }
 }

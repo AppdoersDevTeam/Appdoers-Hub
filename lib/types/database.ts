@@ -178,6 +178,7 @@ export interface Lead {
   lost_reason: LostReason | null
   lost_notes: string | null
   converted_client_id: string | null
+  outcome_at: string | null
   created_at: string
   updated_at: string
 }
@@ -212,6 +213,7 @@ export interface Task {
   due_date: string | null
   time_spent: number
   created_by: string | null
+  closed_at: string | null
   created_at: string
   updated_at: string
 }

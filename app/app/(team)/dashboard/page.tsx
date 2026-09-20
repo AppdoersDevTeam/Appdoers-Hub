@@ -1,4 +1,4 @@
-﻿import { Suspense } from 'react'
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { CreditCard } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
@@ -69,7 +69,7 @@ export default async function DashboardPage({
     {
       label: 'Pipeline Value',
       value: formatCurrency(metrics.pipelineValue),
-      sub: 'Active leads',
+      sub: 'Est. 12-month value',
       icon: TrendingUp,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
@@ -77,7 +77,7 @@ export default async function DashboardPage({
     {
       label: 'Monthly Revenue',
       value: formatCurrency(metrics.mrrTotal),
-      sub: 'MRR from active clients',
+      sub: 'Plan + add-ons, active clients',
       icon: DollarSign,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
@@ -96,7 +96,7 @@ export default async function DashboardPage({
     {
       label: 'Billable WIP',
       value: formatCurrency(metrics.billableWipValue),
-      sub: 'Unbilled billable time',
+      sub: `${metrics.billableWipHours}h unbilled`,
       icon: Briefcase,
       color: 'text-purple-600',
       bg: 'bg-purple-50',
@@ -132,7 +132,7 @@ export default async function DashboardPage({
     {
       label: 'Tasks Closed',
       value: String(metrics.tasksClosed),
-      sub: `${metrics.leadsWon} leads won · ${metrics.leadsLost} lost`,
+      sub: metrics.periodLabel,
       icon: CheckCircle2,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
