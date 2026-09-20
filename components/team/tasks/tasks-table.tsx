@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Trash2 } from 'lucide-react'
+import { Download, Plus, Search, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NewTaskSlideOver } from './new-task-slide-over'
@@ -78,6 +78,8 @@ export function TasksTable({
   const [statusFilter, setStatusFilter] = useState('all')
   const [showNew, setShowNew] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<TaskRow | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   const today = new Date().toISOString().split('T')[0]
   const showClientFilter = showProjectCol && !defaultClientId
@@ -114,6 +116,79 @@ export function TasksTable({
       await deleteTaskAction(deleteTarget.id, deleteTarget.project_id)
       setDeleteTarget(null)
     })
+  }
+
+  const exportTitle = defaultProjectId
+    ? `Tasks — ${projects.find((p) => p.id === defaultProjectId)?.name ?? 'Project'}`
+    : defaultClientId
+      ? `Tasks — ${clients.find((c) => c.id === defaultClientId)?.company_name ?? tasks[0]?.client_name ?? 'Client'}`
+      : 'Tasks'
+
+  const exportFilters = [
+    search.trim() ? { label: 'Search', value: search.trim() } : null,
+    showClientFilter && clientFilter !== 'all'
+      ? { label: 'Client', value: clients.find((c) => c.id === clientFilter)?.company_name ?? clientFilter }
+      : null,
+    showProjectFilter && projectFilter !== 'all'
+      ? { label: 'Project', value: projectOptions.find((p) => p.id === projectFilter)?.name ?? projectFilter }
+      : null,
+    assigneeFilter !== 'all'
+      ? {
+          label: 'Assignee',
+          value:
+            assigneeFilter === 'unassigned'
+              ? 'Unassigned'
+              : teamMembers.find((m) => m.id === assigneeFilter)?.full_name ?? assigneeFilter,
+        }
+      : null,
+    typeFilter !== 'all' ? { label: 'Type', value: typeConfig[typeFilter]?.label ?? typeFilter } : null,
+    priorityFilter !== 'all'
+      ? { label: 'Priority', value: priorityConfig[priorityFilter]?.label ?? priorityFilter }
+      : null,
+    statusFilter !== 'all'
+      ? { label: 'Status', value: TASK_STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label ?? statusFilter }
+      : null,
+  ].filter((item): item is { label: string; value: string } => item !== null)
+
+  const handleExportPdf = async () => {
+    if (filtered.length === 0 || exporting) return
+    setExportError(null)
+    setExporting(true)
+    try {
+      const res = await fetch('/api/tasks/export-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: filtered.map((t) => t.id),
+          showProjectCol,
+          title: exportTitle,
+          filters: exportFilters,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null
+        setExportError(data?.error ?? 'PDF export failed')
+        return
+      }
+
+      const blob = await res.blob()
+      const header = res.headers.get('Content-Disposition')
+      const match = header?.match(/filename="([^"]+)"/)
+      const filename = match?.[1] ?? 'Tasks_Export.pdf'
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      setExportError('PDF export failed')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const selectClass = 'rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
@@ -162,10 +237,21 @@ export function TasksTable({
           <option value="all">All Statuses</option>
           {TASK_STATUS_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
         </select>
+        <Button
+          variant="outline"
+          onClick={handleExportPdf}
+          disabled={filtered.length === 0 || exporting}
+          loading={exporting}
+          title="Export the currently filtered tasks as PDF"
+        >
+          <Download className="h-4 w-4" />
+          Export PDF{filtered.length > 0 ? ` (${filtered.length})` : ''}
+        </Button>
         <Button onClick={() => setShowNew(true)}>
           <Plus className="mr-1.5 h-4 w-4" /> New Task
         </Button>
       </div>
+      {exportError ? <p className="text-sm text-red-600">{exportError}</p> : null}
 
       <div className="hub-card overflow-hidden p-0">
         <div className="overflow-x-auto">
