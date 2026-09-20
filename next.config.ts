@@ -5,7 +5,7 @@ const reactPath = path.join(__dirname, 'node_modules/react')
 const reactDomPath = path.join(__dirname, 'node_modules/react-dom')
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@react-pdf/renderer'],
+  serverExternalPackages: ['@react-pdf/renderer', 'mammoth'],
   turbopack: {
     root: path.resolve(__dirname),
     resolveAlias: {

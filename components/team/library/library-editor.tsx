@@ -3,15 +3,15 @@
 import { useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Download, ExternalLink, FileUp, Paperclip, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink, FileUp, Paperclip, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { LibraryBody } from './library-body'
+import { LibraryFileViewer } from './library-file-viewer'
 import {
   deleteLibraryItemAction,
-  getLibraryFileDownloadUrlAction,
   removeLibraryFileAction,
   updateLibraryItemAction,
 } from '@/lib/actions/library'
@@ -90,24 +90,6 @@ export function LibraryEditor({
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
       router.refresh()
-    })
-  }
-
-  const handleDownload = () => {
-    startTransition(async () => {
-      const result = await getLibraryFileDownloadUrlAction(item.id)
-      if (!result.success) {
-        setError(result.error)
-        return
-      }
-      const a = document.createElement('a')
-      a.href = result.data.url
-      a.download = result.data.name
-      a.target = '_blank'
-      a.rel = 'noreferrer'
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
     })
   }
 
@@ -318,19 +300,13 @@ export function LibraryEditor({
         <div className="hub-card space-y-5">
           {form.summary && <p className="text-sm text-slate-600">{form.summary}</p>}
           {fileMeta.file_name && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-              <div className="min-w-0">
-                <p className="flex items-center gap-1.5 truncate text-sm font-medium text-slate-800">
-                  <Paperclip className="h-3.5 w-3.5 shrink-0" />
-                  {fileMeta.file_name}
-                </p>
-                <p className="mt-0.5 text-xs text-slate-500">{formatFileSize(fileMeta.file_size)}</p>
-              </div>
-              <Button size="sm" variant="outline" onClick={handleDownload} disabled={busy}>
-                <Download className="h-3.5 w-3.5" />
-                Download
-              </Button>
-            </div>
+            <LibraryFileViewer
+              itemId={item.id}
+              fileName={fileMeta.file_name}
+              mimeType={fileMeta.mime_type}
+              fileSize={fileMeta.file_size}
+              cacheKey={`${fileMeta.file_name}-${item.updated_at}`}
+            />
           )}
           {form.link_url && (
             <a
@@ -342,14 +318,16 @@ export function LibraryEditor({
               Open linked resource <ExternalLink className="h-3.5 w-3.5" />
             </a>
           )}
-          <LibraryBody
-            content={form.body}
-            emptyLabel={
-              fileMeta.file_name
-                ? 'No written notes yet. Edit this item if you want to add notes alongside the file.'
-                : 'No content yet. Edit this item to write it, or attach a PDF or Word file.'
-            }
-          />
+          {form.body.trim() || !fileMeta.file_name ? (
+            <LibraryBody
+              content={form.body}
+              emptyLabel={
+                fileMeta.file_name
+                  ? 'No written notes yet. Edit this item if you want to add notes alongside the file.'
+                  : 'No content yet. Edit this item to write it, or attach a PDF or Word file.'
+              }
+            />
+          ) : null}
         </div>
       )}
 

@@ -140,39 +140,6 @@ export async function updateLibraryItemAction(
   }
 }
 
-export async function getLibraryFileDownloadUrlAction(
-  id: string
-): Promise<ActionResult<{ url: string; name: string }>> {
-  try {
-    const { supabase, error: authError } = await requireTeamUser()
-    if (authError) return { success: false, error: authError }
-
-    const { data: item } = await supabase
-      .from('hub_library_items')
-      .select('storage_path, file_name, title')
-      .eq('id', id)
-      .maybeSingle()
-
-    if (!item?.storage_path) return { success: false, error: 'No file uploaded for this item' }
-
-    const service = await createServiceClient()
-    const { data, error } = await service.storage
-      .from(DOCUMENT_BUCKET)
-      .createSignedUrl(item.storage_path, 300)
-
-    if (error || !data) {
-      return { success: false, error: error?.message ?? 'Could not generate download URL' }
-    }
-
-    return {
-      success: true,
-      data: { url: data.signedUrl, name: item.file_name || `${item.title}.pdf` },
-    }
-  } catch (err) {
-    return { success: false, error: String(err) }
-  }
-}
-
 export async function removeLibraryFileAction(id: string): Promise<ActionResult<undefined>> {
   try {
     const { supabase, error: authError, userId } = await requireTeamUser()
