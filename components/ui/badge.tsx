@@ -29,9 +29,9 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   // Lead statuses
   new: { label: 'New', className: 'bg-slate-100 text-slate-600 border border-slate-200' },
   contacted: { label: 'Contacted', className: 'bg-blue-50 text-blue-700 border border-blue-200' },
-  in_conversation: { label: 'In Conversation', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  proposal_sent: { label: 'Proposal Sent', className: 'bg-purple-50 text-purple-700 border border-purple-200' },
-  contract_sent: { label: 'Contract Sent', className: 'bg-orange-50 text-orange-700 border border-orange-200' },
+  qualified: { label: 'Qualified', className: 'bg-purple-50 text-purple-700 border border-purple-200' },
+  proposal_sent: { label: 'Proposal Sent', className: 'bg-yellow-50 text-yellow-700 border border-yellow-200' },
+  negotiating: { label: 'Negotiating', className: 'bg-orange-50 text-orange-700 border border-orange-200' },
   won: { label: 'Won', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
   lost: { label: 'Lost', className: 'bg-red-50 text-red-700 border border-red-200' },
 

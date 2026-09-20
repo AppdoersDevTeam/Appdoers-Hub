@@ -51,7 +51,7 @@ export function LeadFunnelChart({ data }: Props) {
             tick={{ fontSize: 11, fill: '#64748b' }}
             tickLine={false}
             axisLine={false}
-            width={130}
+            width={100}
           />
           <Tooltip
             contentStyle={{

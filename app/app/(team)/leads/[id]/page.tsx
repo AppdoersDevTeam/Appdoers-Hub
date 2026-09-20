@@ -4,23 +4,30 @@ import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { LeadActions } from '@/components/team/leads/lead-actions'
 import { LeadNotes } from '@/components/team/leads/lead-notes'
-import { LeadEditForm } from '@/components/team/leads/lead-edit-form'
-import { LeadSlackActions } from '@/components/team/leads/lead-slack-actions'
 import { DocumentTracker } from '@/components/team/documents/document-tracker'
 import { leadDisplayName, type TrackedDocument } from '@/lib/documents'
 import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/format'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
-import {
-  COMPANY_SIZE_LABELS,
-  LEAD_SOURCE_LABELS,
-  LEAD_STATUS_LABELS,
-  LEAD_STATUS_STYLES,
-  SERVICE_INTEREST_LABELS,
-  type CompanySize,
-  type ServiceInterest,
-} from '@/lib/leads/constants'
-import type { Lead, LeadSource, LeadStatus } from '@/lib/types/database'
+
+const statusConfig: Record<string, { label: string; cls: string }> = {
+  new: { label: 'New', cls: 'bg-slate-100 text-slate-500' },
+  contacted: { label: 'Contacted', cls: 'bg-blue-50 text-blue-700' },
+  qualified: { label: 'Qualified', cls: 'bg-amber-50 text-amber-700' },
+  proposal_sent: { label: 'Proposal Sent', cls: 'bg-purple-50 text-purple-700' },
+  negotiating: { label: 'Negotiating', cls: 'bg-orange-50 text-orange-700' },
+  won: { label: 'Won', cls: 'bg-emerald-50 text-emerald-700' },
+  lost: { label: 'Lost', cls: 'bg-red-50 text-red-700' },
+}
+
+const sourceLabels: Record<string, string> = {
+  word_of_mouth: 'Word of Mouth',
+  referral: 'Referral',
+  website: 'Website',
+  social: 'Social Media',
+  cold_outreach: 'Cold Outreach',
+  other: 'Other',
+}
 
 const noteTypeConfig: Record<string, { label: string; cls: string }> = {
   general: { label: 'Note', cls: 'bg-slate-100 text-slate-500' },
@@ -62,13 +69,9 @@ export default async function LeadDetailPage({ params }: Props) {
     .select('id, full_name')
     .eq('is_active', true)
 
-  const status = lead.status as LeadStatus
-  const statusLabel = LEAD_STATUS_LABELS[status] ?? status
-  const statusCls = LEAD_STATUS_STYLES[status] ?? LEAD_STATUS_STYLES.new
+  const st = statusConfig[lead.status] ?? statusConfig.new
   const assignedName =
     (lead.team_users as { full_name?: string } | null)?.full_name ?? null
-  const interests = (lead.service_interest ?? []) as string[]
-  const leadRecord = lead as Lead
 
   return (
     <div className="space-y-6">
@@ -83,26 +86,21 @@ export default async function LeadDetailPage({ params }: Props) {
         <PageHeader
           title={lead.contact_name}
           subtitle={lead.company_name ?? 'Individual'}
-          action={
-            <LeadSlackActions
-              leadId={id}
-              slackChannelId={lead.slack_channel_id}
-              slackChannelName={lead.slack_channel_name}
-            />
-          }
         />
         <span
           className={cn(
             'mt-1 rounded-full px-3 py-1 text-sm font-medium',
-            statusCls
+            st.cls
           )}
         >
-          {statusLabel}
+          {st.label}
         </span>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Left: Details + Notes */}
         <div className="space-y-6 lg:col-span-2">
+          {/* Details */}
           <div className="hub-card">
             <h3 className="mb-4 text-sm font-semibold text-slate-900">
               Lead Details
@@ -110,51 +108,13 @@ export default async function LeadDetailPage({ params }: Props) {
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
               <InfoRow label="Email" value={lead.email ?? '—'} />
               <InfoRow label="Phone" value={lead.phone ?? '—'} />
-              <InfoRow label="Job Title" value={lead.contact_role ?? '—'} />
               <InfoRow
                 label="Source"
-                value={LEAD_SOURCE_LABELS[lead.source as LeadSource] ?? lead.source}
+                value={sourceLabels[lead.source] ?? lead.source}
               />
               {lead.referral_name && (
                 <InfoRow label="Referred By" value={lead.referral_name} />
               )}
-              <InfoRow
-                label="Website"
-                value={
-                  lead.website ? (
-                    <a
-                      href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {lead.website}
-                    </a>
-                  ) : (
-                    '—'
-                  )
-                }
-              />
-              <InfoRow label="Location" value={lead.location ?? '—'} />
-              <InfoRow label="Industry" value={lead.industry ?? '—'} />
-              <InfoRow
-                label="Company Size"
-                value={
-                  lead.company_size
-                    ? COMPANY_SIZE_LABELS[lead.company_size as CompanySize] ?? lead.company_size
-                    : '—'
-                }
-              />
-              <InfoRow
-                label="Service Interest"
-                value={
-                  interests.length > 0
-                    ? interests
-                        .map((item) => SERVICE_INTEREST_LABELS[item as ServiceInterest] ?? item)
-                        .join(', ')
-                    : '—'
-                }
-              />
               <InfoRow
                 label="Assigned To"
                 value={assignedName ?? 'Unassigned'}
@@ -170,25 +130,9 @@ export default async function LeadDetailPage({ params }: Props) {
                 />
               )}
               <InfoRow
-                label="Needed By"
-                value={lead.needed_by ? formatDate(lead.needed_by) : '—'}
-              />
-              <InfoRow
                 label="Created"
                 value={formatRelativeTime(lead.created_at)}
               />
-              {lead.timeline_notes && (
-                <div className="col-span-2">
-                  <p className="text-xs text-slate-500">Timeline Notes</p>
-                  <p className="mt-0.5 whitespace-pre-wrap text-slate-600">{lead.timeline_notes}</p>
-                </div>
-              )}
-              {lead.budget_notes && (
-                <div className="col-span-2">
-                  <p className="text-xs text-slate-500">Budget Notes</p>
-                  <p className="mt-0.5 whitespace-pre-wrap text-slate-600">{lead.budget_notes}</p>
-                </div>
-              )}
               {lead.status === 'lost' && lead.lost_reason && (
                 <>
                   <InfoRow
@@ -216,8 +160,6 @@ export default async function LeadDetailPage({ params }: Props) {
               )}
             </div>
           </div>
-
-          <LeadEditForm lead={leadRecord} teamMembers={teamMembers ?? []} />
 
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-slate-900">Proposals</h3>
@@ -248,6 +190,7 @@ export default async function LeadDetailPage({ params }: Props) {
             />
           </div>
 
+          {/* Notes */}
           <div className="hub-card">
             <h3 className="mb-4 text-sm font-semibold text-slate-900">
               Notes
@@ -292,7 +235,9 @@ export default async function LeadDetailPage({ params }: Props) {
           </div>
         </div>
 
+        {/* Right: Financials + Actions */}
         <div className="space-y-4">
+          {/* Financials */}
           <div className="hub-card space-y-3 text-sm">
             <h3 className="text-sm font-semibold text-slate-900">
               Financials
@@ -328,9 +273,10 @@ export default async function LeadDetailPage({ params }: Props) {
             </div>
           </div>
 
+          {/* Status Actions */}
           <LeadActions
             leadId={id}
-            currentStatus={status}
+            currentStatus={lead.status}
             hasConvertedClient={!!lead.converted_client_id}
             teamMembers={teamMembers ?? []}
           />

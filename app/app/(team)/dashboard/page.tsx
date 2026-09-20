@@ -1,10 +1,7 @@
-import { Suspense } from 'react'
+﻿import { Suspense } from 'react'
 import Link from 'next/link'
 import { CreditCard } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
-import { createClient } from '@/lib/supabase/server'
-import { OutboundLinksPanel } from '@/components/team/dashboard/outbound-links-panel'
-import { getVisibleOutboundLinks } from '@/lib/outbound-links'
 import { getDashboardAnalytics } from '@/lib/dashboard/metrics'
 import { PeriodToggle } from '@/components/team/dashboard/period-toggle'
 import { KpiSection, type KpiCardData } from '@/components/team/dashboard/kpi-grid'
@@ -44,22 +41,7 @@ export default async function DashboardPage({
   searchParams: Promise<{ period?: string }>
 }) {
   const { period: periodParam } = await searchParams
-  const supabase = await createClient()
-  const [{ data: settingRows }, metrics] = await Promise.all([
-    supabase.from('settings').select('key, value').in('key', ['outbound_links', 'company']),
-    getDashboardAnalytics(periodParam),
-  ])
-
-  const outboundSettings = settingRows?.find((row) => row.key === 'outbound_links')?.value as
-    | Record<string, unknown>
-    | undefined
-  const companySettings = settingRows?.find((row) => row.key === 'company')?.value as
-    | Record<string, unknown>
-    | undefined
-  const outboundLinks = getVisibleOutboundLinks(
-    outboundSettings,
-    typeof companySettings?.website === 'string' ? companySettings.website : undefined
-  )
+  const metrics = await getDashboardAnalytics(periodParam)
 
   const businessKpis: KpiCardData[] = [
     {
@@ -146,8 +128,6 @@ export default async function DashboardPage({
           <PeriodToggle current={metrics.period} />
         </Suspense>
       </div>
-
-      <OutboundLinksPanel links={outboundLinks} />
 
       <div className="space-y-6">
         <KpiSection

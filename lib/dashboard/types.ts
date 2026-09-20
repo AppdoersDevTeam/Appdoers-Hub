@@ -1,10 +1,5 @@
 import type { DashboardPeriod } from './periods'
-import type { WorkflowStage } from '@/lib/types/database'
-
-export {
-  LEAD_STATUS_LABELS,
-  PIPELINE_LEAD_STATUSES,
-} from '@/lib/leads/constants'
+import type { LeadStatus, WorkflowStage } from '@/lib/types/database'
 
 export interface CountByLabel {
   label: string
@@ -95,6 +90,24 @@ export interface DashboardAnalytics {
   renewingSoon: RenewalItem[]
   activityFeed: ActivityItem[]
 }
+
+export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
+  new: 'New',
+  contacted: 'Contacted',
+  qualified: 'Qualified',
+  proposal_sent: 'Proposal Sent',
+  negotiating: 'Negotiating',
+  won: 'Won',
+  lost: 'Lost',
+}
+
+export const PIPELINE_LEAD_STATUSES: LeadStatus[] = [
+  'new',
+  'contacted',
+  'qualified',
+  'proposal_sent',
+  'negotiating',
+]
 
 export const WORKFLOW_STAGE_ORDER: WorkflowStage[] = [
   'pm',
