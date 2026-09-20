@@ -15,6 +15,8 @@ interface Props {
   confirmLabel: string
   buttonLabel?: string
   iconOnly?: boolean
+  size?: 'default' | 'sm'
+  fullWidth?: boolean
   className?: string
   onDelete: () => Promise<DeleteResult>
   redirectTo?: string
@@ -26,6 +28,8 @@ export function DeleteRecordButton({
   confirmLabel,
   buttonLabel,
   iconOnly = false,
+  size = 'default',
+  fullWidth,
   className,
   onDelete,
   redirectTo,
@@ -69,11 +73,12 @@ export function DeleteRecordButton({
         <Button
           type="button"
           variant="destructive"
+          size={size}
           onClick={() => setOpen(true)}
           disabled={isPending}
-          className="w-full"
+          className={cn((fullWidth ?? size !== 'sm') && 'w-full', size === 'sm' && 'shrink-0')}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className={size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
           {isPending ? 'Deleting…' : label}
         </Button>
       )}

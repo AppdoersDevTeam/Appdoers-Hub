@@ -5,12 +5,11 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ConvertLeadButton } from './convert-lead-button'
-import { DeleteRecordButton } from '@/components/ui/delete-record-button'
+import { LeadDeleteButton } from './lead-delete-button'
 import {
   updateLeadStatusAction,
   markLeadLostAction,
   markLeadWonAction,
-  deleteLeadAction,
 } from '@/lib/actions/leads'
 import type { LeadStatus, LostReason, TeamUser } from '@/lib/types/database'
 import {
@@ -236,13 +235,7 @@ export function LeadActions({
         </button>
       </div>
 
-      <DeleteRecordButton
-        title="Delete lead"
-        message={`Delete "${leadName}"? Notes and lead-only proposals will also be deleted. This cannot be undone.`}
-        confirmLabel="Delete Lead"
-        onDelete={() => deleteLeadAction(leadId)}
-        redirectTo="/app/leads"
-      />
+      <LeadDeleteButton leadId={leadId} leadName={leadName} />
     </div>
   )
 }

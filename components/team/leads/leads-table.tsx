@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NewLeadSlideOver } from './new-lead-slide-over'
 import { ConvertLeadButton } from './convert-lead-button'
-import { DeleteRecordButton } from '@/components/ui/delete-record-button'
-import { deleteLeadAction } from '@/lib/actions/leads'
+import { LeadDeleteButton } from './lead-delete-button'
 import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import {
@@ -120,7 +119,11 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                 ].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500"
+                    className={
+                      h === 'Actions'
+                        ? 'sticky right-0 bg-white px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500'
+                        : 'px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500'
+                    }
                   >
                     {h}
                   </th>
@@ -145,7 +148,7 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                   const stLabel = LEAD_STATUS_LABELS[status] ?? l.status
                   const stCls = LEAD_STATUS_STYLES[status] ?? LEAD_STATUS_STYLES.new
                   return (
-                    <tr key={l.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={l.id} className="group hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-slate-900">
                         <Link
                           href={`/app/leads/${l.id}`}
@@ -186,8 +189,8 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                       <td className="px-4 py-3 text-slate-500">
                         {formatRelativeTime(l.updated_at)}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                      <td className="sticky right-0 bg-white px-4 py-3 group-hover:bg-slate-50">
+                        <div className="flex items-center gap-2 whitespace-nowrap">
                           {l.converted_client_id ? (
                             <Link
                               href={`/app/clients/${l.converted_client_id}`}
@@ -204,13 +207,10 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                               size="sm"
                             />
                           )}
-                          <DeleteRecordButton
-                            iconOnly
-                            title="Delete lead"
-                            message={`Delete "${l.contact_name}"? This cannot be undone.`}
-                            confirmLabel="Delete Lead"
-                            buttonLabel={`Delete ${l.contact_name}`}
-                            onDelete={() => deleteLeadAction(l.id)}
+                          <LeadDeleteButton
+                            leadId={l.id}
+                            leadName={l.company_name || l.contact_name}
+                            size="sm"
                           />
                         </div>
                       </td>

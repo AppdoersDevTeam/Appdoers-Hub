@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { LeadActions } from '@/components/team/leads/lead-actions'
+import { LeadDeleteButton } from '@/components/team/leads/lead-delete-button'
 import { LeadNotes } from '@/components/team/leads/lead-notes'
 import { LeadEditForm } from '@/components/team/leads/lead-edit-form'
 import { DocumentTracker } from '@/components/team/documents/document-tracker'
@@ -78,20 +79,27 @@ export default async function LeadDetailPage({ params }: Props) {
         <ArrowLeft className="h-4 w-4" /> All Leads
       </Link>
 
-      <div className="flex items-start justify-between gap-4">
-        <PageHeader
-          title={lead.contact_name}
-          subtitle={lead.company_name ?? 'Individual'}
-        />
-        <span
-          className={cn(
-            'mt-1 rounded-full px-3 py-1 text-sm font-medium',
-            statusCls
-          )}
-        >
-          {statusLabel}
-        </span>
-      </div>
+      <PageHeader
+        title={lead.contact_name}
+        subtitle={lead.company_name ?? 'Individual'}
+        action={
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <span
+              className={cn(
+                'rounded-full px-3 py-1 text-sm font-medium',
+                statusCls
+              )}
+            >
+              {statusLabel}
+            </span>
+            <LeadDeleteButton
+              leadId={id}
+              leadName={lead.company_name || lead.contact_name}
+              fullWidth={false}
+            />
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">

@@ -463,8 +463,21 @@ export async function deleteLeadAction(id: string): Promise<ActionResult<undefin
 
     if (loadError || !lead) return { success: false, error: 'Lead not found' }
 
-    await supabase.from('proposals').update({ lead_id: null }).eq('lead_id', id).not('client_id', 'is', null)
-    await supabase.from('proposals').delete().eq('lead_id', id).is('client_id', null)
+    const { error: unlinkError } = await supabase
+      .from('proposals')
+      .update({ lead_id: null })
+      .eq('lead_id', id)
+      .not('client_id', 'is', null)
+    if (unlinkError) return { success: false, error: unlinkError.message }
+
+    const { error: proposalDeleteError } = await supabase
+      .from('proposals')
+      .delete()
+      .eq('lead_id', id)
+      .is('client_id', null)
+    if (proposalDeleteError) return { success: false, error: proposalDeleteError.message }
+
+    await supabase.from('lead_notes').delete().eq('lead_id', id)
     await supabase.from('notes').delete().eq('entity_type', 'lead').eq('entity_id', id)
 
     const name = `${lead.contact_name}${lead.company_name ? ` (${lead.company_name})` : ''}`
