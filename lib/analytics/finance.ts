@@ -111,6 +111,9 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
     0
   )
   const payingClientCount = payingClients.length
+  const yearlyRevenue = mrr * 12
+  const monthlyProfit = mrr - monthlySpend
+  const yearlyProfit = yearlyRevenue - yearlyProjected
   const avgRevenuePerPayingClient = safeDivide(mrr, payingClientCount)
 
   const costPerPayingClient = safeDivide(monthlySpend, payingClientCount)
@@ -131,8 +134,11 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
     topToolsByCost,
     billingCycleSplit,
     mrr,
+    yearlyRevenue,
     payingClientCount,
     avgRevenuePerPayingClient,
+    monthlyProfit,
+    yearlyProfit,
     costPerPayingClient,
     marginPerPayingClient,
     grossMarginPercent,

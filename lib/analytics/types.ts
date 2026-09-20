@@ -31,8 +31,13 @@ export interface FinanceAnalytics {
 
   // Revenue side
   mrr: number
+  yearlyRevenue: number
   payingClientCount: number
   avgRevenuePerPayingClient: number | null
+
+  // Profit
+  monthlyProfit: number
+  yearlyProfit: number
 
   // Unit economics
   costPerPayingClient: number | null

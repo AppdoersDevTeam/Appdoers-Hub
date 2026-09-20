@@ -4,7 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -15,28 +15,41 @@ import { formatCurrency } from '@/lib/utils/format'
 
 interface Props {
   mrr: number
+  yearlyRevenue: number
   monthlySpend: number
+  yearlySpend: number
+  monthlyProfit: number
+  yearlyProfit: number
 }
 
-const COLORS = {
-  revenue: '#059669',
-  spend: '#ef4444',
-  margin: '#2563eb',
-}
-
-export function RevenueVsCostChart({ mrr, monthlySpend }: Props) {
-  const margin = Math.max(0, mrr - monthlySpend)
+export function RevenueVsCostChart({
+  mrr,
+  yearlyRevenue,
+  monthlySpend,
+  yearlySpend,
+  monthlyProfit,
+  yearlyProfit,
+}: Props) {
   const chartData = [
-    { label: 'Revenue (MRR)', value: parseFloat(mrr.toFixed(2)), key: 'revenue' },
-    { label: 'Tool Spend', value: parseFloat(monthlySpend.toFixed(2)), key: 'spend' },
-    { label: 'Gross Margin', value: parseFloat(margin.toFixed(2)), key: 'margin' },
+    {
+      period: 'Monthly',
+      Revenue: parseFloat(mrr.toFixed(2)),
+      Spend: parseFloat(monthlySpend.toFixed(2)),
+      Profit: parseFloat(monthlyProfit.toFixed(2)),
+    },
+    {
+      period: 'Yearly',
+      Revenue: parseFloat(yearlyRevenue.toFixed(2)),
+      Spend: parseFloat(yearlySpend.toFixed(2)),
+      Profit: parseFloat(yearlyProfit.toFixed(2)),
+    },
   ]
   const hasData = mrr > 0 || monthlySpend > 0
 
   return (
     <ChartCard
       title="Revenue vs Tool Spend"
-      subtitle="Monthly comparison (NZD)"
+      subtitle="Monthly and yearly profit (NZD)"
       isEmpty={!hasData}
       emptyMessage="No revenue or subscription data"
     >
@@ -47,7 +60,7 @@ export function RevenueVsCostChart({ mrr, monthlySpend }: Props) {
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis
-            dataKey="label"
+            dataKey="period"
             tick={{ fontSize: 10, fill: '#64748b' }}
             tickLine={false}
             axisLine={false}
@@ -65,13 +78,16 @@ export function RevenueVsCostChart({ mrr, monthlySpend }: Props) {
               border: '1px solid #e2e8f0',
               fontSize: '12px',
             }}
-            formatter={(value) => [formatCurrency(Number(value ?? 0)), 'Amount']}
+            formatter={(value, name) => [formatCurrency(Number(value ?? 0)), String(name)]}
           />
-          <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
-            {chartData.map((entry) => (
-              <Cell key={entry.key} fill={COLORS[entry.key as keyof typeof COLORS]} />
-            ))}
-          </Bar>
+          <Legend
+            wrapperStyle={{ fontSize: '12px' }}
+            iconType="circle"
+            iconSize={8}
+          />
+          <Bar dataKey="Revenue" fill="#059669" radius={[4, 4, 0, 0]} barSize={22} />
+          <Bar dataKey="Spend" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={22} />
+          <Bar dataKey="Profit" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={22} />
         </BarChart>
       </ResponsiveContainer>
     </ChartCard>

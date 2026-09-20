@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import {
   DollarSign,
   TrendingDown,
+  TrendingUp,
   Calendar,
   Users,
   UserCheck,
@@ -26,6 +27,16 @@ function formatNullableCurrency(value: number | null): string {
 
 function formatPercent(value: number | null): string {
   return value === null ? '—' : `${value.toFixed(1)}%`
+}
+
+function profitTone(amount: number): Pick<KpiCardData, 'icon' | 'color' | 'bg' | 'highlight'> {
+  const positive = amount >= 0
+  return {
+    icon: positive ? TrendingUp : TrendingDown,
+    color: positive ? 'text-emerald-600' : 'text-red-600',
+    bg: positive ? 'bg-emerald-50' : 'bg-red-50',
+    highlight: !positive,
+  }
 }
 
 export default async function AnalyticsPage() {
@@ -52,6 +63,40 @@ export default async function AnalyticsPage() {
   }
 
   const metrics = await getFinanceAnalytics()
+
+  const profitKpis: KpiCardData[] = [
+    {
+      label: 'Monthly Profit',
+      value: formatCurrency(metrics.monthlyProfit),
+      sub: 'MRR minus monthly tool spend',
+      ...profitTone(metrics.monthlyProfit),
+    },
+    {
+      label: 'Yearly Profit',
+      value: formatCurrency(metrics.yearlyProfit),
+      sub: 'Yearly revenue minus projected yearly spend',
+      ...profitTone(metrics.yearlyProfit),
+    },
+    {
+      label: 'Yearly Revenue',
+      value: formatCurrency(metrics.yearlyRevenue),
+      sub: 'MRR × 12 (projected)',
+      icon: DollarSign,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50',
+    },
+    {
+      label: 'Gross Margin',
+      value: formatPercent(metrics.grossMarginPercent),
+      sub:
+        metrics.toolCostAsPercentOfRevenue !== null
+          ? `Tools are ${metrics.toolCostAsPercentOfRevenue.toFixed(1)}% of revenue`
+          : 'Revenue vs tool spend',
+      icon: Percent,
+      color: 'text-indigo-600',
+      bg: 'bg-indigo-50',
+    },
+  ]
 
   const revenueCostKpis: KpiCardData[] = [
     {
@@ -106,17 +151,6 @@ export default async function AnalyticsPage() {
       bg: 'bg-emerald-50',
     },
     {
-      label: 'Gross Margin',
-      value: formatPercent(metrics.grossMarginPercent),
-      sub:
-        metrics.toolCostAsPercentOfRevenue !== null
-          ? `Tools are ${metrics.toolCostAsPercentOfRevenue.toFixed(1)}% of revenue`
-          : undefined,
-      icon: Percent,
-      color: 'text-indigo-600',
-      bg: 'bg-indigo-50',
-    },
-    {
       label: 'Avg Revenue / Client',
       value: formatNullableCurrency(metrics.avgRevenuePerPayingClient),
       sub: 'MRR ÷ paying clients',
@@ -124,16 +158,29 @@ export default async function AnalyticsPage() {
       color: 'text-slate-600',
       bg: 'bg-slate-100',
     },
+    {
+      label: 'Tool Cost of Revenue',
+      value: formatPercent(metrics.toolCostAsPercentOfRevenue),
+      sub: 'Monthly tool spend ÷ MRR',
+      icon: Percent,
+      color: 'text-indigo-600',
+      bg: 'bg-indigo-50',
+    },
   ]
 
   return (
     <div className="space-y-8">
       <PageHeader
         title="Analytics"
-        subtitle="Revenue, costs, and unit economics"
+        subtitle="Profit, revenue, costs, and unit economics"
       />
 
       <div className="space-y-6">
+        <KpiSection
+          title="Profit"
+          description="Monthly and yearly profit after tool spend"
+          cards={profitKpis}
+        />
         <KpiSection
           title="Revenue & costs"
           description="MRR, tool spend, and paying client base"
@@ -148,7 +195,14 @@ export default async function AnalyticsPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <SpendByCategoryChart data={metrics.spendByCategory} />
-        <RevenueVsCostChart mrr={metrics.mrr} monthlySpend={metrics.monthlySpend} />
+        <RevenueVsCostChart
+          mrr={metrics.mrr}
+          yearlyRevenue={metrics.yearlyRevenue}
+          monthlySpend={metrics.monthlySpend}
+          yearlySpend={metrics.yearlyProjected}
+          monthlyProfit={metrics.monthlyProfit}
+          yearlyProfit={metrics.yearlyProfit}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
