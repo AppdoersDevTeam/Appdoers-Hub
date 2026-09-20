@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { INTAKE_STATUS_LABELS, type IntakeStatus } from '@/lib/intake/types'
+import { type IntakeStatus } from '@/lib/intake/types'
 import { hashIntakeToken, intakePublicUrl, makeIntakeToken } from '@/lib/intake/token'
 
 type ActionResult<T = undefined> = { success: true; data: T } | { success: false; error: string }
@@ -132,8 +132,4 @@ export async function lockClientIntakeAction(
   } catch (err) {
     return { success: false, error: String(err) }
   }
-}
-
-export function intakeStatusLabel(status: IntakeStatus) {
-  return INTAKE_STATUS_LABELS[status]
 }
