@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { BookOpen, FileText, GitBranch, LayoutTemplate, Plus, Search, Trash2 } from 'lucide-react'
+import { BookOpen, FileText, FileUp, GitBranch, LayoutTemplate, Paperclip, PenLine, Plus, Search, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -11,14 +11,17 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { SlideOver } from '@/components/ui/slide-over'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { createLibraryItemAction, deleteLibraryItemAction } from '@/lib/actions/library'
+import { submitLibraryUpload } from '@/lib/library/upload-client'
 import {
   LIBRARY_KIND_BADGE,
   LIBRARY_KIND_DESCRIPTIONS,
   LIBRARY_KIND_LABELS,
   LIBRARY_KIND_PLURALS,
   LIBRARY_KINDS,
+  titleFromFileName,
   type LibraryKind,
 } from '@/lib/library/constants'
+import { DOCUMENT_ACCEPT } from '@/lib/documents'
 import { formatRelativeTime } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 
@@ -27,6 +30,7 @@ export interface LibraryListItem {
   kind: LibraryKind
   title: string
   summary: string | null
+  file_name: string | null
   updated_at: string
   author_name: string | null
 }
@@ -51,7 +55,9 @@ export function LibraryList({
   canEdit: boolean
 }) {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [isPending, startTransition] = useTransition()
+  const [uploading, setUploading] = useState(false)
   const [search, setSearch] = useState('')
   const [kindFilter, setKindFilter] = useState<'all' | LibraryKind>('all')
   const [showNew, setShowNew] = useState(false)
@@ -61,10 +67,13 @@ export function LibraryList({
     kind: 'document' as LibraryKind,
     title: '',
     summary: '',
+    body: '',
+    source: 'write' as 'write' | 'upload',
   })
 
+  const busy = isPending || uploading
   const filtered = items.filter((item) => {
-    const haystack = `${item.title} ${item.summary ?? ''}`.toLowerCase()
+    const haystack = `${item.title} ${item.summary ?? ''} ${item.file_name ?? ''}`.toLowerCase()
     const matchSearch = haystack.includes(search.toLowerCase())
     const matchKind = kindFilter === 'all' || item.kind === kindFilter
     return matchSearch && matchKind
@@ -77,9 +86,44 @@ export function LibraryList({
     workflow: items.filter((i) => i.kind === 'workflow').length,
   }
 
-  const handleCreate = (e: React.FormEvent) => {
+  const resetForm = () => {
+    setForm({ kind: 'document', title: '', summary: '', body: '', source: 'write' })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const closeNew = () => {
+    setShowNew(false)
+    setError(null)
+    resetForm()
+  }
+
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    const file = fileInputRef.current?.files?.[0]
+
+    if (form.source === 'upload') {
+      if (!file) {
+        setError('Choose a PDF or Word document')
+        return
+      }
+      setUploading(true)
+      const result = await submitLibraryUpload({
+        file,
+        kind: form.kind,
+        title: form.title,
+        summary: form.summary,
+      })
+      setUploading(false)
+      if (!result.success) {
+        setError(result.error)
+        return
+      }
+      closeNew()
+      router.push(`/app/library/${result.item.id}`)
+      return
+    }
+
     if (!form.title.trim()) {
       setError('Title is required')
       return
@@ -89,14 +133,13 @@ export function LibraryList({
         kind: form.kind,
         title: form.title,
         summary: form.summary,
-        body: '',
+        body: form.body,
       })
       if (!result.success) {
         setError(result.error)
         return
       }
-      setShowNew(false)
-      setForm({ kind: 'document', title: '', summary: '' })
+      closeNew()
       router.push(`/app/library/${result.data.id}`)
     })
   }
@@ -163,7 +206,7 @@ export function LibraryList({
           title={items.length === 0 ? 'No library items yet' : 'No matching items'}
           description={
             items.length === 0
-              ? 'Add internal documents, templates, and workflows so the team can follow the same processes.'
+              ? 'Write a process in Hub, or upload a PDF or Word document so the team can follow the same work.'
               : 'Try a different search or filter.'
           }
           action={
@@ -186,7 +229,7 @@ export function LibraryList({
                     <button
                       type="button"
                       onClick={() => setDeleteTarget(item)}
-                      disabled={isPending}
+                      disabled={busy}
                       className="rounded p-1 text-slate-400 hover:text-red-600"
                       title="Delete"
                       aria-label={`Delete ${item.title}`}
@@ -206,6 +249,12 @@ export function LibraryList({
                     {item.summary || 'No summary yet.'}
                   </p>
                 </Link>
+                {item.file_name && (
+                  <p className="mt-3 flex items-center gap-1.5 truncate text-xs text-slate-500">
+                    <Paperclip className="h-3 w-3 shrink-0" />
+                    {item.file_name}
+                  </p>
+                )}
                 <p className="mt-auto pt-4 text-xs text-slate-400">
                   Updated {formatRelativeTime(item.updated_at)}
                   {item.author_name ? ` · ${item.author_name}` : ''}
@@ -223,19 +272,54 @@ export function LibraryList({
         confirmLabel="Delete"
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
-        isPending={isPending}
+        isPending={busy}
       />
 
       <SlideOver
         open={showNew}
-        onClose={() => setShowNew(false)}
+        onClose={closeNew}
         title="New library item"
-        subtitle="Documents, templates, and workflows for the team"
+        subtitle="Write it in Hub, or upload a PDF or Word file"
       >
         <form onSubmit={handleCreate} className="space-y-5 px-6 py-5">
           {error && (
             <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>
           )}
+          <div>
+            <p className={labelClass}>How do you want to add this?</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, source: 'write' }))}
+                aria-pressed={form.source === 'write'}
+                className={cn(
+                  'rounded-lg border px-3 py-3 text-left transition-colors',
+                  form.source === 'write'
+                    ? 'border-blue-200 bg-blue-50 text-blue-800'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                )}
+              >
+                <PenLine className="mb-1.5 h-4 w-4" />
+                <span className="block text-sm font-medium">Write it</span>
+                <span className="mt-0.5 block text-xs opacity-80">Notes, process, or copy</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, source: 'upload' }))}
+                aria-pressed={form.source === 'upload'}
+                className={cn(
+                  'rounded-lg border px-3 py-3 text-left transition-colors',
+                  form.source === 'upload'
+                    ? 'border-blue-200 bg-blue-50 text-blue-800'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                )}
+              >
+                <FileUp className="mb-1.5 h-4 w-4" />
+                <span className="block text-sm font-medium">Upload a file</span>
+                <span className="mt-0.5 block text-xs opacity-80">PDF, DOC, or DOCX</span>
+              </button>
+            </div>
+          </div>
           <div>
             <label className={labelClass}>Type *</label>
             <select
@@ -251,13 +335,16 @@ export function LibraryList({
             </select>
           </div>
           <div>
-            <label className={labelClass}>Title *</label>
+            <label className={labelClass}>Title {form.source === 'write' ? '*' : ''}</label>
             <Input
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               placeholder="e.g. Onboarding a new client"
-              required
+              required={form.source === 'write'}
             />
+            {form.source === 'upload' && (
+              <p className="mt-1 text-xs text-slate-400">Leave blank to use the file name.</p>
+            )}
           </div>
           <div>
             <label className={labelClass}>Summary</label>
@@ -269,11 +356,46 @@ export function LibraryList({
               placeholder="Short description of what this is for"
             />
           </div>
+          {form.source === 'write' ? (
+            <div>
+              <label className={labelClass}>Content</label>
+              <textarea
+                className={`${textareaClass} font-mono text-[13px] leading-relaxed`}
+                rows={10}
+                value={form.body}
+                onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
+                placeholder="Write whatever you need — a process, template, notes, or checklist."
+              />
+            </div>
+          ) : (
+            <div>
+              <label className={labelClass}>File (PDF or Word) *</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={DOCUMENT_ACCEPT}
+                required
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file && !form.title.trim()) {
+                    setForm((f) => ({ ...f, title: titleFromFileName(file.name) }))
+                  }
+                }}
+                className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+              />
+            </div>
+          )}
           <div className="flex gap-3 pt-2">
-            <Button type="submit" disabled={isPending} className="flex-1">
-              {isPending ? 'Creating…' : 'Create and write'}
+            <Button type="submit" disabled={busy} className="flex-1">
+              {busy
+                ? form.source === 'upload'
+                  ? 'Uploading…'
+                  : 'Creating…'
+                : form.source === 'upload'
+                  ? 'Upload'
+                  : 'Create'}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setShowNew(false)}>
+            <Button type="button" variant="outline" onClick={closeNew}>
               Cancel
             </Button>
           </div>

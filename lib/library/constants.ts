@@ -40,3 +40,15 @@ export function isValidLibraryLink(url: string): boolean {
     return false
   }
 }
+
+export const LIBRARY_STORAGE_PREFIX = 'library/'
+
+export function buildLibraryStoragePath(fileName: string): string {
+  const timestamp = Date.now()
+  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
+  return `${LIBRARY_STORAGE_PREFIX}${timestamp}-${safeName}`
+}
+
+export function titleFromFileName(fileName: string): string {
+  return fileName.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim()
+}

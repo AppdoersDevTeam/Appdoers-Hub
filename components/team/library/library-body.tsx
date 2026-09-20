@@ -53,10 +53,16 @@ function isNumbered(line: string) {
   return /^\s*\d+\.\s+/.test(line)
 }
 
-export function LibraryBody({ content }: { content: string }) {
+export function LibraryBody({
+  content,
+  emptyLabel = 'No content yet. Edit this item to add the process or guide.',
+}: {
+  content: string
+  emptyLabel?: string
+}) {
   const text = content.trim()
   if (!text) {
-    return <p className="text-sm text-slate-500">No content yet. Edit this item to add the process or guide.</p>
+    return <p className="text-sm text-slate-500">{emptyLabel}</p>
   }
 
   const lines = content.replace(/\r\n/g, '\n').split('\n')

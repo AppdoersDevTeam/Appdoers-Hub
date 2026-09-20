@@ -31,7 +31,7 @@ export default async function LibraryPage() {
   const [{ data: rows }, { data: teamMembers }] = await Promise.all([
     supabase
       .from('hub_library_items')
-      .select('id, kind, title, summary, updated_at, updated_by, created_by')
+      .select('id, kind, title, summary, file_name, updated_at, updated_by, created_by')
       .order('updated_at', { ascending: false }),
     supabase
       .from('team_users')
@@ -50,6 +50,7 @@ export default async function LibraryPage() {
         kind,
         title: row.title as string,
         summary: (row.summary as string | null) ?? null,
+        file_name: (row.file_name as string | null) ?? null,
         updated_at: row.updated_at as string,
         author_name: names.get(row.updated_by as string) ?? names.get(row.created_by as string) ?? null,
       }
@@ -60,7 +61,7 @@ export default async function LibraryPage() {
     <div className="space-y-6">
       <PageHeader
         title="Library"
-        subtitle="Internal documents, templates, and workflows"
+        subtitle="Write a process in Hub, or upload a PDF or Word document"
       />
       <LibraryList items={items} canEdit={can(effective, 'library', 'edit')} />
     </div>

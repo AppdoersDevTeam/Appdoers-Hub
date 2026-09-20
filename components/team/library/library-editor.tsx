@@ -1,15 +1,21 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ExternalLink, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, ExternalLink, FileUp, Paperclip, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { LibraryBody } from './library-body'
-import { deleteLibraryItemAction, updateLibraryItemAction } from '@/lib/actions/library'
+import {
+  deleteLibraryItemAction,
+  getLibraryFileDownloadUrlAction,
+  removeLibraryFileAction,
+  updateLibraryItemAction,
+} from '@/lib/actions/library'
+import { submitLibraryUpload } from '@/lib/library/upload-client'
 import {
   LIBRARY_KIND_BADGE,
   LIBRARY_KIND_DESCRIPTIONS,
@@ -17,6 +23,7 @@ import {
   LIBRARY_KINDS,
   type LibraryKind,
 } from '@/lib/library/constants'
+import { DOCUMENT_ACCEPT, formatFileSize } from '@/lib/documents'
 import { formatDateTime } from '@/lib/utils/format'
 
 export interface LibraryItemDetail {
@@ -26,6 +33,9 @@ export interface LibraryItemDetail {
   summary: string | null
   body: string
   link_url: string | null
+  file_name: string | null
+  mime_type: string | null
+  file_size: number | null
   created_at: string
   updated_at: string
   author_name: string | null
@@ -46,11 +56,18 @@ export function LibraryEditor({
   canEdit: boolean
 }) {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [isPending, startTransition] = useTransition()
-  const [editing, setEditing] = useState(!item.body.trim())
+  const [uploading, setUploading] = useState(false)
+  const [editing, setEditing] = useState(!item.body.trim() && !item.file_name)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
+  const [fileMeta, setFileMeta] = useState({
+    file_name: item.file_name,
+    mime_type: item.mime_type,
+    file_size: item.file_size,
+  })
   const [form, setForm] = useState({
     kind: item.kind,
     title: item.title,
@@ -58,6 +75,8 @@ export function LibraryEditor({
     body: item.body,
     link_url: item.link_url ?? '',
   })
+
+  const busy = isPending || uploading
 
   const handleSave = () => {
     setError(null)
@@ -70,6 +89,66 @@ export function LibraryEditor({
       setEditing(false)
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
+      router.refresh()
+    })
+  }
+
+  const handleDownload = () => {
+    startTransition(async () => {
+      const result = await getLibraryFileDownloadUrlAction(item.id)
+      if (!result.success) {
+        setError(result.error)
+        return
+      }
+      const a = document.createElement('a')
+      a.href = result.data.url
+      a.download = result.data.name
+      a.target = '_blank'
+      a.rel = 'noreferrer'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+    })
+  }
+
+  const handleAttachFile = async () => {
+    const file = fileInputRef.current?.files?.[0]
+    if (!file) {
+      setError('Choose a PDF or Word document')
+      return
+    }
+    setError(null)
+    setUploading(true)
+    const result = await submitLibraryUpload({
+      file,
+      kind: form.kind,
+      title: form.title,
+      summary: form.summary,
+      itemId: item.id,
+    })
+    setUploading(false)
+    if (!result.success) {
+      setError(result.error)
+      return
+    }
+    setFileMeta({
+      file_name: result.item.file_name,
+      mime_type: result.item.mime_type,
+      file_size: result.item.file_size,
+    })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    router.refresh()
+  }
+
+  const handleRemoveFile = () => {
+    startTransition(async () => {
+      const result = await removeLibraryFileAction(item.id)
+      if (!result.success) {
+        setError(result.error)
+        return
+      }
+      setFileMeta({ file_name: null, mime_type: null, file_size: null })
+      if (fileInputRef.current) fileInputRef.current.value = ''
       router.refresh()
     })
   }
@@ -107,7 +186,7 @@ export function LibraryEditor({
           <div className="flex items-center gap-2">
             {editing ? (
               <>
-                <Button size="sm" onClick={handleSave} disabled={isPending}>
+                <Button size="sm" onClick={handleSave} disabled={busy}>
                   {isPending ? 'Saving…' : 'Save'}
                 </Button>
                 <Button
@@ -124,7 +203,7 @@ export function LibraryEditor({
                     setEditing(false)
                     setError(null)
                   }}
-                  disabled={isPending}
+                  disabled={busy}
                 >
                   Cancel
                 </Button>
@@ -134,7 +213,7 @@ export function LibraryEditor({
                 <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={() => setShowDelete(true)} disabled={isPending} aria-label="Delete">
+            <Button size="sm" variant="ghost" onClick={() => setShowDelete(true)} disabled={busy} aria-label="Delete">
               <Trash2 className="h-3.5 w-3.5 text-slate-500" />
             </Button>
           </div>
@@ -195,9 +274,36 @@ export function LibraryEditor({
             />
           </div>
           <div>
-            <label className={labelClass}>Content</label>
+            <label className={labelClass}>File (PDF or Word)</label>
+            {fileMeta.file_name && (
+              <p className="mb-2 flex items-center gap-1.5 text-sm text-slate-600">
+                <Paperclip className="h-3.5 w-3.5" />
+                {fileMeta.file_name}
+                <span className="text-slate-400">({formatFileSize(fileMeta.file_size)})</span>
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={DOCUMENT_ACCEPT}
+                className="block min-w-0 flex-1 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+              />
+              <Button type="button" size="sm" variant="outline" onClick={handleAttachFile} disabled={busy}>
+                <FileUp className="h-3.5 w-3.5" />
+                {uploading ? 'Uploading…' : fileMeta.file_name ? 'Replace' : 'Attach'}
+              </Button>
+              {fileMeta.file_name && (
+                <Button type="button" size="sm" variant="ghost" onClick={handleRemoveFile} disabled={busy}>
+                  Remove file
+                </Button>
+              )}
+            </div>
+          </div>
+          <div>
+            <label className={labelClass}>Written notes</label>
             <p className="mb-2 text-xs text-slate-400">
-              Use # headings, - lists, **bold**, and [links](https://example.com).
+              Use # headings, - lists, **bold**, and [links](https://example.com). Optional if you uploaded a file.
             </p>
             <textarea
               className={cnTextarea()}
@@ -211,6 +317,21 @@ export function LibraryEditor({
       ) : (
         <div className="hub-card space-y-5">
           {form.summary && <p className="text-sm text-slate-600">{form.summary}</p>}
+          {fileMeta.file_name && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 truncate text-sm font-medium text-slate-800">
+                  <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                  {fileMeta.file_name}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">{formatFileSize(fileMeta.file_size)}</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={handleDownload} disabled={busy}>
+                <Download className="h-3.5 w-3.5" />
+                Download
+              </Button>
+            </div>
+          )}
           {form.link_url && (
             <a
               href={form.link_url}
@@ -221,7 +342,14 @@ export function LibraryEditor({
               Open linked resource <ExternalLink className="h-3.5 w-3.5" />
             </a>
           )}
-          <LibraryBody content={form.body} />
+          <LibraryBody
+            content={form.body}
+            emptyLabel={
+              fileMeta.file_name
+                ? 'No written notes yet. Edit this item if you want to add notes alongside the file.'
+                : 'No content yet. Edit this item to write it, or attach a PDF or Word file.'
+            }
+          />
         </div>
       )}
 
@@ -232,7 +360,7 @@ export function LibraryEditor({
         confirmLabel="Delete"
         onConfirm={handleDelete}
         onCancel={() => setShowDelete(false)}
-        isPending={isPending}
+        isPending={busy}
       />
     </div>
   )
@@ -244,10 +372,10 @@ function cnTextarea() {
 
 function placeholderForKind(kind: LibraryKind) {
   if (kind === 'template') {
-    return 'Paste the reusable copy here.\n\nHi [CLIENT NAME],\n\n…'
+    return 'Write whatever you need.\n\nHi [CLIENT NAME],\n\n…'
   }
   if (kind === 'workflow') {
     return '# Workflow name\n\n1. First step\n2. Second step\n3. Who to notify when done'
   }
-  return '# Guide title\n\nWrite the internal process or policy here.'
+  return 'Write whatever you need — a process, policy, notes, or checklist.'
 }
