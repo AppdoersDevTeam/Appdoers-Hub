@@ -10,6 +10,7 @@ import { TaskStatusSelect } from './task-status-select'
 import { deleteTaskAction } from '@/lib/actions/tasks'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { SortableTh } from '@/components/ui/sortable-th'
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
 import { formatDate } from '@/lib/utils/format'
 import { TASK_STATUS_OPTIONS } from '@/lib/tasks/constants'
 import { cn } from '@/lib/utils/cn'
@@ -51,6 +52,7 @@ const priorityConfig: Record<string, { label: string; cls: string }> = {
 
 const PRIORITY_ORDER: Record<string, number> = { p0: 0, p1: 1, p2: 2, p3: 3 }
 const STATUS_ORDER: Record<string, number> = { open: 0, in_progress: 1, awaiting_review: 2, closed: 3 }
+const ALL_STATUS_VALUES = TASK_STATUS_OPTIONS.map((option) => option.value)
 
 const TASK_SORT_GETTERS: Record<string, (t: TaskRow) => SortValue> = {
   title: (t) => t.title,
@@ -92,7 +94,7 @@ export function TasksTable({
   const [assigneeFilter, setAssigneeFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState<string[]>(ALL_STATUS_VALUES)
   const [showNew, setShowNew] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<TaskRow | null>(null)
   const [exporting, setExporting] = useState(false)
@@ -127,7 +129,7 @@ export function TasksTable({
         (assigneeFilter === 'unassigned' ? !t.assigned_to : t.assigned_to === assigneeFilter)
       const matchType = typeFilter === 'all' || t.type === typeFilter
       const matchPriority = priorityFilter === 'all' || t.priority === priorityFilter
-      const matchStatus = statusFilter === 'all' || t.status === statusFilter
+      const matchStatus = statusFilter.includes(t.status)
       return matchSearch && matchClient && matchProject && matchAssignee && matchType && matchPriority && matchStatus
     })
   }, [
@@ -184,8 +186,13 @@ export function TasksTable({
     priorityFilter !== 'all'
       ? { label: 'Priority', value: priorityConfig[priorityFilter]?.label ?? priorityFilter }
       : null,
-    statusFilter !== 'all'
-      ? { label: 'Status', value: TASK_STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label ?? statusFilter }
+    statusFilter.length > 0 && statusFilter.length < ALL_STATUS_VALUES.length
+      ? {
+          label: 'Status',
+          value: TASK_STATUS_OPTIONS.filter((s) => statusFilter.includes(s.value))
+            .map((s) => s.label)
+            .join(', '),
+        }
       : null,
   ].filter((item): item is { label: string; value: string } => item !== null)
 
@@ -276,10 +283,14 @@ export function TasksTable({
           <option value="all">All Priorities</option>
           {Object.entries(priorityConfig).map(([v, { label }]) => <option key={v} value={v}>{label}</option>)}
         </select>
-        <select className={selectClass} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="all">All Statuses</option>
-          {TASK_STATUS_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
-        </select>
+        <MultiSelectFilter
+          label="Filter by status"
+          allLabel="All Statuses"
+          emptyLabel="No statuses"
+          options={TASK_STATUS_OPTIONS}
+          value={statusFilter}
+          onChange={setStatusFilter}
+        />
         <Button
           variant="outline"
           onClick={handleExportPdf}
