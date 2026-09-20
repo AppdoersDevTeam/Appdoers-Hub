@@ -292,3 +292,16 @@ export interface AgencySubscription {
 export function isSupabaseSubscription(name: string): boolean {
   return name.trim().toLowerCase().includes('supabase')
 }
+
+export type RenewalAlertItemType = 'subscription' | 'domain'
+export type RenewalAlertMilestone = 'month' | 'week' | 'day'
+
+export interface RenewalAlertLog {
+  id: string
+  item_type: RenewalAlertItemType
+  item_id: string
+  milestone: RenewalAlertMilestone
+  due_date: string
+  sent_on: string
+  created_at: string
+}

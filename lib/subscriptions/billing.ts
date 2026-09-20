@@ -67,6 +67,11 @@ export function subscriptionDateFieldLabel(cycle: string | null | undefined): st
   return isOneOffCycle(cycle) ? 'Expiry Date' : 'Renewal Date'
 }
 
+export function subscriptionBillingCycleLabel(cycle: string | null | undefined): string {
+  const normalized = normalizeSubscriptionBillingCycle(cycle)
+  return SUBSCRIPTION_BILLING_CYCLE_OPTIONS.find((option) => option.value === normalized)?.label ?? normalized
+}
+
 export function subscriptionCostToMonthly(
   amount: number,
   cycle: string | null | undefined

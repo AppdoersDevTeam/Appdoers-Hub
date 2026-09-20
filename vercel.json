@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/client-weekly-digest",
       "schedule": "0 4 * * 0"
+    },
+    {
+      "path": "/api/cron/renewal-alerts",
+      "schedule": "0 20 * * *"
     }
   ]
 }

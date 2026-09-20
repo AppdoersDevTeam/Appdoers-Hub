@@ -348,6 +348,8 @@ export function SettingsEditor({ settings }: Props) {
           Configure a separate Slack incoming webhook for each notification type. Leave blank to use the{' '}
           <strong className="text-slate-500">General</strong> channel as a fallback, or set{' '}
           <strong className="text-slate-500">General</strong> as your single catch-all webhook.
+          Subscription and domain renewal reminders (1 month before, 1 week before, and on the day) go to{' '}
+          <strong className="text-slate-500">Billing & Invoices</strong>.
           Create webhooks at <span className="font-mono text-blue-600">api.slack.com/apps</span>.
           Save changes, then use <strong className="text-slate-500">Send test</strong> to confirm each channel.
         </p>

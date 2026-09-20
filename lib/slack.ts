@@ -134,6 +134,14 @@ export function hubRecapUrl(recapId: string): string {
   return hubAppUrl(`/app/recaps/${recapId}`)
 }
 
+export function hubSubscriptionsUrl(): string {
+  return hubAppUrl('/app/subscriptions')
+}
+
+export function hubClientDomainsUrl(clientId: string): string {
+  return hubAppUrl(`/app/clients/${clientId}?tab=domains`)
+}
+
 export function withHttpUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) return url
   return `https://${url}`
