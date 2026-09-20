@@ -168,7 +168,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const { data: task } = await auth.service
     .from('tasks')
-    .select('project_id, title, assigned_to, workflow_stage, status')
+    .select('project_id, title, workflow_stage, status')
     .eq('id', id)
     .single()
   const project = (await getProjectSummary(auth.service, task?.project_id ?? '')) ?? {
@@ -179,16 +179,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const projectName = project.name
   const clientName = project.client_name
 
-  let assigneeName: string | null = null
-  if (task?.assigned_to) {
-    const { data: assignee } = await auth.service
-      .from('team_users')
-      .select('full_name')
-      .eq('id', task.assigned_to)
-      .single()
-    assigneeName = assignee?.full_name ?? null
-  }
-
   if (payload.claim) {
     const claimBy = actorName ?? payload.agent_name ?? 'Cursor AI'
     await auth.service.from('activity_log').insert({
@@ -198,18 +188,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       action: 'cursor_claimed',
       description: `${claimBy} claimed ${task?.title ?? 'Task'}`,
       performed_by: auth.teamUserId,
-    })
-
-    await sendSlackAlert('tasks', {
-      text: `Ticket claimed: ${task?.title ?? 'Task'}`,
-      title: 'Ticket claimed',
-      fields: [
-        { label: 'Task', value: task?.title ?? 'Task' },
-        { label: 'Project', value: `${projectName} (${clientName})` },
-        { label: 'Assigned to', value: assigneeName ?? 'Unassigned' },
-      ],
-      context: slackPeopleContext({ requestedBy, by: claimBy, byLabel: 'Claimed by' }),
-      action: slackOpenHub(hubTaskUrl(id)),
     })
   }
 
@@ -223,18 +201,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       performed_by: auth.teamUserId,
     })
 
-    await sendSlackAlert('tasks', {
-      text: `Ticket stage update: ${task?.title ?? 'Task'}`,
-      title: 'Workflow updated',
-      fields: [
-        { label: 'Task', value: task?.title ?? 'Task' },
-        { label: 'Project', value: `${projectName} (${clientName})` },
-        { label: 'Stage', value: payload.stage },
-        { label: 'Status', value: task?.status ?? 'unknown' },
-      ],
-      context: slackPeopleContext({ requestedBy, by: actorName }),
-      action: slackOpenHub(hubTaskUrl(id)),
-    })
+    const nextStatus = stageToTaskStatus(payload.stage)
+    if (nextStatus !== existing.status) {
+      await sendSlackAlert('tasks', {
+        text: `Ticket status: ${task?.title ?? 'Task'}`,
+        title: 'Task status updated',
+        fields: [
+          { label: 'Task', value: task?.title ?? 'Task' },
+          { label: 'Project', value: `${projectName} (${clientName})` },
+          { label: 'Status', value: nextStatus },
+        ],
+        context: slackPeopleContext({ requestedBy, by: actorName }),
+        action: slackOpenHub(hubTaskUrl(id)),
+      })
+    }
   }
 
   if (payload.note) {
@@ -245,19 +225,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       action: 'cursor_note',
       description: payload.note,
       performed_by: auth.teamUserId,
-    })
-
-    await sendSlackAlert('tasks', {
-      text: `Ticket note: ${task?.title ?? 'Task'}`,
-      title: 'Progress note',
-      fields: [
-        { label: 'Task', value: task?.title ?? 'Task' },
-        { label: 'Project', value: `${projectName} (${clientName})` },
-      ],
-      body: payload.note,
-      bodyLabel: 'Note',
-      context: slackPeopleContext({ requestedBy, by: actorName, byLabel: 'Note by' }),
-      action: slackOpenHub(hubTaskUrl(id)),
     })
   }
 

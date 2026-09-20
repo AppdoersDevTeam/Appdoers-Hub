@@ -333,6 +333,18 @@ export async function updateTaskDetailsAction(
       })
     }
 
+    const nextStatus =
+      input.workflow_stage !== undefined
+        ? (input.status ?? stageToTaskStatus(input.workflow_stage))
+        : input.status !== undefined
+          ? input.status
+          : existing.status
+    const statusChanged = nextStatus !== existing.status
+    const slackChanges = changes.filter((change) => !change.startsWith('workflow →'))
+    if (statusChanged && !slackChanges.some((change) => change.startsWith('status →'))) {
+      slackChanges.push(`status → ${statusLabel[nextStatus as TaskStatus]}`)
+    }
+
     const slackProject = await loadTaskSlackProject(supabase, nextProjectId)
     const taskTitle = input.title ?? existing.title
     const requestedBy = await getTeamMemberName(supabase, existing.created_by)
@@ -347,12 +359,12 @@ export async function updateTaskDetailsAction(
         context: slackPeopleContext({ requestedBy, by: updatedBy }),
         taskId: id,
       })
-    } else if (changes.length > 0) {
+    } else if (slackChanges.length > 0) {
       await notifyTaskSlack(slackProject, {
         text: `Task updated: ${taskTitle}`,
         title: 'Task updated',
         fields: [{ label: 'Task', value: taskTitle }],
-        body: changes.join('\n'),
+        body: slackChanges.join('\n'),
         bodyLabel: 'Changes',
         context: slackPeopleContext({ requestedBy, by: updatedBy }),
         taskId: id,
@@ -433,7 +445,7 @@ export async function updateTaskWorkflowStageAction(
 
     const { data: task } = await supabase
       .from('tasks')
-      .select('title, created_by')
+      .select('title, created_by, status')
       .eq('id', id)
       .single()
 
@@ -457,20 +469,21 @@ export async function updateTaskWorkflowStageAction(
       description: `Task "${task?.title}" → ${WORKFLOW_STAGE_CONFIG[workflowStage].label} (${TASK_STATUS_CONFIG[status].label})`,
     })
 
-    const project = await loadTaskSlackProject(supabase, projectId)
-    const requestedBy = await getTeamMemberName(supabase, task?.created_by)
-    const updatedBy = await loadCurrentMemberName(supabase)
-    await notifyTaskSlack(project, {
-      text: `Task stage: ${task?.title ?? 'Task'}`,
-      title: 'Workflow updated',
-      fields: [
-        { label: 'Task', value: task?.title ?? 'Task' },
-        { label: 'Stage', value: WORKFLOW_STAGE_CONFIG[workflowStage].label },
-        { label: 'Status', value: TASK_STATUS_CONFIG[status].label },
-      ],
-      context: slackPeopleContext({ requestedBy, by: updatedBy }),
-      taskId: id,
-    })
+    if (status !== task?.status) {
+      const project = await loadTaskSlackProject(supabase, projectId)
+      const requestedBy = await getTeamMemberName(supabase, task?.created_by)
+      const updatedBy = await loadCurrentMemberName(supabase)
+      await notifyTaskSlack(project, {
+        text: `Task status: ${task?.title ?? 'Task'}`,
+        title: 'Task status updated',
+        fields: [
+          { label: 'Task', value: task?.title ?? 'Task' },
+          { label: 'Status', value: statusLabel[status] },
+        ],
+        context: slackPeopleContext({ requestedBy, by: updatedBy }),
+        taskId: id,
+      })
+    }
 
     revalidatePath('/app/tasks')
     revalidatePath(`/app/tasks/${id}`)
@@ -521,19 +534,6 @@ export async function addTaskNoteAction(
     }
 
     await supabase.from('tasks').update({ updated_at: new Date().toISOString() }).eq('id', taskId)
-
-    const project = await loadTaskSlackProject(supabase, projectId)
-    const requestedBy = await getTeamMemberName(supabase, task?.created_by)
-    const updatedBy = await getTeamMemberName(supabase, user.id)
-    await notifyTaskSlack(project, {
-      text: `Task note: ${task?.title ?? 'Task'}`,
-      title: 'Progress note',
-      fields: [{ label: 'Task', value: task?.title ?? 'Task' }],
-      body: content,
-      bodyLabel: 'Note',
-      context: slackPeopleContext({ requestedBy, by: updatedBy, byLabel: 'Note by' }),
-      taskId: taskId,
-    })
 
     revalidatePath('/app/tasks')
     revalidatePath(`/app/tasks/${taskId}`)
