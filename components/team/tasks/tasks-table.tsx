@@ -307,25 +307,25 @@ export function TasksTable({
       </div>
       {exportError ? <p className="text-sm text-red-600">{exportError}</p> : null}
 
-      <div className="hub-card overflow-hidden p-0">
+      <div className="hub-card min-w-0 overflow-hidden p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full table-fixed text-sm">
             <thead>
               <tr className="border-b border-slate-200">
                 <SortableTh label="Title" column="title" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Type" column="type" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Priority" column="priority" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Type" column="type" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="w-24" />
+                <SortableTh label="Priority" column="priority" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="w-[4.5rem]" />
                 {showProjectCol && (
                   <>
-                    <SortableTh label="Project" column="project" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                    <SortableTh label="Client" column="client" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                    <SortableTh label="Project" column="project" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="w-32" />
+                    <SortableTh label="Client" column="client" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="w-28" />
                   </>
                 )}
-                <SortableTh label="Assigned To" column="assigned" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Due Date" column="due" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Time" column="time" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Status" column="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <th className="px-4 py-3" />
+                <SortableTh label="Assigned To" column="assigned" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="w-32" />
+                <SortableTh label="Due Date" column="due" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="w-24" />
+                <SortableTh label="Time" column="time" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="w-16" />
+                <SortableTh label="Status" column="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="w-44" />
+                <th className="w-12 px-2 py-3" aria-label="Delete" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -344,10 +344,12 @@ export function TasksTable({
                   return (
                     <tr key={t.id} className={cn('transition-colors hover:bg-slate-50', isOverdue && 'border-l-2 border-l-[#EF4444]')}>
                       <td className="px-4 py-3">
-                        <Link href={`/app/tasks/${t.id}`} className={cn('font-medium hover:text-blue-600 transition-colors', isOverdue ? 'text-red-600' : 'text-slate-900')}>
-                          {t.title}
-                        </Link>
-                        {isOverdue && <span className="ml-2 text-xs text-red-600">Overdue</span>}
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Link href={`/app/tasks/${t.id}`} className={cn('min-w-0 truncate font-medium hover:text-blue-600 transition-colors', isOverdue ? 'text-red-600' : 'text-slate-900')}>
+                            {t.title}
+                          </Link>
+                          {isOverdue && <span className="shrink-0 text-xs text-red-600">Overdue</span>}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', ty.cls)}>{ty.label}</span>
@@ -357,18 +359,18 @@ export function TasksTable({
                       </td>
                       {showProjectCol && (
                         <>
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="truncate px-4 py-3 text-slate-600">
                             <Link href={`/app/projects/${t.project_id}`} className="hover:text-blue-600 transition-colors">{t.project_name}</Link>
                           </td>
-                          <td className="px-4 py-3 text-slate-600">{t.client_name}</td>
+                          <td className="truncate px-4 py-3 text-slate-600">{t.client_name}</td>
                         </>
                       )}
-                      <td className="px-4 py-3 text-slate-600">{t.assigned_to_name ?? '—'}</td>
+                      <td className="truncate px-4 py-3 text-slate-600">{t.assigned_to_name ?? '—'}</td>
                       <td className="px-4 py-3 text-slate-600">{t.due_date ? formatDate(t.due_date) : '—'}</td>
                       <td className="px-4 py-3 text-slate-600">
                         {t.time_spent > 0 ? `${t.time_spent.toFixed(1)}h` : '—'}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3">
                         <TaskStatusSelect
                           taskId={t.id}
                           projectId={t.project_id}
@@ -376,17 +378,16 @@ export function TasksTable({
                           compact
                         />
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setDeleteTarget(t)}
-                            disabled={isPending}
-                            className="rounded p-1 text-slate-500 hover:text-red-600 transition-colors"
-                            title="Delete task"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
+                      <td className="w-12 px-2 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(t)}
+                          disabled={isPending}
+                          className="inline-flex rounded p-1 text-slate-500 hover:text-red-600 transition-colors"
+                          title="Delete task"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </td>
                     </tr>
                   )

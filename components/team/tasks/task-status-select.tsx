@@ -35,7 +35,7 @@ export function TaskStatusSelect({ taskId, projectId, value, compact = false }: 
       aria-label="Task status"
       className={cn(
         'rounded-md border border-slate-200 bg-white font-medium focus:border-blue-500 focus:outline-none disabled:opacity-60',
-        compact ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm',
+        compact ? 'w-[8.75rem] max-w-full px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm',
         config.cls
       )}
     >
