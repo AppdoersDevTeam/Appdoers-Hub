@@ -25,11 +25,10 @@ type TaskSlackProject = {
   name: string
   clientId: string | null
   clientName: string
-  clientSlackChannelId: string | null
 }
 
 function clientFromProject(project: {
-  clients?: { company_name?: string; slack_channel_id?: string | null } | { company_name?: string; slack_channel_id?: string | null }[] | null
+  clients?: { company_name?: string } | { company_name?: string }[] | null
 } | null) {
   const clients = project?.clients
   return (Array.isArray(clients) ? clients[0] : clients) ?? null
@@ -41,7 +40,7 @@ async function loadTaskSlackProject(
 ): Promise<TaskSlackProject> {
   const { data: project } = await supabase
     .from('projects')
-    .select('name, client_id, clients(company_name, slack_channel_id)')
+    .select('name, client_id, clients(company_name)')
     .eq('id', projectId)
     .single()
 
@@ -50,7 +49,6 @@ async function loadTaskSlackProject(
     name: (project as { name?: string } | null)?.name ?? 'project',
     clientId: (project as { client_id?: string } | null)?.client_id ?? null,
     clientName: client?.company_name ?? '',
-    clientSlackChannelId: client?.slack_channel_id ?? null,
   }
 }
 
@@ -94,7 +92,6 @@ async function notifyTaskSlack(
       context: input.context,
       action: url ? { label: 'Open in Hub', url } : null,
     }),
-    clientSlackChannelId: project.clientSlackChannelId,
   })
 }
 

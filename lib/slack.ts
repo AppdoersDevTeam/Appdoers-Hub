@@ -473,12 +473,8 @@ export async function sendSlackAlert(
 export async function notifyTaskActivity(input: {
   text: string
   blocks?: SlackBlock[]
-  clientSlackChannelId?: string | null
 }): Promise<void> {
   await sendToChannel('tasks', input.text, input.blocks)
-  if (input.clientSlackChannelId) {
-    await postToSlackChannel(input.clientSlackChannelId, input.text, input.blocks)
-  }
 }
 
 // Backward-compatible wrapper — routes to general channel
