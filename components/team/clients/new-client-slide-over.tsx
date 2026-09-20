@@ -37,7 +37,7 @@ export function NewClientSlideOver({ open, onClose }: Props) {
     website: '',
     location: '',
     subscription_plan: 'none' as SubscriptionPlan,
-    billing_cycle: 'monthly' as ClientBillingCycle,
+    billing_cycle: '' as ClientBillingCycle | '',
     monthly_fee: 0,
     setup_fee: 0,
     payment_terms: 7,
@@ -65,6 +65,11 @@ export function NewClientSlideOver({ open, onClose }: Props) {
       setError('Company name is required')
       return
     }
+    const billingCycle = form.billing_cycle
+    if (!billingCycle) {
+      setError('Frequency is required')
+      return
+    }
     startTransition(async () => {
       const result = await createClientAction({
         company_name: form.company_name,
@@ -72,7 +77,7 @@ export function NewClientSlideOver({ open, onClose }: Props) {
         website: form.website || undefined,
         location: form.location || undefined,
         subscription_plan: form.subscription_plan,
-        billing_cycle: form.billing_cycle,
+        billing_cycle: billingCycle,
         monthly_fee: form.monthly_fee,
         setup_fee: form.setup_fee,
         payment_terms: form.payment_terms,
@@ -156,24 +161,35 @@ export function NewClientSlideOver({ open, onClose }: Props) {
           </select>
         </div>
 
+        <div>
+          <label className={labelClass} htmlFor="new-client-frequency">
+            Frequency *
+          </label>
+          <select
+            id="new-client-frequency"
+            className={selectClass}
+            value={form.billing_cycle}
+            onChange={(e) => set('billing_cycle', e.target.value as ClientBillingCycle)}
+            required
+          >
+            <option value="" disabled>
+              Select frequency…
+            </option>
+            {BILLING_CYCLE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Billing Cycle</label>
-            <select
-              className={selectClass}
-              value={form.billing_cycle}
-              onChange={(e) => set('billing_cycle', e.target.value as ClientBillingCycle)}
-            >
-              {BILLING_CYCLE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={labelClass}>{billingCycleFeeLabel(form.billing_cycle)}</label>
+            <label className={labelClass} htmlFor="new-client-fee">
+              {billingCycleFeeLabel(form.billing_cycle)}
+            </label>
             <Input
+              id="new-client-fee"
               type="number"
               min={0}
               step={0.01}
@@ -181,17 +197,19 @@ export function NewClientSlideOver({ open, onClose }: Props) {
               onChange={(e) => set('monthly_fee', parseFloat(e.target.value) || 0)}
             />
           </div>
-        </div>
-
-        <div>
-          <label className={labelClass}>Setup Fee (NZD)</label>
-          <Input
-            type="number"
-            min={0}
-            step={0.01}
-            value={form.setup_fee}
-            onChange={(e) => set('setup_fee', parseFloat(e.target.value) || 0)}
-          />
+          <div>
+            <label className={labelClass} htmlFor="new-client-setup-fee">
+              Setup Fee (NZD)
+            </label>
+            <Input
+              id="new-client-setup-fee"
+              type="number"
+              min={0}
+              step={0.01}
+              value={form.setup_fee}
+              onChange={(e) => set('setup_fee', parseFloat(e.target.value) || 0)}
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

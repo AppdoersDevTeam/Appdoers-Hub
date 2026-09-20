@@ -33,12 +33,8 @@ export function formatRecurringFee(amount: number, cycle: string | null | undefi
 }
 
 export function billingCycleFeeLabel(cycle: string | null | undefined): string {
-  switch (normalizeBillingCycle(cycle)) {
-    case 'weekly':
-      return 'Weekly Fee (NZD)'
-    case 'yearly':
-      return 'Yearly Fee (NZD)'
-    default:
-      return 'Monthly Fee (NZD)'
-  }
+  if (cycle === 'weekly') return 'Weekly Fee (NZD)'
+  if (cycle === 'yearly') return 'Yearly Fee (NZD)'
+  if (cycle === 'monthly') return 'Monthly Fee (NZD)'
+  return 'Fee (NZD)'
 }

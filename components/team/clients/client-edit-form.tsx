@@ -255,7 +255,7 @@ export function ClientEditForm({
         </div>
         <div className="grid grid-cols-2 gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
           <div>
-            <p className="text-xs text-slate-500">Billing cycle</p>
+            <p className="text-xs text-slate-500">Frequency</p>
             <select
               className={selectClass}
               value={form.billing_cycle}
