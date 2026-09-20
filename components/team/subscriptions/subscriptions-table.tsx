@@ -16,6 +16,16 @@ import { isSupabaseSubscription } from '@/lib/types/database'
 import { cn } from '@/lib/utils/cn'
 import { formatDate } from '@/lib/utils/format'
 import { SupabaseLoginsCard, supabaseLoginSummary } from '@/components/team/subscriptions/supabase-logins-card'
+import {
+  formatSubscriptionCost,
+  isOneOffCycle,
+  normalizeSubscriptionBillingCycle,
+  subscriptionCostToMonthly,
+  subscriptionCostToYearly,
+  subscriptionDateFieldLabel,
+  SUBSCRIPTION_BILLING_CYCLE_OPTIONS,
+  type SubscriptionBillingCycle,
+} from '@/lib/subscriptions/billing'
 
 interface Subscription {
   id: string
@@ -77,8 +87,7 @@ function LoginSummaryLine({ accounts }: { accounts: SupabaseAccountWithProjects[
 }
 
 function formatCost(cost: number, cycle: string) {
-  const formatted = new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD' }).format(cost)
-  return `${formatted}/${cycle === 'yearly' ? 'yr' : 'mo'}`
+  return formatSubscriptionCost(cost, cycle)
 }
 
 const emptyForm: SubscriptionInput = {
@@ -114,7 +123,7 @@ export function SubscriptionsTable({
     setEditing(s)
     setForm({
       name: s.name, category: s.category, plan_name: s.plan_name ?? '',
-      billing_cycle: s.billing_cycle as 'monthly' | 'yearly',
+      billing_cycle: normalizeSubscriptionBillingCycle(s.billing_cycle),
       cost: s.cost, renewal_date: s.renewal_date ?? '', status: s.status as 'active' | 'paused' | 'cancelled',
       url: s.url ?? '', notes: s.notes ?? '',
     })
@@ -125,6 +134,10 @@ export function SubscriptionsTable({
     e.preventDefault()
     setError(null)
     if (!form.name.trim()) { setError('Name is required'); return }
+    if (isOneOffCycle(form.billing_cycle) && !form.renewal_date) {
+      setError('Expiry date is required for one-off payments')
+      return
+    }
     startTransition(async () => {
       const payload = { ...form, renewal_date: form.renewal_date || null, plan_name: form.plan_name || undefined, url: form.url || undefined, notes: form.notes || undefined }
       const result = editing
@@ -159,12 +172,14 @@ export function SubscriptionsTable({
 
   // Summary totals (active only)
   const active = subs.filter(s => s.status === 'active')
-  const monthlyTotal = active.reduce((sum, s) => {
-    return sum + (s.billing_cycle === 'monthly' ? s.cost : s.cost / 12)
-  }, 0)
-  const yearlyTotal = active.reduce((sum, s) => {
-    return sum + (s.billing_cycle === 'yearly' ? s.cost : s.cost * 12)
-  }, 0)
+  const monthlyTotal = active.reduce(
+    (sum, s) => sum + subscriptionCostToMonthly(s.cost, s.billing_cycle),
+    0
+  )
+  const yearlyTotal = active.reduce(
+    (sum, s) => sum + subscriptionCostToYearly(s.cost, s.billing_cycle),
+    0
+  )
   const fmt = (n: number) => new Intl.NumberFormat('en-NZ', { style: 'currency', currency: 'NZD' }).format(n)
 
   return (
@@ -210,7 +225,7 @@ export function SubscriptionsTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                {['Tool', 'Category', 'Plan', 'Cost', 'Renewal', 'Status', ''].map(h => (
+                {['Tool', 'Category', 'Plan', 'Cost', 'Renewal / Expiry', 'Status', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">{h}</th>
                 ))}
               </tr>
@@ -304,21 +319,35 @@ export function SubscriptionsTable({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Billing Cycle</label>
-              <select className={selectClass} value={form.billing_cycle} onChange={e => setForm(f => ({ ...f, billing_cycle: e.target.value as 'monthly' | 'yearly' }))}>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
+              <select
+                className={selectClass}
+                value={form.billing_cycle}
+                onChange={e => setForm(f => ({
+                  ...f,
+                  billing_cycle: e.target.value as SubscriptionBillingCycle,
+                }))}
+              >
+                {SUBSCRIPTION_BILLING_CYCLE_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
               </select>
             </div>
             <div>
-              <label className={labelClass}>Cost (NZD)</label>
+              <label className={labelClass}>{isOneOffCycle(form.billing_cycle) ? 'Amount (NZD)' : 'Cost (NZD)'}</label>
               <Input type="number" min={0} step={0.01} value={form.cost} onChange={e => setForm(f => ({ ...f, cost: parseFloat(e.target.value) || 0 }))} placeholder="0.00" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass}>Renewal Date</label>
+              <label className={labelClass}>
+                {subscriptionDateFieldLabel(form.billing_cycle)}
+                {isOneOffCycle(form.billing_cycle) ? ' *' : ''}
+              </label>
               <Input type="date" value={form.renewal_date ?? ''} onChange={e => setForm(f => ({ ...f, renewal_date: e.target.value }))} />
+              {isOneOffCycle(form.billing_cycle) && (
+                <p className="mt-1 text-xs text-slate-500">When this one-off purchase expires.</p>
+              )}
             </div>
             <div>
               <label className={labelClass}>Status</label>
@@ -353,3 +382,4 @@ export function SubscriptionsTable({
     </>
   )
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     

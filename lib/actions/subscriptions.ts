@@ -2,6 +2,11 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import {
+  isOneOffCycle,
+  isSubscriptionBillingCycle,
+  type SubscriptionBillingCycle,
+} from '@/lib/subscriptions/billing'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -11,7 +16,7 @@ export interface SubscriptionInput {
   name: string
   category: string
   plan_name?: string
-  billing_cycle: 'monthly' | 'yearly'
+  billing_cycle: SubscriptionBillingCycle
   cost: number
   renewal_date?: string | null
   status: 'active' | 'paused' | 'cancelled'
@@ -19,10 +24,22 @@ export interface SubscriptionInput {
   notes?: string
 }
 
+function validateSubscriptionInput(input: SubscriptionInput): string | null {
+  if (!isSubscriptionBillingCycle(input.billing_cycle)) {
+    return 'Select a valid billing cycle'
+  }
+  if (isOneOffCycle(input.billing_cycle) && !input.renewal_date) {
+    return 'Expiry date is required for one-off payments'
+  }
+  return null
+}
+
 export async function createSubscriptionAction(
   input: SubscriptionInput
 ): Promise<ActionResult<{ id: string }>> {
   try {
+    const validationError = validateSubscriptionInput(input)
+    if (validationError) return { success: false, error: validationError }
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('agency_subscriptions')
@@ -54,6 +71,8 @@ export async function updateSubscriptionAction(
   input: SubscriptionInput
 ): Promise<ActionResult<undefined>> {
   try {
+    const validationError = validateSubscriptionInput(input)
+    if (validationError) return { success: false, error: validationError }
     const supabase = await createClient()
     const { error } = await supabase
       .from('agency_subscriptions')

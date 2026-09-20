@@ -22,6 +22,10 @@ import {
   formatRelativeTime,
 } from '@/lib/utils/format'
 import {
+  formatSubscriptionCost,
+  isOneOffCycle,
+} from '@/lib/subscriptions/billing'
+import {
   TrendingUp,
   DollarSign,
   FolderOpen,
@@ -198,7 +202,7 @@ export default async function DashboardPage({
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-amber-600" />
-              Upcoming Renewals ({metrics.renewingSoon.length})
+              Upcoming Renewals & Expiries ({metrics.renewingSoon.length})
             </h2>
             <Link href="/app/subscriptions" className="text-xs text-blue-600 hover:underline">
               View all
@@ -227,19 +231,13 @@ export default async function DashboardPage({
                     <p
                       className={`text-xs mt-0.5 ${isUrgent ? 'text-red-600 font-semibold' : isWarning ? 'text-amber-600 font-medium' : 'text-slate-500'}`}
                     >
-                      Renews in {days} day{days !== 1 ? 's' : ''} ·{' '}
+                      {isOneOffCycle(sub.billingCycle) ? 'Expires' : 'Renews'} in {days} day{days !== 1 ? 's' : ''} ·{' '}
                       {formatMonthDay(sub.renewalDate)}
                     </p>
                   </div>
                   <div className="text-right">
                     <span className="text-sm font-semibold text-slate-900">
-                      {new Intl.NumberFormat('en-NZ', {
-                        style: 'currency',
-                        currency: 'NZD',
-                      }).format(sub.cost)}
-                      <span className="text-xs font-normal text-slate-500">
-                        /{sub.billingCycle === 'yearly' ? 'yr' : 'mo'}
-                      </span>
+                      {formatSubscriptionCost(sub.cost, sub.billingCycle)}
                     </span>
                   </div>
                 </div>

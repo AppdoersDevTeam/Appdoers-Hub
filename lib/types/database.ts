@@ -1,3 +1,7 @@
+import type { SubscriptionBillingCycle } from '@/lib/subscriptions/billing'
+
+export type { SubscriptionBillingCycle }
+
 export type TeamRole = 'director' | 'account_manager' | 'developer' | 'designer'
 
 export type LeadStatus =
@@ -274,7 +278,7 @@ export interface AgencySubscription {
   name: string
   category: string
   plan_name: string | null
-  billing_cycle: 'monthly' | 'yearly' | string
+  billing_cycle: SubscriptionBillingCycle
   cost: number
   renewal_date: string | null
   status: 'active' | 'paused' | 'cancelled' | string
