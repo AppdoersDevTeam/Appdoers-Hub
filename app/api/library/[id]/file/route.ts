@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import mammoth from 'mammoth'
 import { requireTeamAccess } from '@/lib/supabase/route-access'
 import { DOCUMENT_BUCKET } from '@/lib/documents'
 import {
   contentDispositionFilename,
   libraryPreviewKind,
+  mimeForLibraryPreview,
   previewMessageHtml,
-  wrapLibraryPreviewHtml,
 } from '@/lib/library/file-preview'
 
 export const runtime = 'nodejs'
@@ -59,56 +58,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.redirect(data.signedUrl)
   }
 
-  if (kind === 'pdf') {
+  if (kind === 'pdf' || kind === 'docx') {
     const { data: file, error } = await access.db.storage
       .from(DOCUMENT_BUCKET)
       .download(item.storage_path)
 
     if (error || !file) {
       return htmlResponse(
-        previewMessageHtml('Library file', error?.message ?? 'Could not load this PDF.'),
+        previewMessageHtml('Library file', error?.message ?? 'Could not load this file.'),
         500
       )
     }
 
     return new NextResponse(new Uint8Array(await file.arrayBuffer()), {
       headers: {
-        'Content-Type': 'application/pdf',
+        'Content-Type': mimeForLibraryPreview(kind, item.mime_type),
         'Content-Disposition': `inline; ${contentDispositionFilename(fileName)}`,
         'Cache-Control': 'private, no-store',
         'X-Content-Type-Options': 'nosniff',
       },
     })
-  }
-
-  if (kind === 'docx') {
-    const { data: file, error } = await access.db.storage
-      .from(DOCUMENT_BUCKET)
-      .download(item.storage_path)
-
-    if (error || !file) {
-      return htmlResponse(
-        previewMessageHtml('Library file', error?.message ?? 'Could not load this Word document.'),
-        500
-      )
-    }
-
-    try {
-      const buffer = Buffer.from(await file.arrayBuffer())
-      const result = await mammoth.convertToHtml({ buffer })
-      const body = result.value.trim()
-        ? result.value
-        : '<p>This Word document does not contain previewable text.</p>'
-      return htmlResponse(wrapLibraryPreviewHtml({ title: item.title, body }))
-    } catch {
-      return htmlResponse(
-        previewMessageHtml(
-          fileName,
-          'This Word document could not be previewed in Hub. Download it to open it locally.'
-        ),
-        500
-      )
-    }
   }
 
   return htmlResponse(

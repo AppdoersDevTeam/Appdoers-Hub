@@ -3,7 +3,12 @@
 import { Download, ExternalLink, Paperclip } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatFileSize } from '@/lib/documents'
-import { libraryFileHref, libraryPreviewKind } from '@/lib/library/file-preview'
+import {
+  libraryFileHref,
+  libraryFilePageHref,
+  libraryPreviewKind,
+} from '@/lib/library/file-preview'
+import { LibraryDocxPreview } from './library-docx-preview'
 
 export function LibraryFileViewer({
   itemId,
@@ -11,16 +16,19 @@ export function LibraryFileViewer({
   mimeType,
   fileSize,
   cacheKey,
+  heightClass = 'h-[75vh]',
 }: {
   itemId: string
   fileName: string
   mimeType: string | null
   fileSize: number | null
   cacheKey: string
+  heightClass?: string
 }) {
-  const previewHref = libraryFileHref(itemId, { v: cacheKey })
+  const fileHref = libraryFileHref(itemId, { v: cacheKey })
   const downloadHref = libraryFileHref(itemId, { download: true, v: cacheKey })
   const kind = libraryPreviewKind(fileName, mimeType)
+  const openHref = kind === 'docx' ? libraryFilePageHref(itemId, cacheKey) : fileHref
 
   return (
     <div className="space-y-3">
@@ -34,7 +42,7 @@ export function LibraryFileViewer({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="outline" asChild>
-            <a href={previewHref} target="_blank" rel="noreferrer">
+            <a href={openHref} target="_blank" rel="noreferrer">
               <ExternalLink className="h-3.5 w-3.5" />
               Open
             </a>
@@ -48,17 +56,16 @@ export function LibraryFileViewer({
         </div>
       </div>
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <iframe
-          src={previewHref}
-          title={`${fileName} preview`}
-          className="h-[75vh] w-full bg-white"
-        />
+        {kind === 'docx' ? (
+          <LibraryDocxPreview src={fileHref} title={fileName} className={heightClass} />
+        ) : (
+          <iframe
+            src={fileHref}
+            title={`${fileName} preview`}
+            className={`${heightClass} w-full bg-white`}
+          />
+        )}
       </div>
-      {kind === 'docx' && (
-        <p className="text-xs text-slate-400">
-          Readable preview of the Word document. Layout may differ slightly from Microsoft Word.
-        </p>
-      )}
     </div>
   )
 }

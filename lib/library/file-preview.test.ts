@@ -3,9 +3,9 @@ import {
   contentDispositionFilename,
   escapeHtml,
   libraryFileHref,
+  libraryFilePageHref,
   libraryPreviewKind,
-  stripUnsafeHtml,
-  wrapLibraryPreviewHtml,
+  mimeForLibraryPreview,
 } from '@/lib/library/file-preview'
 
 describe('libraryPreviewKind', () => {
@@ -24,12 +24,18 @@ describe('libraryPreviewKind', () => {
   })
 })
 
-describe('libraryFileHref', () => {
-  it('builds preview and download URLs', () => {
+describe('library file URLs', () => {
+  it('builds preview, download, and page URLs', () => {
     expect(libraryFileHref('abc')).toBe('/api/library/abc/file')
     expect(libraryFileHref('abc', { download: true, v: '1' })).toBe(
       '/api/library/abc/file?download=1&v=1'
     )
+    expect(libraryFilePageHref('abc', '1')).toBe('/app/library-file/abc?v=1')
+  })
+
+  it('maps preview kinds to mime types', () => {
+    expect(mimeForLibraryPreview('pdf')).toBe('application/pdf')
+    expect(mimeForLibraryPreview('docx')).toContain('wordprocessingml')
   })
 })
 
@@ -37,21 +43,6 @@ describe('HTML helpers', () => {
   it('escapes text used in preview pages', () => {
     expect(escapeHtml(`<img src="x" onerror="alert('x')">`)).toContain('&lt;img')
     expect(escapeHtml(`<img src="x" onerror="alert('x')">`)).not.toContain('<img')
-  })
-
-  it('strips scripts and inline handlers from converted Word HTML', () => {
-    const cleaned = stripUnsafeHtml(
-      `<p>Hello</p><script>alert(1)</script><img src="x" onerror="alert(1)">`
-    )
-    expect(cleaned).toContain('<p>Hello</p>')
-    expect(cleaned).not.toMatch(/<script/i)
-    expect(cleaned).not.toMatch(/onerror/i)
-  })
-
-  it('wraps converted Word HTML in a readable page', () => {
-    const html = wrapLibraryPreviewHtml({ title: 'Onboarding', body: '<p>Step one</p>' })
-    expect(html).toContain('Onboarding')
-    expect(html).toContain('<p>Step one</p>')
   })
 
   it('encodes content-disposition filenames', () => {
