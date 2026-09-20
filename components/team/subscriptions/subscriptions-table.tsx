@@ -11,7 +11,7 @@ import {
   deleteSubscriptionAction,
   type SubscriptionInput,
 } from '@/lib/actions/subscriptions'
-import type { HubProjectOption, SupabaseAccountWithProjects } from '@/lib/actions/supabase-accounts'
+import type { SupabaseAccountWithProjects } from '@/lib/actions/supabase-accounts'
 import { isSupabaseSubscription } from '@/lib/types/database'
 import { cn } from '@/lib/utils/cn'
 import { formatDate } from '@/lib/utils/format'
@@ -90,14 +90,12 @@ interface Props {
   subscriptions: Subscription[]
   canEdit: boolean
   supabaseAccounts?: SupabaseAccountWithProjects[]
-  pickerProjects?: HubProjectOption[]
 }
 
 export function SubscriptionsTable({
   subscriptions: initial,
   canEdit,
   supabaseAccounts = [],
-  pickerProjects = [],
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [subs, setSubs] = useState(initial)
@@ -269,7 +267,6 @@ export function SubscriptionsTable({
           key={s.id}
           subscriptionId={s.id}
           accounts={accounts.filter(a => a.subscription_id === s.id)}
-          pickerProjects={pickerProjects}
           canEdit={canEdit}
           onAccountsChange={next => setAccounts(prev => [
             ...prev.filter(a => a.subscription_id !== s.id),

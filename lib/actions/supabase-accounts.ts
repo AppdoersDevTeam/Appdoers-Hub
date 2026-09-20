@@ -7,42 +7,46 @@ type ActionResult<T = undefined> =
   | { success: true; data: T }
   | { success: false; error: string }
 
-export interface HubProjectOption {
-  id: string
-  name: string
-  client_id: string
-  client_name: string
-}
-
 export interface SupabaseAccountWithProjects {
   id: string
   subscription_id: string
   login_email: string
   project_slot_limit: number
-  projects: HubProjectOption[]
+  project_names: string[]
 }
 
 export interface SupabaseAccountInput {
   subscription_id: string
   login_email: string
   project_slot_limit: number
-  project_ids: string[]
+  project_names: string[]
 }
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
 }
 
+function normalizeProjectNames(names: string[], limit: number) {
+  const cleaned: string[] = []
+  const seen = new Set<string>()
+  for (const raw of names) {
+    const name = raw.trim()
+    if (!name) continue
+    const key = name.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    cleaned.push(name)
+  }
+  return cleaned.slice(0, limit)
+}
+
 function uniqueMessage(error: { message?: string; code?: string } | null) {
   const message = error?.message ?? ''
   if (error?.code === '23505' || /duplicate key/i.test(message)) {
-    if (/project_id/i.test(message)) {
-      return 'That Hub project is already linked to another Supabase login.'
-    }
     if (/login_email|email_lower/i.test(message)) {
       return 'That login email is already tracked on this subscription.'
     }
-    return 'That login or project is already in use.'
+    return 'That login is already in use.'
   }
   return message || 'Something went wrong.'
 }
@@ -53,31 +57,10 @@ function validateInput(input: SupabaseAccountInput): string | null {
   if (!Number.isInteger(input.project_slot_limit) || input.project_slot_limit < 1) {
     return 'Slot limit must be at least 1'
   }
-  if (input.project_ids.length > input.project_slot_limit) {
+  if (normalizeProjectNames(input.project_names, input.project_slot_limit).length > input.project_slot_limit) {
     return `This login only has ${input.project_slot_limit} project slot${input.project_slot_limit === 1 ? '' : 's'}`
   }
   return null
-}
-
-async function replaceProjectLinks(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  accountId: string,
-  projectIds: string[]
-) {
-  const { error: deleteError } = await supabase
-    .from('supabase_account_projects')
-    .delete()
-    .eq('account_id', accountId)
-
-  if (deleteError) return deleteError
-
-  if (projectIds.length === 0) return null
-
-  const { error: insertError } = await supabase
-    .from('supabase_account_projects')
-    .insert(projectIds.map(project_id => ({ account_id: accountId, project_id })))
-
-  return insertError
 }
 
 export async function createSupabaseAccountAction(
@@ -94,17 +77,12 @@ export async function createSupabaseAccountAction(
         subscription_id: input.subscription_id,
         login_email: normalizeEmail(input.login_email),
         project_slot_limit: input.project_slot_limit,
+        project_names: normalizeProjectNames(input.project_names, input.project_slot_limit),
       })
       .select('id')
       .single()
 
     if (error) return { success: false, error: uniqueMessage(error) }
-
-    const linkError = await replaceProjectLinks(supabase, data.id, input.project_ids)
-    if (linkError) {
-      await supabase.from('supabase_accounts').delete().eq('id', data.id)
-      return { success: false, error: uniqueMessage(linkError) }
-    }
 
     revalidatePath('/app/subscriptions')
     return { success: true, data: { id: data.id } }
@@ -127,14 +105,12 @@ export async function updateSupabaseAccountAction(
       .update({
         login_email: normalizeEmail(input.login_email),
         project_slot_limit: input.project_slot_limit,
+        project_names: normalizeProjectNames(input.project_names, input.project_slot_limit),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
 
     if (error) return { success: false, error: uniqueMessage(error) }
-
-    const linkError = await replaceProjectLinks(supabase, id, input.project_ids)
-    if (linkError) return { success: false, error: uniqueMessage(linkError) }
 
     revalidatePath('/app/subscriptions')
     return { success: true, data: undefined }

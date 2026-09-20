@@ -1,7 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
-import Link from 'next/link'
+import { useState, useTransition } from 'react'
 import { Plus, Edit2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +9,6 @@ import {
   createSupabaseAccountAction,
   updateSupabaseAccountAction,
   deleteSupabaseAccountAction,
-  type HubProjectOption,
   type SupabaseAccountInput,
   type SupabaseAccountWithProjects,
 } from '@/lib/actions/supabase-accounts'
@@ -37,17 +35,22 @@ function SlotBadge({ used, limit }: { used: number; limit: number }) {
   )
 }
 
+function padNames(names: string[], limit: number) {
+  const next = names.slice(0, limit)
+  while (next.length < limit) next.push('')
+  return next
+}
+
 const emptyForm = (subscriptionId: string): SupabaseAccountInput => ({
   subscription_id: subscriptionId,
   login_email: '',
   project_slot_limit: 2,
-  project_ids: [],
+  project_names: ['', ''],
 })
 
 interface Props {
   subscriptionId: string
   accounts: SupabaseAccountWithProjects[]
-  pickerProjects: HubProjectOption[]
   canEdit: boolean
   onAccountsChange?: (accounts: SupabaseAccountWithProjects[]) => void
 }
@@ -55,63 +58,24 @@ interface Props {
 export function SupabaseLoginsCard({
   subscriptionId,
   accounts: initial,
-  pickerProjects,
   canEdit,
   onAccountsChange,
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [accounts, setAccounts] = useState(initial)
+  const [showForm, setShowForm] = useState(false)
+  const [editing, setEditing] = useState<SupabaseAccountWithProjects | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [form, setForm] = useState<SupabaseAccountInput>(emptyForm(subscriptionId))
 
   const commitAccounts = (next: SupabaseAccountWithProjects[]) => {
     setAccounts(next)
     onAccountsChange?.(next)
   }
-  const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState<SupabaseAccountWithProjects | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState<SupabaseAccountInput>(emptyForm(subscriptionId))
-  const [projectFilter, setProjectFilter] = useState('')
-
-  const projectOwner = useMemo(() => {
-    const map = new Map<string, { accountId: string; email: string }>()
-    for (const account of accounts) {
-      for (const project of account.projects) {
-        map.set(project.id, { accountId: account.id, email: account.login_email })
-      }
-    }
-    return map
-  }, [accounts])
-
-  const groupedProjects = useMemo(() => {
-    const query = projectFilter.trim().toLowerCase()
-    const groups = new Map<string, { clientId: string; clientName: string; projects: HubProjectOption[] }>()
-    for (const project of pickerProjects) {
-      if (
-        query &&
-        !project.name.toLowerCase().includes(query) &&
-        !project.client_name.toLowerCase().includes(query)
-      ) {
-        continue
-      }
-      const existing = groups.get(project.client_id)
-      if (existing) {
-        existing.projects.push(project)
-      } else {
-        groups.set(project.client_id, { clientId: project.client_id, clientName: project.client_name, projects: [project] })
-      }
-    }
-    return Array.from(groups.values()).sort((a, b) => a.clientName.localeCompare(b.clientName))
-  }, [pickerProjects, projectFilter])
-
-  const projectById = useMemo(() => {
-    const map = new Map(pickerProjects.map(project => [project.id, project]))
-    return map
-  }, [pickerProjects])
 
   const openAdd = () => {
     setEditing(null)
     setForm(emptyForm(subscriptionId))
-    setProjectFilter('')
     setError(null)
     setShowForm(true)
   }
@@ -122,68 +86,58 @@ export function SupabaseLoginsCard({
       subscription_id: subscriptionId,
       login_email: account.login_email,
       project_slot_limit: account.project_slot_limit,
-      project_ids: account.projects.map(project => project.id),
+      project_names: padNames(account.project_names, account.project_slot_limit),
     })
-    setProjectFilter('')
     setError(null)
     setShowForm(true)
   }
 
-  const toggleProject = (projectId: string) => {
+  const setSlotLimit = (limit: number) => {
+    const nextLimit = Math.max(1, limit)
+    setForm(current => ({
+      ...current,
+      project_slot_limit: nextLimit,
+      project_names: padNames(current.project_names, nextLimit),
+    }))
+  }
+
+  const setProjectName = (index: number, value: string) => {
     setForm(current => {
-      const selected = current.project_ids.includes(projectId)
-      if (selected) {
-        return { ...current, project_ids: current.project_ids.filter(id => id !== projectId) }
-      }
-      if (current.project_ids.length >= current.project_slot_limit) return current
-      return { ...current, project_ids: [...current.project_ids, projectId] }
+      const project_names = [...current.project_names]
+      project_names[index] = value
+      return { ...current, project_names }
     })
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    const names = form.project_names.map(name => name.trim()).filter(Boolean)
     startTransition(async () => {
+      const payload = { ...form, project_names: names }
       const result = editing
-        ? await updateSupabaseAccountAction(editing.id, form)
-        : await createSupabaseAccountAction(form)
+        ? await updateSupabaseAccountAction(editing.id, payload)
+        : await createSupabaseAccountAction(payload)
 
       if (!result.success) {
         setError(result.error)
         return
       }
 
-      const linkedProjects = form.project_ids
-        .map(id => projectById.get(id))
-        .filter((project): project is HubProjectOption => Boolean(project))
+      const saved: SupabaseAccountWithProjects = {
+        id: editing?.id ?? result.data?.id ?? '',
+        subscription_id: subscriptionId,
+        login_email: form.login_email.trim().toLowerCase(),
+        project_slot_limit: form.project_slot_limit,
+        project_names: names,
+      }
 
       if (editing) {
-        commitAccounts(accounts.map(account => (
-          account.id === editing.id
-            ? {
-                ...account,
-                login_email: form.login_email.trim().toLowerCase(),
-                project_slot_limit: form.project_slot_limit,
-                projects: linkedProjects,
-              }
-            : account
-        )))
+        commitAccounts(accounts.map(account => (account.id === editing.id ? saved : account)))
       } else {
-        const newId = result.data?.id
-        if (!newId) {
-          setError('Could not create account')
-          return
-        }
-        commitAccounts([
-          ...accounts,
-          {
-            id: newId,
-            subscription_id: subscriptionId,
-            login_email: form.login_email.trim().toLowerCase(),
-            project_slot_limit: form.project_slot_limit,
-            projects: linkedProjects,
-          },
-        ].sort((a, b) => a.login_email.localeCompare(b.login_email)))
+        commitAccounts(
+          [...accounts, saved].sort((a, b) => a.login_email.localeCompare(b.login_email))
+        )
       }
       setShowForm(false)
     })
@@ -204,7 +158,7 @@ export function SupabaseLoginsCard({
           <div>
             <h2 className="text-sm font-semibold text-slate-900">Supabase logins</h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Which Hub projects sit on each Supabase account, and how many free-tier slots remain.
+              Which Supabase projects sit on each login, and how many free-tier slots remain.
             </p>
           </div>
           {canEdit && (
@@ -216,7 +170,7 @@ export function SupabaseLoginsCard({
 
         {accounts.length === 0 ? (
           <p className="text-sm text-slate-500">
-            No logins yet. Add a login to track which Hub projects sit on each account.
+            No logins yet. Add a login and the project names on that account.
           </p>
         ) : (
           <ul className="divide-y divide-slate-200 border border-slate-200 rounded-md">
@@ -226,20 +180,19 @@ export function SupabaseLoginsCard({
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-slate-900 break-all">{account.login_email}</span>
-                      <SlotBadge used={account.projects.length} limit={account.project_slot_limit} />
+                      <SlotBadge used={account.project_names.length} limit={account.project_slot_limit} />
                     </div>
-                    {account.projects.length === 0 ? (
-                      <p className="text-xs text-slate-500 mt-1">No Hub projects linked</p>
+                    {account.project_names.length === 0 ? (
+                      <p className="text-xs text-slate-500 mt-1">No projects listed</p>
                     ) : (
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {account.projects.map(project => (
-                          <Link
-                            key={project.id}
-                            href={`/app/projects/${project.id}`}
-                            className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+                        {account.project_names.map(name => (
+                          <span
+                            key={name}
+                            className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
                           >
-                            {project.client_name} — {project.name}
-                          </Link>
+                            {name}
+                          </span>
                         ))}
                       </div>
                     )}
@@ -276,7 +229,6 @@ export function SupabaseLoginsCard({
         open={showForm}
         onClose={() => setShowForm(false)}
         title={editing ? 'Edit Supabase login' : 'Add Supabase login'}
-        width="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
           {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
@@ -298,68 +250,21 @@ export function SupabaseLoginsCard({
               type="number"
               min={1}
               value={form.project_slot_limit}
-              onChange={e => setForm(current => ({
-                ...current,
-                project_slot_limit: Math.max(1, parseInt(e.target.value, 10) || 1),
-              }))}
+              onChange={e => setSlotLimit(parseInt(e.target.value, 10) || 1)}
             />
             <p className="text-xs text-slate-500 mt-1">Free tier allows 2 projects per login.</p>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between gap-3 mb-1">
-              <label className={cn(labelClass, 'mb-0')}>Hub projects</label>
-              <span className="text-xs text-slate-500">
-                {form.project_ids.length}/{form.project_slot_limit} selected
-              </span>
-            </div>
-            <Input
-              value={projectFilter}
-              onChange={e => setProjectFilter(e.target.value)}
-              placeholder="Filter by client or project…"
-              className="mb-2"
-            />
-            <div className="max-h-72 overflow-y-auto rounded-md border border-slate-200 divide-y divide-slate-100">
-              {groupedProjects.length === 0 ? (
-                <p className="px-3 py-4 text-sm text-slate-500">No matching projects.</p>
-              ) : groupedProjects.map(group => (
-                <div key={group.clientId} className="px-3 py-2">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 mb-1">{group.clientName}</p>
-                  <div className="space-y-1">
-                    {group.projects.map(project => {
-                      const owner = projectOwner.get(project.id)
-                      const takenByOther = Boolean(owner && owner.accountId !== editing?.id)
-                      const selected = form.project_ids.includes(project.id)
-                      const slotsFull = !selected && form.project_ids.length >= form.project_slot_limit
-                      const disabled = takenByOther || slotsFull
-                      return (
-                        <label
-                          key={project.id}
-                          className={cn(
-                            'flex items-start gap-2 rounded-md px-1 py-1 text-sm',
-                            disabled ? 'text-slate-400' : 'text-slate-700 hover:bg-slate-50'
-                          )}
-                        >
-                          <input
-                            type="checkbox"
-                            className="mt-0.5"
-                            checked={selected}
-                            disabled={disabled}
-                            onChange={() => toggleProject(project.id)}
-                          />
-                          <span>
-                            {project.name}
-                            {takenByOther && (
-                              <span className="block text-xs text-slate-400">On {owner?.email}</span>
-                            )}
-                          </span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="space-y-2">
+            <label className={labelClass}>Projects</label>
+            {form.project_names.map((name, index) => (
+              <Input
+                key={index}
+                value={name}
+                onChange={e => setProjectName(index, e.target.value)}
+                placeholder={`Project ${index + 1} name`}
+              />
+            ))}
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -376,8 +281,8 @@ export function SupabaseLoginsCard({
 
 export function supabaseLoginSummary(accounts: SupabaseAccountWithProjects[]) {
   const loginCount = accounts.length
-  const used = accounts.reduce((sum, account) => sum + account.projects.length, 0)
+  const used = accounts.reduce((sum, account) => sum + account.project_names.length, 0)
   const limit = accounts.reduce((sum, account) => sum + account.project_slot_limit, 0)
-  const anyFull = accounts.some(account => account.projects.length >= account.project_slot_limit)
+  const anyFull = accounts.some(account => account.project_names.length >= account.project_slot_limit)
   return { loginCount, used, limit, anyFull }
 }

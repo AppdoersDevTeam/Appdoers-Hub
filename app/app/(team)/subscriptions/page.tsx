@@ -4,16 +4,7 @@ import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/ui/page-header'
 import { SubscriptionsTable } from '@/components/team/subscriptions/subscriptions-table'
 import { getEffectivePermissions, can } from '@/lib/permissions'
-import type { HubProjectOption, SupabaseAccountWithProjects } from '@/lib/actions/supabase-accounts'
-
-function relatedClientName(clients: unknown): string {
-  if (!clients) return '—'
-  const row = Array.isArray(clients) ? clients[0] : clients
-  if (row && typeof row === 'object' && 'company_name' in row) {
-    return (row as { company_name?: string | null }).company_name ?? '—'
-  }
-  return '—'
-}
+import type { SupabaseAccountWithProjects } from '@/lib/actions/supabase-accounts'
 
 export default async function SubscriptionsPage() {
   const supabase = await createClient()
@@ -41,8 +32,6 @@ export default async function SubscriptionsPage() {
   const [
     { data: subscriptions },
     { data: supabaseAccounts },
-    { data: accountProjects },
-    { data: projects },
   ] = await Promise.all([
     supabase
       .from('agency_subscriptions')
@@ -51,35 +40,18 @@ export default async function SubscriptionsPage() {
       .order('name'),
     supabase
       .from('supabase_accounts')
-      .select('id, subscription_id, login_email, project_slot_limit')
+      .select('id, subscription_id, login_email, project_slot_limit, project_names')
       .order('login_email'),
-    supabase
-      .from('supabase_account_projects')
-      .select('account_id, project_id'),
-    supabase
-      .from('projects')
-      .select('id, name, client_id, clients(company_name)')
-      .order('name'),
   ])
-
-  const pickerProjects: HubProjectOption[] = (projects ?? []).map(project => ({
-    id: project.id as string,
-    name: project.name as string,
-    client_id: project.client_id as string,
-    client_name: relatedClientName(project.clients),
-  }))
-
-  const projectsById = new Map(pickerProjects.map(project => [project.id, project]))
 
   const accountsWithProjects: SupabaseAccountWithProjects[] = (supabaseAccounts ?? []).map(account => ({
     id: account.id as string,
     subscription_id: account.subscription_id as string,
     login_email: account.login_email as string,
     project_slot_limit: Number(account.project_slot_limit),
-    projects: (accountProjects ?? [])
-      .filter(link => link.account_id === account.id)
-      .map(link => projectsById.get(link.project_id as string))
-      .filter((project): project is HubProjectOption => Boolean(project)),
+    project_names: Array.isArray(account.project_names)
+      ? (account.project_names as string[]).filter(name => Boolean(name?.trim()))
+      : [],
   }))
 
   return (
@@ -113,7 +85,6 @@ export default async function SubscriptionsPage() {
         }))}
         canEdit={can(effective, 'subscriptions', 'edit')}
         supabaseAccounts={accountsWithProjects}
-        pickerProjects={pickerProjects}
       />
     </div>
   )
