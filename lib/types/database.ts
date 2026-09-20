@@ -65,6 +65,8 @@ export type SubscriptionPlan =
   | 'full'
   | 'none'
 
+export type ClientBillingCycle = 'weekly' | 'monthly' | 'yearly'
+
 export type FileFolder =
   | 'briefs'
   | 'proposals'
@@ -100,6 +102,7 @@ export interface Client {
   subscription_end_date: string | null
   contract_months: number | null
   plan_service_id: string | null
+  billing_cycle: ClientBillingCycle
   monthly_fee: number
   setup_fee: number
   setup_upfront: number

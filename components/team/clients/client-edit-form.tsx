@@ -12,6 +12,13 @@ import {
   planKeyFromCatalog,
   type CatalogServiceOption,
 } from '@/lib/clients/catalog-options'
+import {
+  BILLING_CYCLE_OPTIONS,
+  billingCycleFeeLabel,
+  normalizeBillingCycle,
+  recurringFeeToMonthly,
+  type ClientBillingCycle,
+} from '@/lib/clients/billing'
 import { formatCurrency } from '@/lib/utils/format'
 
 export interface ClientServiceRecord {
@@ -30,6 +37,7 @@ interface ClientRecord {
   subscription_plan: string
   contract_months: number | null
   plan_service_id: string | null
+  billing_cycle?: string
   monthly_fee: number
   setup_fee: number
   setup_upfront: number
@@ -88,6 +96,7 @@ export function ClientEditForm({
     plan_service_id: client.plan_service_id ?? '',
     subscription_plan: client.subscription_plan,
     contract_months: client.contract_months,
+    billing_cycle: normalizeBillingCycle(client.billing_cycle),
     monthly_fee: client.monthly_fee,
     setup_fee: client.setup_fee,
     setup_upfront: client.setup_upfront ?? 0,
@@ -107,6 +116,7 @@ export function ClientEditForm({
         plan_service_id: '',
         subscription_plan: 'none',
         contract_months: null,
+        billing_cycle: 'monthly' as ClientBillingCycle,
         monthly_fee: 0,
         setup_fee: 0,
         setup_upfront: 0,
@@ -120,6 +130,7 @@ export function ClientEditForm({
       plan_service_id: serviceId,
       subscription_plan: planKeyFromCatalog(plan.plan_key),
       contract_months: plan.contract_months,
+      billing_cycle: 'monthly' as ClientBillingCycle,
       monthly_fee: plan.monthly_fee,
       setup_fee: plan.setup_fee,
       setup_upfront: plan.min_upfront ?? 0,
@@ -170,6 +181,7 @@ export function ClientEditForm({
         subscription_plan: form.subscription_plan,
         contract_months: form.contract_months,
         plan_service_id: form.plan_service_id || null,
+        billing_cycle: form.billing_cycle,
         monthly_fee: form.monthly_fee,
         setup_fee: form.setup_fee,
         setup_upfront: form.setup_upfront,
@@ -241,40 +253,61 @@ export function ClientEditForm({
             ))}
           </select>
         </div>
-        {form.plan_service_id && (
-          <div className="grid grid-cols-2 gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
-            <div>
-              <p className="text-xs text-slate-500">Due upfront (min)</p>
-              <Input
-                type="number"
-                min={0}
-                step={0.01}
-                value={form.setup_upfront}
-                onChange={(e) => set('setup_upfront', parseFloat(e.target.value) || 0)}
-              />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Total setup fee</p>
-              <Input
-                type="number"
-                min={0}
-                step={0.01}
-                value={form.setup_fee}
-                onChange={(e) => set('setup_fee', parseFloat(e.target.value) || 0)}
-              />
-            </div>
-            <div className="col-span-2">
-              <p className="text-xs text-slate-500">Monthly total</p>
-              <Input
-                type="number"
-                min={0}
-                step={0.01}
-                value={form.monthly_fee}
-                onChange={(e) => set('monthly_fee', parseFloat(e.target.value) || 0)}
-              />
-            </div>
+        <div className="grid grid-cols-2 gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+          <div>
+            <p className="text-xs text-slate-500">Billing cycle</p>
+            <select
+              className={selectClass}
+              value={form.billing_cycle}
+              onChange={(e) => set('billing_cycle', e.target.value as ClientBillingCycle)}
+            >
+              {BILLING_CYCLE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+          <div>
+            <p className="text-xs text-slate-500">{billingCycleFeeLabel(form.billing_cycle)}</p>
+            <Input
+              type="number"
+              min={0}
+              step={0.01}
+              value={form.monthly_fee}
+              onChange={(e) => set('monthly_fee', parseFloat(e.target.value) || 0)}
+            />
+          </div>
+          {form.plan_service_id && (
+            <>
+              <div>
+                <p className="text-xs text-slate-500">Due upfront (min)</p>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={form.setup_upfront}
+                  onChange={(e) => set('setup_upfront', parseFloat(e.target.value) || 0)}
+                />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Total setup fee</p>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={form.setup_fee}
+                  onChange={(e) => set('setup_fee', parseFloat(e.target.value) || 0)}
+                />
+              </div>
+            </>
+          )}
+          {form.billing_cycle !== 'monthly' && form.monthly_fee > 0 && (
+            <p className="col-span-2 text-xs text-slate-500">
+              Equivalent MRR {formatCurrency(recurringFeeToMonthly(form.monthly_fee, form.billing_cycle))}
+            </p>
+          )}
+        </div>
         <div>
           <label className={labelClass}>Additional Services</label>
           <div className="space-y-3 rounded-md border border-slate-200 p-3">

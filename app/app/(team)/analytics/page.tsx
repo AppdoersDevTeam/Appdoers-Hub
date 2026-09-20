@@ -126,7 +126,7 @@ export default async function AnalyticsPage() {
     {
       label: 'Paying Clients',
       value: String(metrics.payingClientCount),
-      sub: 'Active with monthly fee > $0',
+      sub: 'Active with a recurring fee > $0',
       icon: Users,
       color: 'text-blue-600',
       bg: 'bg-blue-50',

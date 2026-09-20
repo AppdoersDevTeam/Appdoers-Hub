@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { recurringFeeToMonthly } from '@/lib/clients/billing'
 import type {
   BillingCycleSplit,
   CategorySpend,
@@ -39,7 +40,7 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
 
       supabase
         .from('clients')
-        .select('monthly_fee, status')
+        .select('monthly_fee, billing_cycle, status')
         .eq('status', 'active'),
     ])
 
@@ -107,7 +108,8 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
   const activeClients = clientsRes.data ?? []
   const payingClients = activeClients.filter((c) => Number(c.monthly_fee) > 0)
   const mrr = activeClients.reduce(
-    (sum, c) => sum + (Number(c.monthly_fee) || 0),
+    (sum, c) =>
+      sum + recurringFeeToMonthly(Number(c.monthly_fee), c.billing_cycle),
     0
   )
   const payingClientCount = payingClients.length

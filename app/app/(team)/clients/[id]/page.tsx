@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { ContactsSection } from '@/components/team/clients/contacts-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
+import { formatRecurringFee, normalizeBillingCycle, recurringFeeToMonthly } from '@/lib/clients/billing'
 import { ClientDetailsCard } from '@/components/team/clients/client-details-card'
 import { ClientOverviewSnapshot } from '@/components/team/clients/client-overview-snapshot'
 import { ClientSupabaseCard } from '@/components/team/clients/client-supabase-card'
@@ -326,14 +327,19 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
                   )}
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Monthly Fee (MRR)</p>
+                  <p className="text-xs text-slate-500">Recurring Fee</p>
                   <p className="mt-0.5 text-xl font-semibold text-emerald-600">
-                    {formatCurrency(Number(client.monthly_fee) + (clientServices ?? []).reduce((s, r) => s + Number(r.monthly_fee), 0))}
+                    {formatRecurringFee(Number(client.monthly_fee), client.billing_cycle)}
                   </p>
+                  {normalizeBillingCycle(client.billing_cycle) !== 'monthly' && Number(client.monthly_fee) > 0 && (
+                    <p className="text-xs text-slate-500">
+                      Equivalent MRR {formatCurrency(recurringFeeToMonthly(Number(client.monthly_fee), client.billing_cycle))}
+                    </p>
+                  )}
                   {(clientServices ?? []).length > 0 && (
                     <p className="text-xs text-slate-500">
-                      Plan {formatCurrency(client.monthly_fee)} + add-ons{' '}
-                      {formatCurrency((clientServices ?? []).reduce((s, r) => s + Number(r.monthly_fee), 0))}
+                      Plan {formatRecurringFee(Number(client.monthly_fee), client.billing_cycle)} + add-ons{' '}
+                      {formatCurrency((clientServices ?? []).reduce((s, r) => s + Number(r.monthly_fee), 0))}/mo
                     </p>
                   )}
                 </div>
@@ -387,6 +393,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
                 contract_months: client.contract_months ?? null,
                 plan_service_id: resolvedPlanServiceId,
                 setup_upfront: Number(client.setup_upfront ?? 0),
+                billing_cycle: client.billing_cycle,
                 monthly_fee: Number(client.monthly_fee),
                 setup_fee: Number(client.setup_fee),
               }}

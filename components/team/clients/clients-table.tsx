@@ -1,13 +1,16 @@
 ﻿'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NewClientSlideOver } from './new-client-slide-over'
-import { formatCurrency, formatRelativeTime } from '@/lib/utils/format'
+import { formatRecurringFee, recurringFeeToMonthly } from '@/lib/clients/billing'
+import { SortableTh } from '@/components/ui/sortable-th'
+import { formatRelativeTime } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
+import { sortRows, type SortDir, type SortValue } from '@/lib/utils/table-sort'
 
 type ClientRow = {
   id: string
@@ -15,6 +18,7 @@ type ClientRow = {
   primary_contact: string
   subscription_plan: string
   monthly_fee: number
+  billing_cycle?: string
   active_projects: number
   status: string
   updated_at: string
@@ -30,22 +34,46 @@ const statusConfig: Record<string, { label: string; cls: string }> = {
   churned: { label: 'Churned', cls: 'bg-red-50 text-red-700' },
 }
 
+const CLIENT_STATUS_ORDER: Record<string, number> = { active: 0, inactive: 1, churned: 2 }
+
+const CLIENT_SORT_GETTERS: Record<string, (c: ClientRow) => SortValue> = {
+  company: (c) => c.company_name,
+  contact: (c) => c.primary_contact,
+  plan: (c) => planLabels[c.subscription_plan] ?? c.subscription_plan,
+  fee: (c) => recurringFeeToMonthly(c.monthly_fee, c.billing_cycle),
+  projects: (c) => c.active_projects,
+  status: (c) => CLIENT_STATUS_ORDER[c.status] ?? 99,
+  activity: (c) => c.updated_at,
+}
+
 export function ClientsTable({ clients }: { clients: ClientRow[] }) {
   const [search, setSearch] = useState('')
   const [planFilter, setPlanFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [showNew, setShowNew] = useState(false)
+  const [sortKey, setSortKey] = useState<string | null>(null)
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
 
-  const filtered = clients.filter((c) => {
-    const matchSearch = c.company_name
-      .toLowerCase()
-      .includes(search.toLowerCase())
-    const matchPlan =
-      planFilter === 'all' || c.subscription_plan === planFilter
-    const matchStatus =
-      statusFilter === 'all' || c.status === statusFilter
-    return matchSearch && matchPlan && matchStatus
-  })
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    return clients.filter((c) => {
+      const matchSearch = c.company_name.toLowerCase().includes(q)
+      const matchPlan = planFilter === 'all' || c.subscription_plan === planFilter
+      const matchStatus = statusFilter === 'all' || c.status === statusFilter
+      return matchSearch && matchPlan && matchStatus
+    })
+  }, [clients, search, planFilter, statusFilter])
+
+  const sorted = useMemo(() => {
+    const get = sortKey ? CLIENT_SORT_GETTERS[sortKey] : undefined
+    if (!get) return filtered
+    return sortRows(filtered, get, sortDir)
+  }, [filtered, sortKey, sortDir])
+
+  const handleSort = (column: string, dir: SortDir) => {
+    setSortKey(column)
+    setSortDir(dir)
+  }
 
   const selectClass =
     'rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
@@ -96,26 +124,17 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                {[
-                  'Company',
-                  'Primary Contact',
-                  'Plan',
-                  'MRR',
-                  'Active Projects',
-                  'Status',
-                  'Last Activity',
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500"
-                  >
-                    {h}
-                  </th>
-                ))}
+                <SortableTh label="Company" column="company" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Primary Contact" column="contact" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Plan" column="plan" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Fee" column="fee" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Active Projects" column="projects" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Status" column="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                <SortableTh label="Last Activity" column="activity" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filtered.length === 0 ? (
+              {sorted.length === 0 ? (
                 <tr>
                   <td
                     colSpan={7}
@@ -127,7 +146,7 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                   </td>
                 </tr>
               ) : (
-                filtered.map((c) => {
+                sorted.map((c) => {
                   const st = statusConfig[c.status] ?? statusConfig.inactive
                   return (
                     <tr
@@ -149,7 +168,7 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                         {planLabels[c.subscription_plan] ?? c.subscription_plan}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {formatCurrency(c.monthly_fee)}
+                        {formatRecurringFee(c.monthly_fee, c.billing_cycle)}
                       </td>
                       <td className="px-4 py-3 text-center text-slate-600">
                         {c.active_projects}

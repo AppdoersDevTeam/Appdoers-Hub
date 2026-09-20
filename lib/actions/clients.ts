@@ -36,6 +36,7 @@ export interface CreateClientInput {
   subscription_plan: string
   contract_months?: number | null
   plan_service_id?: string | null
+  billing_cycle?: 'weekly' | 'monthly' | 'yearly'
   monthly_fee: number
   setup_fee: number
   setup_upfront?: number

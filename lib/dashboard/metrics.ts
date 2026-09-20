@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { recurringFeeToMonthly } from '@/lib/clients/billing'
 import type { LeadStatus, WorkflowStage } from '@/lib/types/database'
 import { WORKFLOW_STAGE_CONFIG } from '@/lib/tasks/constants'
 import {
@@ -43,7 +44,7 @@ export async function getDashboardAnalytics(
         'id, contact_name, company_name, status, estimated_value, next_action, next_action_date, updated_at'
       ),
 
-    supabase.from('clients').select('monthly_fee').eq('status', 'active'),
+    supabase.from('clients').select('monthly_fee, billing_cycle').eq('status', 'active'),
 
     supabase
       .from('projects')
@@ -115,7 +116,8 @@ export async function getDashboardAnalytics(
     0
   )
   const mrrTotal = (clientsRes.data ?? []).reduce(
-    (sum, c) => sum + (Number(c.monthly_fee) || 0),
+    (sum, c) =>
+      sum + recurringFeeToMonthly(Number(c.monthly_fee), c.billing_cycle),
     0
   )
   const activeProjects = projects.filter((p) => p.status === 'active').length
@@ -324,7 +326,4 @@ export async function getDashboardAnalytics(
         'System',
       createdAt: entry.created_at as string,
     })),
-  }
-}
-
-export type { DashboardPeriod }
+ 
