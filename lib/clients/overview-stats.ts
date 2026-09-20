@@ -53,8 +53,6 @@ export interface ClientOverviewStats {
   outstandingInvoiceTotal: number
   outstandingInvoiceCount: number
   overdueInvoiceCount: number
-  credentialsCount: number
-  notesCount: number
 }
 
 function one<T>(value: T | T[] | null | undefined): T | null {
@@ -92,8 +90,6 @@ export async function getClientOverviewStats(
     proposalsRes,
     contractsRes,
     invoicesRes,
-    credentialsRes,
-    notesRes,
   ] = await Promise.all([
     supabase
       .from('projects')
@@ -112,15 +108,6 @@ export async function getClientOverviewStats(
       .select('id, status, total, due_date')
       .eq('client_id', clientId)
       .in('status', ['sent', 'overdue']),
-    supabase
-      .from('client_credentials')
-      .select('id', { count: 'exact', head: true })
-      .eq('client_id', clientId),
-    supabase
-      .from('notes')
-      .select('id', { count: 'exact', head: true })
-      .eq('entity_type', 'client')
-      .eq('entity_id', clientId),
   ])
 
   const projects = (projectsRes.data ?? []) as OverviewProject[]
@@ -227,7 +214,5 @@ export async function getClientOverviewStats(
     outstandingInvoiceTotal,
     outstandingInvoiceCount: invoices.length,
     overdueInvoiceCount: invoices.filter((inv) => inv.status === 'overdue' || (inv.due_date && inv.due_date < today)).length,
-    credentialsCount: credentialsRes.count ?? 0,
-    notesCount: notesRes.count ?? 0,
   }
 }

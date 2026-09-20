@@ -285,9 +285,6 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
           <ClientOverviewSnapshot
             clientId={id}
             stats={overviewStats}
-            intakeStatus={(latestIntake?.status as IntakeStatus | undefined) ?? null}
-            slackChannelName={(client.slack_channel_name as string | null) ?? null}
-            contactsCount={contacts?.length ?? 0}
             supabaseCount={supabaseLinks?.length ?? 0}
           />
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

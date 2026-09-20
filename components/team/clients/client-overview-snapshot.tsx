@@ -12,7 +12,6 @@ import {
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
-import { INTAKE_STATUS_LABELS, type IntakeStatus } from '@/lib/intake/types'
 import type { ClientOverviewStats, OverviewDomain } from '@/lib/clients/overview-stats'
 
 const PHASE_LABELS: Record<string, string> = {
@@ -61,16 +60,10 @@ function Chip({ href, children }: { href: string; children: ReactNode }) {
 export function ClientOverviewSnapshot({
   clientId,
   stats,
-  intakeStatus,
-  slackChannelName,
-  contactsCount,
   supabaseCount,
 }: {
   clientId: string
   stats: ClientOverviewStats
-  intakeStatus: IntakeStatus | null
-  slackChannelName: string | null
-  contactsCount: number
   supabaseCount: number
 }) {
   const nextTone = domainTone(stats.nextDomain?.days_until_expiry ?? null)
@@ -157,23 +150,6 @@ export function ClientOverviewSnapshot({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Chip href={`/app/clients/${clientId}?tab=intake`}>
-          Intake: {intakeStatus ? INTAKE_STATUS_LABELS[intakeStatus] : 'Not sent'}
-        </Chip>
-        {slackChannelName && (
-          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600">
-            Slack: #{slackChannelName.replace(/^#/, '')}
-          </span>
-        )}
-        <Chip href={`/app/clients/${clientId}`}>
-          {contactsCount} contact{contactsCount === 1 ? '' : 's'}
-        </Chip>
-        <Chip href={`/app/clients/${clientId}?tab=credentials`}>
-          {stats.credentialsCount} credential{stats.credentialsCount === 1 ? '' : 's'}
-        </Chip>
-        <Chip href={`/app/clients/${clientId}?tab=notes`}>
-          {stats.notesCount} note{stats.notesCount === 1 ? '' : 's'}
-        </Chip>
         {supabaseCount > 0 && (
           <Chip href="/app/subscriptions">
             {supabaseCount} Supabase project{supabaseCount === 1 ? '' : 's'}
