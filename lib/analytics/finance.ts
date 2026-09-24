@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { aggregateClientMrr } from '@/lib/analytics/mrr'
+import { isInternalClient } from '@/lib/clients/internal'
+import { selectWithInternalClientFallback } from '@/lib/clients/stats-query'
 import {
   subscriptionCostToMonthly,
   subscriptionCostToYearly,
@@ -15,6 +17,7 @@ interface SubscriptionRow {
   status: string
   client_id: string | null
   client_name: string | null
+  is_internal_client: boolean
 }
 
 function safeDivide(numerator: number, denominator: number): number | null {
@@ -22,11 +25,20 @@ function safeDivide(numerator: number, denominator: number): number | null {
   return numerator / denominator
 }
 
-function nestedClientName(
-  nested: { company_name?: string } | { company_name?: string }[] | null
-): string | null {
+function nestedClient(
+  nested:
+    | { company_name?: string; is_internal?: boolean | null }
+    | { company_name?: string; is_internal?: boolean | null }[]
+    | null
+): { company_name: string | null; is_internal: boolean } {
   const client = Array.isArray(nested) ? nested[0] : nested
-  return client?.company_name ?? null
+  return {
+    company_name: client?.company_name ?? null,
+    is_internal: isInternalClient({
+      is_internal: client?.is_internal ?? null,
+      company_name: client?.company_name ?? null,
+    }),
+  }
 }
 
 function sumMonthly(subs: SubscriptionRow[]): number {
@@ -47,20 +59,45 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
   const supabase = await createClient()
 
   const [subsRes, clientsRes, addonsRes] = await Promise.all([
-    supabase
-      .from('agency_subscriptions')
-      .select('id, name, category, billing_cycle, cost, status, client_id, clients(company_name)'),
+    selectWithInternalClientFallback(
+      () =>
+        supabase
+          .from('agency_subscriptions')
+          .select(
+            'id, name, category, billing_cycle, cost, status, client_id, clients(company_name, is_internal)'
+          ),
+      () =>
+        supabase
+          .from('agency_subscriptions')
+          .select(
+            'id, name, category, billing_cycle, cost, status, client_id, clients(company_name)'
+          )
+    ),
 
-    supabase
-      .from('clients')
-      .select('id, monthly_fee, billing_cycle, status')
-      .eq('status', 'active'),
+    selectWithInternalClientFallback(
+      () =>
+        supabase
+          .from('clients')
+          .select('id, company_name, monthly_fee, billing_cycle, status, is_internal')
+          .eq('status', 'active'),
+      () =>
+        supabase
+          .from('clients')
+          .select('id, company_name, monthly_fee, billing_cycle, status')
+          .eq('status', 'active')
+    ),
 
     supabase.from('client_services').select('client_id, monthly_fee'),
   ])
 
   const allSubs: SubscriptionRow[] = (subsRes.data ?? []).map((row) => {
     const client_id = (row.client_id as string | null) ?? null
+    const client = nestedClient(
+      row.clients as
+        | { company_name?: string; is_internal?: boolean | null }
+        | { company_name?: string; is_internal?: boolean | null }[]
+        | null
+    )
     return {
       id: row.id as string,
       name: row.name as string,
@@ -69,14 +106,13 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
       cost: Number(row.cost),
       status: row.status as string,
       client_id,
-      client_name: nestedClientName(
-        row.clients as { company_name?: string } | { company_name?: string }[] | null
-      ),
+      client_name: client.company_name,
+      is_internal_client: client.is_internal,
     }
   })
   const activeSubs = allSubs.filter((s) => s.status === 'active')
-  const companySubs = activeSubs.filter((s) => !s.client_id)
-  const clientSubs = activeSubs.filter((s) => Boolean(s.client_id))
+  const companySubs = activeSubs.filter((s) => !s.client_id || s.is_internal_client)
+  const clientSubs = activeSubs.filter((s) => Boolean(s.client_id) && !s.is_internal_client)
 
   const monthlySpend = sumMonthly(activeSubs)
   const yearlyProjected = sumYearly(activeSubs)
@@ -112,7 +148,10 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
         id: sub.id,
         name: sub.name,
         category: sub.category || 'Other',
-        assignedTo: sub.client_name ?? 'Company-wide',
+        assignedTo:
+          !sub.client_id || sub.is_internal_client
+            ? 'Company-wide'
+            : sub.client_name ?? 'Company-wide',
         monthly,
         percentOfSpend: monthlySpend > 0 ? (monthly / monthlySpend) * 100 : 0,
       }
@@ -120,15 +159,26 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
     .sort((a, b) => b.monthly - a.monthly)
     .slice(0, 8)
 
-  const activeClients = (clientsRes.data ?? []).map((c) => ({
-    id: c.id as string,
-    monthly_fee: Number(c.monthly_fee),
-    billing_cycle: (c.billing_cycle as string | null) ?? null,
-  }))
-  const addons = (addonsRes.data ?? []).map((row) => ({
-    client_id: row.client_id as string,
-    monthly_fee: Number(row.monthly_fee),
-  }))
+  const activeClients = (clientsRes.data ?? [])
+    .filter(
+      (c) =>
+        !isInternalClient({
+          is_internal: c.is_internal as boolean | null,
+          company_name: c.company_name as string | null,
+        })
+    )
+    .map((c) => ({
+      id: c.id as string,
+      monthly_fee: Number(c.monthly_fee),
+      billing_cycle: (c.billing_cycle as string | null) ?? null,
+    }))
+  const externalClientIds = new Set(activeClients.map((c) => c.id))
+  const addons = (addonsRes.data ?? [])
+    .filter((row) => externalClientIds.has(row.client_id as string))
+    .map((row) => ({
+      client_id: row.client_id as string,
+      monthly_fee: Number(row.monthly_fee),
+    }))
   const { mrr, payingClientCount } = aggregateClientMrr(activeClients, addons)
   const projectedArr = mrr * 12
   const avgMrrPerPayingClient = safeDivide(mrr, payingClientCount)
