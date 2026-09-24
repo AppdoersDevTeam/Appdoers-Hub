@@ -12,7 +12,13 @@ import {
 import { ChartCard } from './chart-card'
 import type { HoursByDate } from '@/lib/dashboard/types'
 
-const CHART_MARGIN = { top: 8, right: 12, left: 4, bottom: 4 }
+const CHART_MARGIN = { top: 8, right: 12, left: 4, bottom: 8 }
+
+/** Axis ticks use the start of a range label ("1 Jul–5 Jul" → "1 Jul"). */
+function shortAxisLabel(label: string): string {
+  const enDash = label.indexOf('–')
+  return enDash > 0 ? label.slice(0, enDash) : label
+}
 
 interface Props {
   data: HoursByDate[]
@@ -21,7 +27,6 @@ interface Props {
 
 export function HoursTrendChart({ data, periodLabel }: Props) {
   const hasData = data.some((d) => d.hours > 0)
-  const tickInterval = data.length > 14 ? Math.ceil(data.length / 7) - 1 : 0
 
   return (
     <ChartCard
@@ -44,8 +49,9 @@ export function HoursTrendChart({ data, periodLabel }: Props) {
             tick={{ fontSize: 11, fill: '#64748b' }}
             tickLine={false}
             axisLine={false}
-            interval={tickInterval}
-            minTickGap={24}
+            interval="preserveStartEnd"
+            minTickGap={40}
+            tickFormatter={shortAxisLabel}
           />
           <YAxis
             tick={{ fontSize: 11, fill: '#64748b' }}
@@ -60,6 +66,7 @@ export function HoursTrendChart({ data, periodLabel }: Props) {
               border: '1px solid #e2e8f0',
               fontSize: '12px',
             }}
+            labelFormatter={(label) => String(label)}
             formatter={(value) => [`${Number(value ?? 0)}h`, 'Hours']}
           />
           <Area
