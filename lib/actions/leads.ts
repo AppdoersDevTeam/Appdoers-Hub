@@ -534,4 +534,122 @@ export async function convertLeadToClientAction(
     .eq('id', id)
 
   if (wonError) {
-    const { error: 
+    return {
+      success: false,
+      error: `Client was created, but the lead could not be marked won: ${wonError.message}`,
+    }
+  }
+
+  await supabase.from('proposals').update({ client_id: client.id }).eq('lead_id', id)
+
+  const name = `${lead.contact_name}${lead.company_name ? ` (${lead.company_name})` : ''}`
+
+  await logActivity({
+    entityType: 'lead',
+    entityId: id,
+    clientId: client.id,
+    action: 'converted',
+    description: `Lead converted to client — ${companyName}`,
+  })
+
+  after(() => {
+    void sendSlackAlert('leads', {
+      text: `Lead converted to client: ${name}`,
+      title: 'Lead converted to client',
+      fields: [
+        { label: 'Lead', value: name },
+        { label: 'Client', value: companyName },
+        ...(lead.estimated_value
+          ? [{ label: 'Est. value', value: `$${Number(lead.estimated_value).toLocaleString()}` }]
+          : []),
+      ],
+      action: slackOpenHub(hubClientUrl(client.id) || hubLeadUrl(id)),
+    })
+  })
+
+  revalidatePath('/app/leads')
+  revalidatePath(`/app/leads/${id}`)
+  revalidatePath('/app/clients')
+  revalidatePath(`/app/clients/${client.id}`)
+  revalidatePath('/app/dashboard')
+  revalidatePath('/app/proposals')
+  return { success: true, data: { id: client.id } }
+}
+
+// ─── Lead Notes ───────────────────────────────────────────────────────────────
+
+export async function addLeadNoteAction(
+  leadId: string,
+  content: string,
+  type: 'general' | 'call' | 'meeting' | 'email'
+): Promise<ActionResult<undefined>> {
+  try {
+    const supabase = await createSupabaseClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    const { error } = await supabase.from('lead_notes').insert({
+      lead_id: leadId,
+      content,
+      type,
+      author_id: user?.id,
+    })
+
+    if (error) return { success: false, error: error.message }
+
+    revalidatePath(`/app/leads/${leadId}`)
+    return { success: true, data: undefined }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
+
+export async function deleteLeadAction(id: string): Promise<ActionResult<undefined>> {
+  try {
+    const supabase = await createSupabaseClient()
+    const { data: lead, error: loadError } = await supabase
+      .from('leads')
+      .select('id, contact_name, company_name')
+      .eq('id', id)
+      .single()
+
+    if (loadError || !lead) return { success: false, error: 'Lead not found' }
+
+    const { error: unlinkError } = await supabase
+      .from('proposals')
+      .update({ lead_id: null })
+      .eq('lead_id', id)
+      .not('client_id', 'is', null)
+    if (unlinkError) return { success: false, error: unlinkError.message }
+
+    const { error: proposalDeleteError } = await supabase
+      .from('proposals')
+      .delete()
+      .eq('lead_id', id)
+      .is('client_id', null)
+    if (proposalDeleteError) return { success: false, error: proposalDeleteError.message }
+
+    await supabase.from('lead_notes').delete().eq('lead_id', id)
+    await supabase.from('notes').delete().eq('entity_type', 'lead').eq('entity_id', id)
+
+    const name = `${lead.contact_name}${lead.company_name ? ` (${lead.company_name})` : ''}`
+    await logActivity({
+      entityType: 'lead',
+      entityId: id,
+      action: 'deleted',
+      description: `Lead "${name}" deleted`,
+    })
+
+    const { error } = await supabase.from('leads').delete().eq('id', id)
+    if (error) return { success: false, error: error.message }
+
+    revalidatePath('/app/leads')
+    revalidatePath('/app/clients')
+    revalidatePath('/app/proposals')
+    revalidatePath('/app/dashboard')
+    return { success: true, data: undefined }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
