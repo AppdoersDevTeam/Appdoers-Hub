@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Edit2, PowerOff, Power, KeyRound, X } from 'lucide-react'
+import { Plus, Edit2, PowerOff, Power, KeyRound, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SlideOver } from '@/components/ui/slide-over'
@@ -10,6 +10,7 @@ import {
   createTeamMemberAction,
   updateTeamMemberAction,
   toggleTeamMemberActiveAction,
+  deleteTeamMemberAction,
   resetMemberPasswordAction,
 } from '@/lib/actions/team'
 import { cn } from '@/lib/utils/cn'
@@ -139,6 +140,24 @@ export function TeamManagement({ members, currentUserId }: Props) {
     })
   }
 
+  const handleDelete = (member: Member) => {
+    if (member.is_active) return
+    if (
+      !confirm(
+        `Permanently delete ${member.full_name}? This removes their Hub access and cannot be undone.`
+      )
+    ) {
+      return
+    }
+    setError(null)
+    startTransition(async () => {
+      const result = await deleteTeamMemberAction(member.id)
+      if (!result.success) { setError(result.error); return }
+      flash('Member deleted')
+      router.refresh()
+    })
+  }
+
   const handleResetPassword = () => {
     if (!resetMember) return
     if (newPassword.length < 8) { setError('Password must be at least 8 characters'); return }
@@ -169,6 +188,11 @@ export function TeamManagement({ members, currentUserId }: Props) {
       {success && (
         <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-600">
           {success}
+        </div>
+      )}
+      {error && !showCreate && !editMember && !resetMember && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
+          {error}
         </div>
       )}
 
@@ -244,6 +268,16 @@ export function TeamManagement({ members, currentUserId }: Props) {
                         title={m.is_active ? 'Deactivate member' : 'Reactivate member'}
                       >
                         {m.is_active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+                      </button>
+                    )}
+                    {m.id !== currentUserId && !m.is_active && (
+                      <button
+                        onClick={() => handleDelete(m)}
+                        disabled={isPending}
+                        className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        title="Delete member"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
                   </div>

@@ -208,6 +208,66 @@ export async function toggleTeamMemberActiveAction(
   }
 }
 
+// ─── Delete Team Member (Director only, inactive only) ────────────────────────
+
+export async function deleteTeamMemberAction(
+  id: string
+): Promise<ActionResult<undefined>> {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (id === user?.id) {
+      return { success: false, error: 'You cannot delete your own account' }
+    }
+    const { data: caller } = await supabase
+      .from('team_users')
+      .select('role')
+      .eq('id', user?.id ?? '')
+      .single()
+    if (caller?.role !== 'director') {
+      return { success: false, error: 'Only directors can delete team members' }
+    }
+
+    const { data: member } = await supabase
+      .from('team_users')
+      .select('id, is_active')
+      .eq('id', id)
+      .single()
+    if (!member) {
+      return { success: false, error: 'Team member not found' }
+    }
+    if (member.is_active) {
+      return {
+        success: false,
+        error: 'Deactivate the member before deleting them',
+      }
+    }
+
+    const serviceClient = await createServiceClient()
+    const { error: dbError } = await serviceClient
+      .from('team_users')
+      .delete()
+      .eq('id', id)
+    if (dbError) return { success: false, error: dbError.message }
+
+    const { error: authError } = await serviceClient.auth.admin.deleteUser(id)
+    if (authError) {
+      // Row is gone; auth cleanup failure should still surface.
+      return {
+        success: false,
+        error: `Member removed from Hub, but auth cleanup failed: ${authError.message}`,
+      }
+    }
+
+    revalidatePath('/app/settings')
+    return { success: true, data: undefined }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
+
 // ─── Reset Password for Member (Director only) ────────────────────────────────
 
 export async function resetMemberPasswordAction(

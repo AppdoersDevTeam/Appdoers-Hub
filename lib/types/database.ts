@@ -246,7 +246,7 @@ export interface Note {
   id: string
   entity_type: 'client' | 'lead' | 'project' | 'invoice' | 'proposal'
   entity_id: string
-  author_id: string
+  author_id: string | null
   type: NoteType
   content: string
   created_at: string
