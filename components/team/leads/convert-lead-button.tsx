@@ -14,6 +14,7 @@ interface Props {
   className?: string
   size?: 'default' | 'sm'
   fullWidth?: boolean
+  iconOnly?: boolean
 }
 
 export function ConvertLeadButton({
@@ -22,6 +23,7 @@ export function ConvertLeadButton({
   className,
   size = 'default',
   fullWidth = false,
+  iconOnly = false,
 }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -41,22 +43,40 @@ export function ConvertLeadButton({
     })
   }
 
+  const label = isPending ? 'Converting…' : 'Convert to Client'
+
   return (
-    <div className={cn(fullWidth && 'w-full space-y-1')}>
+    <div className={cn(iconOnly ? 'inline-flex' : fullWidth && 'w-full space-y-1')}>
       {error && (
         <p className="text-sm text-red-600">{error}</p>
       )}
-      <Button
-        type="button"
-        variant="success"
-        size={size}
-        className={cn(fullWidth && 'w-full', className)}
-        disabled={isPending}
-        onClick={() => setOpen(true)}
-      >
-        <UserPlus className={size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
-        {isPending ? 'Converting…' : 'Convert to Client'}
-      </Button>
+      {iconOnly ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          disabled={isPending}
+          title={label}
+          aria-label={label}
+          className={cn(
+            'rounded p-1 text-slate-500 hover:text-emerald-600 transition-colors disabled:opacity-50',
+            className
+          )}
+        >
+          <UserPlus className="h-3.5 w-3.5" />
+        </button>
+      ) : (
+        <Button
+          type="button"
+          variant="success"
+          size={size}
+          className={cn(fullWidth && 'w-full', className)}
+          disabled={isPending}
+          onClick={() => setOpen(true)}
+        >
+          <UserPlus className={size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+          {label}
+        </Button>
+      )}
       <ConfirmModal
         open={open}
         title="Convert to client"

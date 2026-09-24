@@ -121,7 +121,7 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                     key={h}
                     className={
                       h === 'Actions'
-                        ? 'sticky right-0 bg-white px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500'
+                        ? 'sticky right-0 bg-white px-3 py-3 text-right text-xs font-medium uppercase tracking-wide text-slate-500'
                         : 'px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500'
                     }
                   >
@@ -171,7 +171,7 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                       <td className="px-4 py-3">
                         <span
                           className={cn(
-                            'rounded-full px-2.5 py-0.5 text-xs font-medium',
+                            'inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium',
                             stCls
                           )}
                         >
@@ -189,28 +189,26 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                       <td className="px-4 py-3 text-slate-500">
                         {formatRelativeTime(l.updated_at)}
                       </td>
-                      <td className="sticky right-0 bg-white px-4 py-3 group-hover:bg-slate-50">
-                        <div className="flex items-center gap-2 whitespace-nowrap">
+                      <td className="sticky right-0 bg-white px-3 py-3 group-hover:bg-slate-50">
+                        <div className="flex items-center justify-end gap-0.5">
                           {l.converted_client_id ? (
                             <Link
                               href={`/app/clients/${l.converted_client_id}`}
-                              className="text-xs font-medium text-emerald-700 hover:underline"
+                              className="mr-1 text-xs font-medium text-emerald-700 hover:underline whitespace-nowrap"
                             >
                               View client
                             </Link>
-                          ) : status === 'lost' ? (
-                            <span className="text-xs text-slate-400">—</span>
-                          ) : (
+                          ) : status !== 'lost' ? (
                             <ConvertLeadButton
                               leadId={l.id}
                               leadName={l.company_name || l.contact_name}
-                              size="sm"
+                              iconOnly
                             />
-                          )}
+                          ) : null}
                           <LeadDeleteButton
                             leadId={l.id}
                             leadName={l.company_name || l.contact_name}
-                            size="sm"
+                            iconOnly
                           />
                         </div>
                       </td>
