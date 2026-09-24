@@ -112,6 +112,7 @@ export interface Client {
   setup_upfront: number
   payment_terms: number
   status: 'active' | 'inactive' | 'churned'
+  is_internal: boolean
   slack_channel_id: string | null
   slack_channel_name: string | null
   slack_canvas_id: string | null
@@ -179,6 +180,9 @@ export interface Lead {
   lost_notes: string | null
   converted_client_id: string | null
   outcome_at: string | null
+  slack_channel_id: string | null
+  slack_channel_name: string | null
+  slack_canvas_id: string | null
   created_at: string
   updated_at: string
 }
@@ -269,6 +273,10 @@ export interface HubLibraryItem {
   summary: string | null
   body: string
   link_url: string | null
+  file_name: string | null
+  mime_type: string | null
+  file_size: number | null
+  storage_path: string | null
   created_by: string | null
   updated_by: string | null
   created_at: string

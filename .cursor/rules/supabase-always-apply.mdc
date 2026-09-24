@@ -1,0 +1,30 @@
+---
+description: Always apply Hub Supabase schema changes; never leave migrations unapplied
+alwaysApply: true
+---
+
+# Supabase — always apply schema changes
+
+When this work needs database changes (new columns, tables, RLS, indexes, etc.):
+
+1. Create a migration with `npx supabase migration new <name>` and write the SQL.
+2. **Immediately apply it** to the Hub Supabase project — do not ask the user to run SQL manually.
+3. Prefer Supabase MCP `apply_migration` (DDL) / `execute_sql` (DML/checks) with Hub `project_id`.
+4. After apply, **verify** the change (MCP `execute_sql`, or service-role select via `.env.local`).
+5. Keep `lib/types/database.ts` in sync with schema.
+
+## Hub project
+
+- Owned under **a.dasilvaus@gmail.com's Org** (`upkhwtjxehwndiptqenw`); project name **appdoers-hub**
+- Project ref / `project_id`: `coagaqcwmbctolpbvete`
+
+Do **not** apply Hub migrations to other orgs/projects (e.g. ABC Website, JornadaDeInsights).
+
+## If MCP cannot see Hub
+
+If `list_projects` does not include `coagaqcwmbctolpbvete` (often only AppdoersDevTeam appears):
+
+1. Re-auth `plugin-supabase-supabase` and complete the browser OAuth **while signed into Supabase as a.dasilvaus@gmail.com**.
+2. Confirm Hub appears in `list_projects`, then `apply_migration`.
+3. Verify with service role from `.env.local` whether the schema already changed.
+4. Do not treat “ask the user to paste SQL” as the default — fix MCP OAuth account first.

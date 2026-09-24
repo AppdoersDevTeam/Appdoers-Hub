@@ -4,8 +4,23 @@ import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { hubClientUrl, hubLeadUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
-import { LEAD_STATUS_LABELS } from '@/lib/leads/constants'
+import {
+  addChannelBookmark,
+  buildLeadChannelCanvasMarkdown,
+  createChannelCanvas,
+  createPublicChannel,
+  findPublicChannelByName,
+  hubClientUrl,
+  hubLeadUrl,
+  joinPublicChannel,
+  postToSlackChannel,
+  sendSlackAlert,
+  setChannelPurpose,
+  slackOpenHub,
+  slugifyLeadChannelName,
+  withHttpUrl,
+} from '@/lib/slack'
+import { LEAD_SOURCE_LABELS, LEAD_STATUS_LABELS } from '@/lib/leads/constants'
 import { outcomeAtForStatus } from '@/lib/leads/outcome-at'
 import type { CompanySize, LeadSource, LeadStatus, LostReason } from '@/lib/types/database'
 
@@ -333,6 +348,121 @@ export async function markLeadWonAction(id: string): Promise<ActionResult<undefi
   }
 }
 
+// ─── Slack channel ────────────────────────────────────────────────────────────
+
+export async function createLeadSlackChannelAction(
+  leadId: string
+): Promise<ActionResult<{ channelName: string; warning?: string }>> {
+  try {
+    const supabase = await createSupabaseClient()
+    const { data: lead, error } = await supabase
+      .from('leads')
+      .select(
+        'id, contact_name, company_name, website, status, source, slack_channel_id, slack_channel_name, slack_canvas_id'
+      )
+      .eq('id', leadId)
+      .single()
+
+    if (error || !lead) return { success: false, error: 'Lead not found.' }
+
+    if (lead.slack_channel_id && lead.slack_channel_name) {
+      return { success: true, data: { channelName: lead.slack_channel_name } }
+    }
+
+    const displayName = lead.company_name || lead.contact_name
+    const name = slugifyLeadChannelName(displayName, lead.id)
+    let channel = await createPublicChannel(name)
+    if (!channel.ok && channel.code === 'name_taken') {
+      channel = await findPublicChannelByName(name)
+    }
+    if (!channel.ok) return { success: false, error: channel.error }
+
+    await joinPublicChannel(channel.id)
+
+    const statusLabel = LEAD_STATUS_LABELS[lead.status as LeadStatus] ?? lead.status
+    const sourceLabel = LEAD_SOURCE_LABELS[lead.source as LeadSource] ?? lead.source
+    const hubUrl = hubLeadUrl(lead.id)
+    const warnings: string[] = []
+
+    const purpose = await setChannelPurpose(
+      channel.id,
+      `${displayName} · lead · internal only`
+    )
+    if (!purpose.ok) warnings.push(purpose.error)
+
+    let canvasId = lead.slack_canvas_id as string | null
+    if (!canvasId) {
+      const canvas = await createChannelCanvas(
+        channel.id,
+        buildLeadChannelCanvasMarkdown({
+          displayName,
+          contactName: lead.contact_name,
+          statusLabel,
+          sourceLabel,
+          website: lead.website,
+          hubUrl,
+        })
+      )
+      if (canvas.ok) {
+        canvasId = canvas.canvasId
+      } else if (canvas.code !== 'channel_canvas_already_exists') {
+        warnings.push(canvas.error)
+      }
+    }
+
+    const hubBookmark = await addChannelBookmark(channel.id, 'Open in Hub', hubUrl)
+    if (!hubBookmark.ok && hubBookmark.code !== 'already_exists') {
+      warnings.push(hubBookmark.error)
+    }
+
+    if (lead.website) {
+      const siteBookmark = await addChannelBookmark(
+        channel.id,
+        'Website',
+        withHttpUrl(lead.website)
+      )
+      if (!siteBookmark.ok && siteBookmark.code !== 'already_exists') {
+        warnings.push(siteBookmark.error)
+      }
+    }
+
+    const welcome = await postToSlackChannel(
+      channel.id,
+      `This is the internal channel for lead ${displayName}. Use it for back-and-forth about this opportunity.\n\n• Todos and a short brief live in the channel canvas (top right)\n• Pipeline status stays in Hub\n• Do not invite the prospect`
+    )
+    if (!welcome.ok) warnings.push(welcome.error)
+
+    const { error: updateError } = await supabase
+      .from('leads')
+      .update({
+        slack_channel_id: channel.id,
+        slack_channel_name: channel.name,
+        slack_canvas_id: canvasId,
+      })
+      .eq('id', leadId)
+
+    if (updateError) return { success: false, error: updateError.message }
+
+    await logActivity({
+      entityType: 'lead',
+      entityId: leadId,
+      action: 'slack_channel_created',
+      description: `Slack channel #${channel.name} created`,
+    })
+
+    revalidatePath(`/app/leads/${leadId}`)
+    return {
+      success: true,
+      data: {
+        channelName: channel.name,
+        ...(warnings[0] ? { warning: warnings[0] } : {}),
+      },
+    }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
+
 // ─── Convert to Client ────────────────────────────────────────────────────────
 
 export async function convertLeadToClientAction(
@@ -367,6 +497,13 @@ export async function convertLeadToClientAction(
       setup_fee: lead.estimated_setup_fee ?? 0,
       payment_terms: 7,
       status: 'active',
+      ...(lead.slack_channel_id
+        ? {
+            slack_channel_id: lead.slack_channel_id,
+            slack_channel_name: lead.slack_channel_name,
+            slack_canvas_id: lead.slack_canvas_id,
+          }
+        : {}),
     })
     .select('id')
     .single()
@@ -397,122 +534,4 @@ export async function convertLeadToClientAction(
     .eq('id', id)
 
   if (wonError) {
-    return {
-      success: false,
-      error: `Client was created, but the lead could not be marked won: ${wonError.message}`,
-    }
-  }
-
-  await supabase.from('proposals').update({ client_id: client.id }).eq('lead_id', id)
-
-  const name = `${lead.contact_name}${lead.company_name ? ` (${lead.company_name})` : ''}`
-
-  await logActivity({
-    entityType: 'lead',
-    entityId: id,
-    clientId: client.id,
-    action: 'converted',
-    description: `Lead converted to client — ${companyName}`,
-  })
-
-  after(() => {
-    void sendSlackAlert('leads', {
-      text: `Lead converted to client: ${name}`,
-      title: 'Lead converted to client',
-      fields: [
-        { label: 'Lead', value: name },
-        { label: 'Client', value: companyName },
-        ...(lead.estimated_value
-          ? [{ label: 'Est. value', value: `$${Number(lead.estimated_value).toLocaleString()}` }]
-          : []),
-      ],
-      action: slackOpenHub(hubClientUrl(client.id) || hubLeadUrl(id)),
-    })
-  })
-
-  revalidatePath('/app/leads')
-  revalidatePath(`/app/leads/${id}`)
-  revalidatePath('/app/clients')
-  revalidatePath(`/app/clients/${client.id}`)
-  revalidatePath('/app/dashboard')
-  revalidatePath('/app/proposals')
-  return { success: true, data: { id: client.id } }
-}
-
-// ─── Lead Notes ───────────────────────────────────────────────────────────────
-
-export async function addLeadNoteAction(
-  leadId: string,
-  content: string,
-  type: 'general' | 'call' | 'meeting' | 'email'
-): Promise<ActionResult<undefined>> {
-  try {
-    const supabase = await createSupabaseClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    const { error } = await supabase.from('lead_notes').insert({
-      lead_id: leadId,
-      content,
-      type,
-      author_id: user?.id,
-    })
-
-    if (error) return { success: false, error: error.message }
-
-    revalidatePath(`/app/leads/${leadId}`)
-    return { success: true, data: undefined }
-  } catch (err) {
-    return { success: false, error: String(err) }
-  }
-}
-
-export async function deleteLeadAction(id: string): Promise<ActionResult<undefined>> {
-  try {
-    const supabase = await createSupabaseClient()
-    const { data: lead, error: loadError } = await supabase
-      .from('leads')
-      .select('id, contact_name, company_name')
-      .eq('id', id)
-      .single()
-
-    if (loadError || !lead) return { success: false, error: 'Lead not found' }
-
-    const { error: unlinkError } = await supabase
-      .from('proposals')
-      .update({ lead_id: null })
-      .eq('lead_id', id)
-      .not('client_id', 'is', null)
-    if (unlinkError) return { success: false, error: unlinkError.message }
-
-    const { error: proposalDeleteError } = await supabase
-      .from('proposals')
-      .delete()
-      .eq('lead_id', id)
-      .is('client_id', null)
-    if (proposalDeleteError) return { success: false, error: proposalDeleteError.message }
-
-    await supabase.from('lead_notes').delete().eq('lead_id', id)
-    await supabase.from('notes').delete().eq('entity_type', 'lead').eq('entity_id', id)
-
-    const name = `${lead.contact_name}${lead.company_name ? ` (${lead.company_name})` : ''}`
-    await logActivity({
-      entityType: 'lead',
-      entityId: id,
-      action: 'deleted',
-      description: `Lead "${name}" deleted`,
-    })
-
-    const { error } = await supabase.from('leads').delete().eq('id', id)
-    if (error) return { success: false, error: error.message }
-
-    revalidatePath('/app/leads')
-    revalidatePath('/app/clients')
-    revalidatePath('/app/proposals')
-    revalidatePath('/app/dashboard')
-    return { success: true, data: undefined }
-  } catch (err) {
-    return { success: false, error: String(err) }
-  }
-}
+    const { error: 

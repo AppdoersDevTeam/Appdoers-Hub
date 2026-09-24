@@ -283,6 +283,38 @@ export function buildClientChannelCanvasMarkdown(input: {
   ].join('\n')
 }
 
+export function buildLeadChannelCanvasMarkdown(input: {
+  displayName: string
+  contactName: string
+  statusLabel: string
+  sourceLabel: string
+  website: string | null
+  hubUrl: string
+}): string {
+  const websiteLine = input.website
+    ? `**Website:** ${input.website}`
+    : '**Website:** —'
+
+  return [
+    `# ${input.displayName}`,
+    '',
+    `**Lead** · **Status:** ${input.statusLabel} · **Source:** ${input.sourceLabel}`,
+    `**Contact:** ${input.contactName}`,
+    websiteLine,
+    '',
+    `[Open in Hub](${input.hubUrl})`,
+    '',
+    'This channel is **internal only** — do not invite the prospect.',
+    '',
+    '## Todos',
+    'Tick these as you go. Pipeline updates still live on the lead in Hub.',
+    '',
+    '- [ ] First outreach / discovery call',
+    '- [ ] Send proposal',
+    '- [ ] Follow up on next action',
+  ].join('\n')
+}
+
 type SlackWebhookEntry = { webhook_url?: string; enabled?: boolean }
 
 function webhookFromEntry(entry?: SlackWebhookEntry | null): string | null {
