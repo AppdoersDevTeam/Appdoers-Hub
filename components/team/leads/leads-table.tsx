@@ -107,14 +107,14 @@ export function LeadsTable({ leads, teamMembers }: Props) {
             <thead>
               <tr className="border-b border-slate-200">
                 {[
-                  'Contact',
                   'Company',
-                  'Status',
-                  'Est. Value',
+                  'Primary Contact',
                   'Source',
+                  'Est. Value',
+                  'Status',
                   'Assigned To',
                   'Next Action',
-                  'Last Updated',
+                  'Last Activity',
                   'Actions',
                 ].map((h) => (
                   <th
@@ -154,11 +154,19 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                           href={`/app/leads/${l.id}`}
                           className="hover:text-blue-600 transition-colors"
                         >
-                          {l.contact_name}
+                          {l.company_name || l.contact_name}
                         </Link>
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {l.company_name ?? '—'}
+                        {l.company_name ? l.contact_name : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {sourceLabels[l.source as LeadSource] ?? l.source}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {l.estimated_value
+                          ? formatCurrency(l.estimated_value)
+                          : '—'}
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -169,14 +177,6 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                         >
                           {stLabel}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {l.estimated_value
-                          ? formatCurrency(l.estimated_value)
-                          : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {sourceLabels[l.source as LeadSource] ?? l.source}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
                         {l.assigned_to_name ?? '—'}
