@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DeleteRecordButton } from '@/components/ui/delete-record-button'
 import { IndustrySelect } from '@/components/team/industry-select'
-import { updateClientAction } from '@/lib/actions/clients'
+import { deleteClientAction, updateClientAction } from '@/lib/actions/clients'
 import { formatDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 
@@ -237,6 +238,18 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
         <InfoRow label="Status" value={statusBadge(client.status)} />
         <InfoRow label="Client Since" value={formatDate(client.created_at)} />
         <InfoRow label="Payment Terms" value={`${client.payment_terms} days`} />
+      </div>
+      <div className="border-t border-slate-200 pt-4">
+        <p className="mb-2 text-xs font-medium text-slate-500">Danger zone</p>
+        <DeleteRecordButton
+          title="Delete client"
+          message={`Delete "${client.company_name}"? Projects, invoices, documents, and contacts for this client will also be deleted. Converted leads will be unlinked. This cannot be undone.`}
+          confirmLabel="Delete Client"
+          size="sm"
+          fullWidth={false}
+          onDelete={deleteClientAction.bind(null, client.id)}
+          redirectTo="/app/clients"
+        />
       </div>
     </div>
   )

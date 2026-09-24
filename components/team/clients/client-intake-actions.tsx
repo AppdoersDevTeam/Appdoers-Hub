@@ -68,7 +68,7 @@ export function ClientIntakeActions({
   const canReuse = status && status !== 'locked'
 
   return (
-    <div className="flex max-w-md flex-col items-end gap-2">
+    <div className="flex flex-col items-end gap-2">
       <div className="flex flex-wrap items-center justify-end gap-2">
         {status && (
           <Badge variant={STATUS_VARIANT[status]}>{INTAKE_STATUS_LABELS[status]}</Badge>

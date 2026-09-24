@@ -235,7 +235,10 @@ export function LeadActions({
         </button>
       </div>
 
-      <LeadDeleteButton leadId={leadId} leadName={leadName} />
+      <div className="border-t border-slate-200 pt-3">
+        <p className="mb-2 text-xs font-medium text-slate-500">Danger zone</p>
+        <LeadDeleteButton leadId={leadId} leadName={leadName} />
+      </div>
     </div>
   )
 }

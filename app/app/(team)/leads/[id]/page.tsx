@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { LeadActions } from '@/components/team/leads/lead-actions'
-import { LeadDeleteButton } from '@/components/team/leads/lead-delete-button'
 import { LeadNotes } from '@/components/team/leads/lead-notes'
 import { LeadEditForm } from '@/components/team/leads/lead-edit-form'
 import { LeadSlackActions } from '@/components/team/leads/lead-slack-actions'
@@ -84,22 +83,15 @@ export default async function LeadDetailPage({ params }: Props) {
         title={lead.contact_name}
         subtitle={lead.company_name ?? 'Individual'}
         action={
-          <div className="flex flex-col items-end gap-3">
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              <span
-                className={cn(
-                  'rounded-full px-3 py-1 text-sm font-medium',
-                  statusCls
-                )}
-              >
-                {statusLabel}
-              </span>
-              <LeadDeleteButton
-                leadId={id}
-                leadName={lead.company_name || lead.contact_name}
-                fullWidth={false}
-              />
-            </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <span
+              className={cn(
+                'rounded-full px-3 py-1 text-sm font-medium',
+                statusCls
+              )}
+            >
+              {statusLabel}
+            </span>
             <LeadSlackActions
               leadId={id}
               slackChannelId={(lead.slack_channel_id as string | null) ?? null}
@@ -358,3 +350,4 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
     </div>
   )
 }
+                                                                                                                                                                                                                                                                                       
