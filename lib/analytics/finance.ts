@@ -160,13 +160,16 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
     .slice(0, 8)
 
   const activeClients = (clientsRes.data ?? [])
-    .filter(
-      (c) =>
-        !isInternalClient({
-          is_internal: c.is_internal as boolean | null,
-          company_name: c.company_name as string | null,
-        })
-    )
+    .filter((c) => {
+      const row = c as {
+        is_internal?: boolean | null
+        company_name?: string | null
+      }
+      return !isInternalClient({
+        is_internal: row.is_internal ?? null,
+        company_name: row.company_name ?? null,
+      })
+    })
     .map((c) => ({
       id: c.id as string,
       monthly_fee: Number(c.monthly_fee),

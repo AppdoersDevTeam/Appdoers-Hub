@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import Link from 'next/link'
 
 export interface KpiCardData {
   label: string
@@ -8,6 +9,7 @@ export interface KpiCardData {
   color: string
   bg: string
   highlight?: boolean
+  href?: string
 }
 
 interface SectionProps {
@@ -28,12 +30,11 @@ export function KpiSection({ title, description, cards }: SectionProps) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon
-          return (
+          const inner = (
             <div
-              key={card.label}
               className={`rounded-lg border border-slate-200 bg-white p-4 shadow-sm ${
                 card.highlight ? 'border-l-4 border-l-red-500' : ''
-              }`}
+              } ${card.href ? 'transition-colors hover:border-blue-200' : ''}`}
             >
               <div className="flex items-start gap-3">
                 <div className={`shrink-0 rounded-lg p-2.5 ${card.bg}`}>
@@ -52,6 +53,13 @@ export function KpiSection({ title, description, cards }: SectionProps) {
                 </div>
               </div>
             </div>
+          )
+          return card.href ? (
+            <Link key={card.label} href={card.href}>
+              {inner}
+            </Link>
+          ) : (
+            <div key={card.label}>{inner}</div>
           )
         })}
       </div>
