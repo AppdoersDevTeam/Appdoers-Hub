@@ -154,19 +154,19 @@ export async function getDashboardAnalytics(
     activeExternalClients.map((c) => {
       const catalog = Array.isArray(c.service_catalog)
         ? c.service_catalog[0]
-        : (c.service_catalog as { plan_key?: string | null } | null)
+        : (c.service_catalog as { plan_key?: string | null; name?: string | null } | null)
       return {
         company_name: c.company_name as string | null,
         is_internal: (c as { is_internal?: boolean | null }).is_internal ?? null,
         status: (c.status as string | null) ?? 'active',
         subscription_plan: c.subscription_plan as string | null,
         catalog_plan_key: (catalog?.plan_key as string | null | undefined) ?? null,
+        catalog_plan_name: (catalog?.name as string | null | undefined) ?? null,
       }
     })
   )
   const activeClientWebsites = websiteCounts.total
-  const basicWebsiteCount = websiteCounts.basic
-  const fullWebsiteCount = websiteCounts.full
+  const websitePlanFamilies = websiteCounts.families
   const openTasksCount = openTasks.length
   const overdueTasksCount = openTasks.filter(
     (t) => t.due_date && t.due_date < today
@@ -335,8 +335,7 @@ export async function getDashboardAnalytics(
     pipelineValue,
     mrrTotal,
     activeClientWebsites,
-    basicWebsiteCount,
-    fullWebsiteCount,
+    websitePlanFamilies,
     openTasks: openTasksCount,
     overdueTasks: overdueTasksCount,
     billableWipValue: billableWipValueFinal,

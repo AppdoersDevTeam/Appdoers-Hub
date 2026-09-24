@@ -19,14 +19,14 @@ export async function selectActiveClientsForStats(supabase: SupabaseClient) {
       supabase
         .from('clients')
         .select(
-          'id, company_name, monthly_fee, billing_cycle, subscription_plan, plan_service_id, is_internal, status, service_catalog:plan_service_id(plan_key)'
+          'id, company_name, monthly_fee, billing_cycle, subscription_plan, plan_service_id, is_internal, status, service_catalog:plan_service_id(plan_key, name)'
         )
         .eq('status', 'active'),
     () =>
       supabase
         .from('clients')
         .select(
-          'id, company_name, monthly_fee, billing_cycle, subscription_plan, plan_service_id, status, service_catalog:plan_service_id(plan_key)'
+          'id, company_name, monthly_fee, billing_cycle, subscription_plan, plan_service_id, status, service_catalog:plan_service_id(plan_key, name)'
         )
         .eq('status', 'active')
   )

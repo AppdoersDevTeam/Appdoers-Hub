@@ -86,7 +86,7 @@ export default async function DashboardPage({
     {
       label: 'Active Client Websites',
       value: String(metrics.activeClientWebsites),
-      sub: formatWebsitePlanSubtitle(metrics.basicWebsiteCount, metrics.fullWebsiteCount),
+      sub: formatWebsitePlanSubtitle(metrics.websitePlanFamilies),
       href: '/app/clients',
       icon: Globe,
       color: 'text-amber-600',

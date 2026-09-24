@@ -1,3 +1,5 @@
+import { PLAN_LABELS } from '@/lib/constants/plans'
+
 export type InternalClientHint = {
   is_internal?: boolean | null
   company_name?: string | null
@@ -15,18 +17,35 @@ export function isInternalClient(client: InternalClientHint): boolean {
   return isInternalClientName(client.company_name)
 }
 
-export function isWebsitePlan(plan: string | null | undefined): plan is 'basic' | 'full' {
-  return plan === 'basic' || plan === 'full'
+/** True when a plan title includes "website" (e.g. Basic Website, Shopify Website). */
+export function planTitleLooksLikeWebsite(title: string | null | undefined): boolean {
+  return /\bwebsite\b/i.test((title ?? '').trim())
 }
 
-/** Prefer catalog plan_key when present; otherwise legacy subscription_plan enum. */
-export function resolveWebsitePlanKey(client: {
+/**
+ * Resolve the display plan title used for website KPI matching.
+ * Prefer catalog name; fall back to legacy enum labels (Basic Website / Full Website).
+ */
+export function resolveClientPlanTitle(client: {
   subscription_plan?: string | null
   catalog_plan_key?: string | null
-}): 'basic' | 'full' | null {
-  if (isWebsitePlan(client.catalog_plan_key)) return client.catalog_plan_key
-  if (isWebsitePlan(client.subscription_plan)) return client.subscription_plan
-  return null
+  catalog_plan_name?: string | null
+}): string | null {
+  const catalogName = client.catalog_plan_name?.trim()
+  if (catalogName) return catalogName
+
+  const key = client.catalog_plan_key || client.subscription_plan
+  if (!key || key === 'none') return null
+  return PLAN_LABELS[key] ?? key
+}
+
+/** Short subtitle label: "Basic Website (12 months)" → "Basic", "Shopify Website" → "Shopify". */
+export function websitePlanFamilyLabel(planTitle: string): string {
+  return planTitle
+    .replace(/\([^)]*\)/g, '')
+    .replace(/\bwebsite\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim() || planTitle.trim()
 }
 
 export function countActiveClientWebsites(
@@ -35,23 +54,39 @@ export function countActiveClientWebsites(
       status?: string | null
       subscription_plan?: string | null
       catalog_plan_key?: string | null
+      catalog_plan_name?: string | null
     }
   >
-): { total: number; basic: number; full: number } {
-  let basic = 0
-  let full = 0
+): { total: number; families: Record<string, number> } {
+  const families: Record<string, number> = {}
+  let total = 0
+
   for (const client of clients) {
     if (isInternalClient(client)) continue
     if (client.status && client.status !== 'active') continue
-    const key = resolveWebsitePlanKey(client)
-    if (!key) continue
-    if (key === 'basic') basic += 1
-    else full += 1
+
+    const title = resolveClientPlanTitle(client)
+    if (!planTitleLooksLikeWebsite(title)) continue
+
+    total += 1
+    const family = websitePlanFamilyLabel(title!)
+    families[family] = (families[family] ?? 0) + 1
   }
-  return { total: basic + full, basic, full }
+
+  return { total, families }
 }
 
-export function formatWebsitePlanSubtitle(basic: number, full: number): string {
-  if (basic === 0 && full === 0) return 'With a website plan'
-  return `${basic} Basic · ${full} Full`
+export function formatWebsitePlanSubtitle(families: Record<string, number>): string {
+  const parts = Object.entries(families)
+    .filter(([, count]) => count > 0)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([label, count]) => `${count} ${label}`)
+
+  if (parts.length === 0) return 'With a website plan'
+  return parts.join(' · ')
+}
+
+/** @deprecated Prefer planTitleLooksLikeWebsite + resolveClientPlanTitle */
+export function isWebsitePlan(plan: string | null | undefined): plan is 'basic' | 'full' {
+  return plan === 'basic' || plan === 'full'
 }

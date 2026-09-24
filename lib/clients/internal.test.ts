@@ -4,7 +4,9 @@ import {
   formatWebsitePlanSubtitle,
   isInternalClient,
   isInternalClientName,
-  isWebsitePlan,
+  planTitleLooksLikeWebsite,
+  resolveClientPlanTitle,
+  websitePlanFamilyLabel,
 } from './internal'
 
 describe('isInternalClientName', () => {
@@ -28,26 +30,60 @@ describe('isInternalClient', () => {
   })
 })
 
-describe('isWebsitePlan', () => {
-  it('only counts Basic and Full plans', () => {
-    expect(isWebsitePlan('basic')).toBe(true)
-    expect(isWebsitePlan('full')).toBe(true)
-    expect(isWebsitePlan('none')).toBe(false)
-    expect(isWebsitePlan(null)).toBe(false)
+describe('planTitleLooksLikeWebsite', () => {
+  it('matches any title containing the word website', () => {
+    expect(planTitleLooksLikeWebsite('Basic Website')).toBe(true)
+    expect(planTitleLooksLikeWebsite('Shopify Website')).toBe(true)
+    expect(planTitleLooksLikeWebsite('Full Website (48 months)')).toBe(true)
+    expect(planTitleLooksLikeWebsite('Email Hosting')).toBe(false)
+    expect(planTitleLooksLikeWebsite(null)).toBe(false)
+  })
+})
+
+describe('resolveClientPlanTitle', () => {
+  it('prefers catalog name, then legacy enum labels', () => {
+    expect(
+      resolveClientPlanTitle({
+        catalog_plan_name: 'Shopify Website',
+        subscription_plan: 'none',
+      })
+    ).toBe('Shopify Website')
+    expect(resolveClientPlanTitle({ subscription_plan: 'basic' })).toBe('Basic Website')
+    expect(resolveClientPlanTitle({ subscription_plan: 'none' })).toBe(null)
+  })
+})
+
+describe('websitePlanFamilyLabel', () => {
+  it('strips Website and term suffixes for subtitle chips', () => {
+    expect(websitePlanFamilyLabel('Basic Website (12 months)')).toBe('Basic')
+    expect(websitePlanFamilyLabel('Shopify Website')).toBe('Shopify')
+    expect(websitePlanFamilyLabel('Full Website')).toBe('Full')
   })
 })
 
 describe('countActiveClientWebsites', () => {
-  it('counts active Basic/Full clients and excludes Appdoers', () => {
+  it('counts any website-titled plan and excludes Appdoers', () => {
     const result = countActiveClientWebsites([
       { company_name: 'Church A', status: 'active', subscription_plan: 'basic' },
       { company_name: 'Church B', status: 'active', subscription_plan: 'full' },
+      {
+        company_name: 'Shop Client',
+        status: 'active',
+        subscription_plan: 'none',
+        catalog_plan_name: 'Shopify Website',
+      },
       { company_name: 'Church C', status: 'active', subscription_plan: 'none' },
       { company_name: 'Church D', status: 'inactive', subscription_plan: 'full' },
-      { company_name: 'Appdoers', status: 'active', subscription_plan: 'full', is_internal: true },
+      {
+        company_name: 'Appdoers',
+        status: 'active',
+        catalog_plan_name: 'Shopify Website',
+        is_internal: true,
+      },
     ])
 
-    expect(result).toEqual({ total: 2, basic: 1, full: 1 })
+    expect(result.total).toBe(3)
+    expect(result.families).toEqual({ Basic: 1, Full: 1, Shopify: 1 })
   })
 
   it('treats missing status as active when the query already filtered to active rows', () => {
@@ -57,28 +93,34 @@ describe('countActiveClientWebsites', () => {
     expect(result.total).toBe(1)
   })
 
-  it('uses catalog plan_key when subscription_plan is none', () => {
+  it('uses catalog plan name when subscription_plan is none', () => {
     const result = countActiveClientWebsites([
       {
         company_name: 'Catalog Basic',
         status: 'active',
         subscription_plan: 'none',
+        catalog_plan_name: 'Basic Website (12 months)',
         catalog_plan_key: 'basic',
       },
       {
         company_name: 'Shopify Client',
         status: 'active',
         subscription_plan: 'none',
+        catalog_plan_name: 'Shopify Website',
         catalog_plan_key: 'shopify',
       },
     ])
-    expect(result).toEqual({ total: 1, basic: 1, full: 0 })
+    expect(result.total).toBe(2)
+    expect(result.families.Shopify).toBe(1)
+    expect(result.families.Basic).toBe(1)
   })
 })
 
 describe('formatWebsitePlanSubtitle', () => {
-  it('shows the plan split, or a fallback when empty', () => {
-    expect(formatWebsitePlanSubtitle(2, 1)).toBe('2 Basic · 1 Full')
-    expect(formatWebsitePlanSubtitle(0, 0)).toBe('With a website plan')
+  it('shows family counts, or a fallback when empty', () => {
+    expect(formatWebsitePlanSubtitle({ Basic: 2, Full: 1, Shopify: 1 })).toBe(
+      '2 Basic · 1 Full · 1 Shopify'
+    )
+    expect(formatWebsitePlanSubtitle({})).toBe('With a website plan')
   })
 })

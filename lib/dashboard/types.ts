@@ -64,8 +64,7 @@ export interface DashboardAnalytics {
   pipelineValue: number
   mrrTotal: number
   activeClientWebsites: number
-  basicWebsiteCount: number
-  fullWebsiteCount: number
+  websitePlanFamilies: Record<string, number>
   openTasks: number
   overdueTasks: number
   billableWipValue: number
