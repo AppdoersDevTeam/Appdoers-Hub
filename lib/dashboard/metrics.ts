@@ -126,7 +126,7 @@ export async function getDashboardAnalytics(
   const activeExternalClients = (clientsRes.data ?? []).filter(
     (c) =>
       !isInternalClient({
-        is_internal: c.is_internal as boolean | null,
+        is_internal: (c as { is_internal?: boolean | null }).is_internal ?? null,
         company_name: c.company_name as string | null,
       })
   )
@@ -157,7 +157,7 @@ export async function getDashboardAnalytics(
         : (c.service_catalog as { plan_key?: string | null } | null)
       return {
         company_name: c.company_name as string | null,
-        is_internal: c.is_internal as boolean | null,
+        is_internal: (c as { is_internal?: boolean | null }).is_internal ?? null,
         status: (c.status as string | null) ?? 'active',
         subscription_plan: c.subscription_plan as string | null,
         catalog_plan_key: (catalog?.plan_key as string | null | undefined) ?? null,
@@ -383,4 +383,3 @@ export async function getDashboardAnalytics(
 }
 
 export type { DashboardPeriod }
-                      

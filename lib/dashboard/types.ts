@@ -63,8 +63,9 @@ export interface DashboardAnalytics {
   // Snapshot KPIs
   pipelineValue: number
   mrrTotal: number
-  activeProjects: number
-  onHoldProjects: number
+  activeClientWebsites: number
+  basicWebsiteCount: number
+  fullWebsiteCount: number
   openTasks: number
   overdueTasks: number
   billableWipValue: number

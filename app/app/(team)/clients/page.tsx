@@ -78,7 +78,10 @@ export default async function ClientsPage() {
       c.client_contacts as { full_name: string; is_primary: boolean }[]
     ).find((x) => x.is_primary)
     const catalog = one(
-      c.service_catalog as { id: string; name: string; plan_key: string | null } | null
+      c.service_catalog as
+        | { id: string; name: string; plan_key: string | null }
+        | { id: string; name: string; plan_key: string | null }[]
+        | null
     )
     const planName = resolveClientPlanDisplayName({
       subscription_plan: c.subscription_plan as string,
@@ -103,7 +106,7 @@ export default async function ClientsPage() {
   const externalCount = (clients ?? []).filter(
     (c) =>
       !isInternalClient({
-        is_internal: c.is_internal as boolean | null,
+        is_internal: (c as { is_internal?: boolean | null }).is_internal ?? null,
         company_name: c.company_name as string,
       })
   ).length

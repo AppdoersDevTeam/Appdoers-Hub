@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { OutboundLinksPanel } from '@/components/team/dashboard/outbound-links-panel'
 import { getVisibleOutboundLinks } from '@/lib/outbound-links'
 import { getDashboardAnalytics } from '@/lib/dashboard/metrics'
+import { formatWebsitePlanSubtitle } from '@/lib/clients/internal'
 import { PeriodToggle } from '@/components/team/dashboard/period-toggle'
 import { KpiSection, type KpiCardData } from '@/components/team/dashboard/kpi-grid'
 import { DashboardSection } from '@/components/team/dashboard/chart-card'
@@ -28,7 +29,7 @@ import {
 import {
   TrendingUp,
   DollarSign,
-  FolderOpen,
+  Globe,
   CheckSquare,
   AlertTriangle,
   Clock,
@@ -83,13 +84,10 @@ export default async function DashboardPage({
       bg: 'bg-emerald-50',
     },
     {
-      label: 'Active Projects',
-      value: String(metrics.activeProjects),
-      sub:
-        metrics.onHoldProjects > 0
-          ? `${metrics.onHoldProjects} on hold`
-          : 'In progress',
-      icon: FolderOpen,
+      label: 'Active Client Websites',
+      value: String(metrics.activeClientWebsites),
+      sub: formatWebsitePlanSubtitle(metrics.basicWebsiteCount, metrics.fullWebsiteCount),
+      icon: Globe,
       color: 'text-amber-600',
       bg: 'bg-amber-50',
     },
