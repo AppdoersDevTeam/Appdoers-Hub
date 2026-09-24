@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { Download, Eye, EyeOff, Plus, Trash2, Upload } from 'lucide-react'
+import { Download, Eye, EyeOff, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,6 +11,7 @@ import {
   deleteDocumentAction,
   getDocumentDownloadUrlAction,
   toggleDocumentVisibilityAction,
+  updateDocumentAction,
   updateDocumentStatusAction,
 } from '@/lib/actions/documents'
 import {
@@ -72,6 +73,7 @@ export function DocumentTracker({
   const [isPending, startTransition] = useTransition()
   const [documents, setDocuments] = useState(initialDocuments)
   const [showUpload, setShowUpload] = useState(false)
+  const [editing, setEditing] = useState<TrackedDocument | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<TrackedDocument | null>(null)
@@ -110,18 +112,105 @@ export function DocumentTracker({
     })
   }
 
-  const handleUpload = async (e: React.FormEvent) => {
+  const closeForm = () => {
+    setShowUpload(false)
+    setEditing(null)
+    setError(null)
+    resetForm()
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const openCreate = () => {
+    setError(null)
+    setEditing(null)
+    resetForm()
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    setShowUpload(true)
+  }
+
+  const openEdit = (doc: TrackedDocument) => {
+    setError(null)
+    setEditing(doc)
+    setForm({
+      owner_type: doc.owner_kind,
+      client_id: doc.client_id ?? '',
+      lead_id: doc.lead_id ?? '',
+      title: doc.title,
+      status: doc.status,
+      is_client_visible: doc.is_client_visible,
+    })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    setShowUpload(true)
+  }
+
+  const ownerNameFromForm = () => {
+    if (ownerType === 'lead') {
+      const lead = leads.find((l) => l.id === form.lead_id)
+      return lead ? leadDisplayName(lead) : 'Lead'
+    }
+    return clients.find((c) => c.id === form.client_id)?.company_name ?? '—'
+  }
+
+  const applySavedDocument = (
+    doc: TrackedDocument,
+    uploaded?: Record<string, unknown>
+  ): TrackedDocument => ({
+    ...doc,
+    title: String(uploaded?.title ?? form.title.trim()),
+    status: String(uploaded?.status ?? form.status),
+    sent_at: uploaded && 'sent_at' in uploaded ? (uploaded.sent_at as string | null) : doc.sent_at,
+    signed_at: uploaded && 'signed_at' in uploaded ? (uploaded.signed_at as string | null) : doc.signed_at,
+    file_name: (uploaded?.file_name as string | null | undefined) ?? doc.file_name,
+    mime_type: (uploaded?.mime_type as string | null | undefined) ?? doc.mime_type,
+    file_size: typeof uploaded?.file_size === 'number' ? uploaded.file_size : doc.file_size,
+    storage_path: (uploaded?.storage_path as string | null | undefined) ?? doc.storage_path,
+    is_client_visible: ownerType === 'client' && form.is_client_visible,
+    client_id: ownerType === 'client' ? form.client_id : null,
+    lead_id: ownerType === 'lead' ? form.lead_id : null,
+    owner_kind: ownerType,
+    owner_name: ownerNameFromForm(),
+  })
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     const file = fileInputRef.current?.files?.[0]
     if (ownerType === 'client' && !form.client_id) { setError('Select a client'); return }
     if (ownerType === 'lead' && !form.lead_id) { setError('Select a lead'); return }
     if (!form.title.trim()) { setError('Title is required'); return }
-    if (!file) { setError('Choose a PDF or Word document'); return }
+    if (!editing && !file) { setError('Choose a PDF or Word document'); return }
+
+    if (editing && !file) {
+      setUploading(true)
+      try {
+        const result = await updateDocumentAction(kind, editing.id, {
+          title: form.title.trim(),
+          status: form.status,
+          is_client_visible: ownerType === 'client' && form.is_client_visible,
+          client_id: ownerType === 'client' ? form.client_id : '',
+          lead_id: ownerType === 'lead' ? form.lead_id : '',
+        })
+        if (!result.success) {
+          setError(result.error)
+          return
+        }
+        setDocuments((prev) => prev.map((item) => item.id === editing.id ? applySavedDocument(item) : item))
+        closeForm()
+        router.refresh()
+      } catch (err) {
+        setError(String(err))
+      } finally {
+        setUploading(false)
+      }
+      return
+    }
+
+    if (!file) return
 
     setUploading(true)
     const payload = {
       kind,
+      document_id: editing?.id,
       client_id: ownerType === 'client' ? form.client_id : '',
       lead_id: ownerType === 'lead' ? form.lead_id : '',
       title: form.title.trim(),
@@ -170,34 +259,33 @@ export function DocumentTracker({
       })
       const json = await readJson(completeRes)
       if (!completeRes.ok || !json.success) {
-        setError(String(json.error ?? 'Upload failed'))
+        setError(String(json.error ?? (editing ? 'Update failed' : 'Upload failed')))
         return
       }
       const uploaded = json.document as Record<string, unknown>
-      const ownerName = ownerType === 'lead'
-        ? (leads.find((l) => l.id === form.lead_id) ? leadDisplayName(leads.find((l) => l.id === form.lead_id)!) : 'Lead')
-        : (clients.find((c) => c.id === form.client_id)?.company_name ?? '—')
-      const nextDoc: TrackedDocument = {
-        id: String(uploaded.id),
-        title: String(uploaded.title ?? payload.title),
-        status: String(uploaded.status ?? payload.status),
-        created_at: String(uploaded.created_at ?? new Date().toISOString()),
-        sent_at: (uploaded.sent_at as string | null) ?? null,
-        signed_at: (uploaded.signed_at as string | null) ?? null,
-        file_name: (uploaded.file_name as string | null) ?? payload.file_name,
-        mime_type: (uploaded.mime_type as string | null) ?? payload.mime_type,
-        file_size: typeof uploaded.file_size === 'number' ? uploaded.file_size : payload.file_size,
-        storage_path: (uploaded.storage_path as string | null) ?? null,
-        is_client_visible: ownerType === 'client' && form.is_client_visible,
-        client_id: (uploaded.client_id as string | null) ?? null,
-        lead_id: (uploaded.lead_id as string | null) ?? null,
-        owner_kind: ownerType,
-        owner_name: ownerName,
+      if (editing) {
+        setDocuments((prev) => prev.map((item) => item.id === editing.id ? applySavedDocument(item, uploaded) : item))
+      } else {
+        const nextDoc: TrackedDocument = {
+          id: String(uploaded.id),
+          title: String(uploaded.title ?? payload.title),
+          status: String(uploaded.status ?? payload.status),
+          created_at: String(uploaded.created_at ?? new Date().toISOString()),
+          sent_at: (uploaded.sent_at as string | null) ?? null,
+          signed_at: (uploaded.signed_at as string | null) ?? null,
+          file_name: (uploaded.file_name as string | null) ?? payload.file_name,
+          mime_type: (uploaded.mime_type as string | null) ?? payload.mime_type,
+          file_size: typeof uploaded.file_size === 'number' ? uploaded.file_size : payload.file_size,
+          storage_path: (uploaded.storage_path as string | null) ?? null,
+          is_client_visible: ownerType === 'client' && form.is_client_visible,
+          client_id: (uploaded.client_id as string | null) ?? null,
+          lead_id: (uploaded.lead_id as string | null) ?? null,
+          owner_kind: ownerType,
+          owner_name: ownerNameFromForm(),
+        }
+        setDocuments((prev) => [nextDoc, ...prev])
       }
-      setDocuments((prev) => [nextDoc, ...prev])
-      setShowUpload(false)
-      resetForm()
-      if (fileInputRef.current) fileInputRef.current.value = ''
+      closeForm()
       router.refresh()
     } catch (err) {
       setError(String(err))
@@ -268,7 +356,7 @@ export function DocumentTracker({
   return (
     <>
       <div className="flex justify-end">
-        <Button onClick={() => setShowUpload(true)}>
+        <Button onClick={openCreate}>
           <Plus className="mr-1.5 h-4 w-4" /> Upload {nounTitle}
         </Button>
       </div>
@@ -301,7 +389,16 @@ export function DocumentTracker({
                   const st = statusStyles[doc.status] ?? statusStyles.draft
                   return (
                     <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-slate-900">{doc.title}</td>
+                      <td className="px-4 py-3 font-medium text-slate-900">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(doc)}
+                          className="text-left hover:text-blue-600 transition-colors"
+                          title={`Edit ${noun}`}
+                        >
+                          {doc.title}
+                        </button>
+                      </td>
                       {showOwnerCol && (
                         <td className="px-4 py-3 text-slate-600">
                           <div className="flex flex-col gap-0.5">
@@ -362,15 +459,26 @@ export function DocumentTracker({
                       </td>
                       <td className="px-4 py-3 text-slate-500">{formatDate(doc.created_at)}</td>
                       <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget(doc)}
-                          disabled={isPending}
-                          className="rounded p-1 text-slate-500 hover:text-red-600 transition-colors"
-                          title={`Delete ${noun}`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(doc)}
+                            disabled={isPending}
+                            className="rounded p-1 text-slate-500 hover:text-blue-600 transition-colors"
+                            title={`Edit ${noun}`}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(doc)}
+                            disabled={isPending}
+                            className="rounded p-1 text-slate-500 hover:text-red-600 transition-colors"
+                            title={`Delete ${noun}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -393,15 +501,17 @@ export function DocumentTracker({
 
       <SlideOver
         open={showUpload}
-        onClose={() => setShowUpload(false)}
-        title={`Upload ${nounTitle}`}
+        onClose={closeForm}
+        title={editing ? `Edit ${nounTitle}` : `Upload ${nounTitle}`}
         subtitle={
-          kind === 'proposal'
-            ? 'Attach a PDF or Word document to a client or lead'
-            : 'Attach a PDF or Word document to keep on the client record'
+          editing
+            ? `Update this ${noun}, or replace the attached file`
+            : kind === 'proposal'
+              ? 'Attach a PDF or Word document to a client or lead'
+              : 'Attach a PDF or Word document to keep on the client record'
         }
       >
-        <form onSubmit={handleUpload} className="space-y-5 px-6 py-5">
+        <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
           {error && showUpload && (
             <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>
           )}
@@ -473,14 +583,19 @@ export function DocumentTracker({
             />
           </div>
           <div>
-            <label className={labelClass}>File (PDF or Word) *</label>
+            <label className={labelClass}>File (PDF or Word){editing ? '' : ' *'}</label>
             <input
               ref={fileInputRef}
               type="file"
               accept={DOCUMENT_ACCEPT}
               className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
-              required
+              required={!editing}
             />
+            {editing?.file_name && (
+              <p className="mt-1.5 text-xs text-slate-500">
+                Current file: {editing.file_name}. Leave empty to keep it, or choose a new file to replace it.
+              </p>
+            )}
           </div>
           <div>
             <label className={labelClass}>Status</label>
@@ -508,10 +623,14 @@ export function DocumentTracker({
           )}
           <div className="flex gap-3 pt-2">
             <Button type="submit" disabled={uploading} className="flex-1">
-              <Upload className="h-4 w-4" />
-              {uploading ? 'Uploading…' : `Upload ${nounTitle}`}
+              {editing ? <Pencil className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
+              {uploading
+                ? (editing ? 'Saving…' : 'Uploading…')
+                : editing
+                  ? 'Save Changes'
+                  : `Upload ${nounTitle}`}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setShowUpload(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={closeForm}>Cancel</Button>
           </div>
         </form>
       </SlideOver>

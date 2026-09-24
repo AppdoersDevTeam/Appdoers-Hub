@@ -42,7 +42,7 @@ export function TaskNoteComposer({ taskId, projectId }: Props) {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
-          placeholder="Write a task update note..."
+          placeholder="Write a note… Use @Full Name to mention someone."
           className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none resize-none"
         />
         <Button type="submit" size="sm" disabled={isPending || !note.trim()}>

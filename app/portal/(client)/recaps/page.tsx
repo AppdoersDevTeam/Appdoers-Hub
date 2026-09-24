@@ -30,7 +30,7 @@ export default async function PortalRecapsPage() {
 
   const { data: contact } = await supabase
     .from('client_contacts')
-    .select('client_id, first_name')
+    .select('client_id')
     .eq('portal_user_id', user?.id ?? '')
     .single()
 

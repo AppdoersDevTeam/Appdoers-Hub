@@ -22,7 +22,8 @@ export function TaskStatusSelect({ taskId, projectId, value, compact = false }: 
   const onChange = (nextStatus: TaskStatus) => {
     if (nextStatus === value) return
     startTransition(async () => {
-      await updateTaskStatusAction(taskId, projectId, nextStatus)
+      const result = await updateTaskStatusAction(taskId, projectId, nextStatus)
+      if (!result.success) return
       router.refresh()
     })
   }

@@ -6,6 +6,27 @@ Drop-in Hub workflow for any Cursor project. **Agents use the CLI only.**
 
 ---
 
+## New laptop (once per person, any PC)
+
+Does **not** need Appdoers CRM on disk. Requires Node.js 18+.
+
+1. Hub → **My Account** → **Cursor setup** → Generate token
+2. Paste this in PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/AppdoersDevTeam/Appdoers-Hub/master/hub-cursor-kit/setup-my-cursor-token.ps1 -OutFile $env:TEMP\setup-token.ps1; & $env:TEMP\setup-token.ps1"
+```
+
+Token saves to `%USERPROFILE%\.appdoers\hub.env` — never edit again on this laptop.
+
+If you already have Appdoers CRM cloned, this also works:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "Appdoers CRM\hub-cursor-kit\setup-my-cursor-token.ps1"
+```
+
+---
+
 ## New project (one paste, zero interaction)
 
 From the **project root** (after laptop token is set up once):
@@ -28,18 +49,7 @@ powershell -ExecutionPolicy Bypass -File "tools\add-hub-to-project.ps1" -Project
 
 Then open that folder in Cursor → new Agent chat.
 
----
-
-## New laptop (once per person)
-
-1. Hub → **My Account** → **Cursor setup** → Generate token
-2. Run once:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File "Appdoers CRM\hub-cursor-kit\setup-my-cursor-token.ps1"
-```
-
-Token saves to `%USERPROFILE%\.appdoers\hub.env` — never edit again on this laptop.
+**Make every project create Hub tickets:** paste the prompt in [`CURSOR-PASTE-PROMPT.md`](CURSOR-PASTE-PROMPT.md) into Cursor **User Rules** (once) or as the first Agent message.
 
 ---
 

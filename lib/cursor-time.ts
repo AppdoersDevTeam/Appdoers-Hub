@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { incrementTaskTimeSpent, getTaskTimeSpent } from '@/lib/task-time'
+import { todayYmd } from '@/lib/utils/format'
 
 export interface LogCursorTaskTimeInput {
   taskId: string
@@ -21,7 +22,7 @@ export async function logCursorTaskTime(
       project_id: input.projectId,
       task_id: input.taskId,
       team_user_id: input.teamUserId,
-      date: input.date ?? new Date().toISOString().split('T')[0],
+      date: input.date ?? todayYmd(),
       hours: input.hours,
       description: input.description?.trim() || null,
       is_billable: input.isBillable ?? true,

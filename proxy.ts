@@ -1,6 +1,30 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+async function resolveIdentity(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string
+) {
+  const [{ data: teamUser }, { data: contact }] = await Promise.all([
+    supabase
+      .from('team_users')
+      .select('id, is_active')
+      .eq('id', userId)
+      .maybeSingle(),
+    supabase
+      .from('client_contacts')
+      .select('id')
+      .eq('portal_user_id', userId)
+      .eq('has_portal_access', true)
+      .maybeSingle(),
+  ])
+
+  return {
+    isTeam: teamUser?.is_active === true,
+    isPortal: Boolean(contact),
+  }
+}
+
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -28,20 +52,29 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
+  const identity = user ? await resolveIdentity(supabase, user.id) : { isTeam: false, isPortal: false }
 
-  // Team app protection — /app/* routes
   if (pathname.startsWith('/app') && !pathname.startsWith('/app/login')) {
     if (!user) {
       return NextResponse.redirect(new URL('/app/login', request.url))
     }
+    if (!identity.isTeam) {
+      if (identity.isPortal) {
+        return NextResponse.redirect(new URL('/portal/projects', request.url))
+      }
+      return NextResponse.redirect(new URL('/app/login', request.url))
+    }
   }
 
-  // Redirect authenticated team users away from login
   if (pathname === '/app/login' && user) {
-    return NextResponse.redirect(new URL('/app/dashboard', request.url))
+    if (identity.isTeam) {
+      return NextResponse.redirect(new URL('/app/dashboard', request.url))
+    }
+    if (identity.isPortal) {
+      return NextResponse.redirect(new URL('/portal/projects', request.url))
+    }
   }
 
-  // Client portal protection — /portal/* routes
   if (
     pathname.startsWith('/portal') &&
     !pathname.startsWith('/portal/login')
@@ -49,11 +82,21 @@ export async function proxy(request: NextRequest) {
     if (!user) {
       return NextResponse.redirect(new URL('/portal/login', request.url))
     }
+    if (!identity.isPortal) {
+      if (identity.isTeam) {
+        return NextResponse.redirect(new URL('/app/dashboard', request.url))
+      }
+      return NextResponse.redirect(new URL('/portal/login', request.url))
+    }
   }
 
-  // Redirect authenticated portal users away from portal login
   if (pathname === '/portal/login' && user) {
-    return NextResponse.redirect(new URL('/portal/projects', request.url))
+    if (identity.isPortal) {
+      return NextResponse.redirect(new URL('/portal/projects', request.url))
+    }
+    if (identity.isTeam) {
+      return NextResponse.redirect(new URL('/app/dashboard', request.url))
+    }
   }
 
   return supabaseResponse

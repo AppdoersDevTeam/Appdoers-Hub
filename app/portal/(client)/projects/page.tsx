@@ -13,19 +13,13 @@ const phaseLabels: Record<string, string> = {
 
 const phaseOrder = ['discovery', 'design', 'development', 'review_qa', 'launch', 'maintenance']
 
-const statusConfig: Record<string, { label: string; cls: string }> = {
-  pending: { label: 'Upcoming', cls: 'bg-gray-100 text-gray-500' },
-  in_progress: { label: 'In Progress', cls: 'bg-blue-50 text-blue-600' },
-  completed: { label: 'Completed', cls: 'bg-green-50 text-green-700' },
-  on_hold: { label: 'On Hold', cls: 'bg-amber-50 text-amber-600' },
-}
-
 const clientStatusConfig: Record<string, { label: string; cls: string }> = {
-  on_track: { label: 'On Track', cls: 'bg-green-50 text-green-700' },
-  needs_attention: { label: 'Needs Attention', cls: 'bg-amber-50 text-amber-700' },
-  behind_schedule: { label: 'Behind Schedule', cls: 'bg-red-50 text-red-600' },
-  waiting_on_client: { label: 'Waiting on You', cls: 'bg-purple-50 text-purple-600' },
-  completed: { label: 'Completed', cls: 'bg-gray-100 text-gray-600' },
+  new: { label: 'New', cls: 'bg-slate-100 text-slate-600' },
+  in_progress: { label: 'In Progress', cls: 'bg-blue-50 text-blue-700' },
+  awaiting_appdoers: { label: 'With Appdoers', cls: 'bg-amber-50 text-amber-700' },
+  awaiting_client: { label: 'Waiting on You', cls: 'bg-purple-50 text-purple-700' },
+  completed: { label: 'Completed', cls: 'bg-green-50 text-green-700' },
+  on_hold: { label: 'On Hold', cls: 'bg-gray-100 text-gray-600' },
 }
 
 export default async function PortalProjectsPage() {
@@ -34,7 +28,7 @@ export default async function PortalProjectsPage() {
 
   const { data: contact } = await supabase
     .from('client_contacts')
-    .select('client_id, first_name')
+    .select('client_id')
     .eq('portal_user_id', user?.id ?? '')
     .single()
 
@@ -73,7 +67,6 @@ export default async function PortalProjectsPage() {
           {projects.map((project) => {
             const phases = (project.project_phases ?? []) as { phase: string; status: string }[]
             const sortedPhases = phaseOrder.map(p => phases.find(ph => ph.phase === p)).filter(Boolean) as { phase: string; status: string }[]
-            const currentPhaseStatus = statusConfig[project.client_status ?? ''] ?? null
             const cs = clientStatusConfig[project.client_status ?? '']
 
             const completedCount = sortedPhases.filter(p => p.status === 'completed').length

@@ -124,11 +124,8 @@ try {
   if ($LASTEXITCODE -ne 0) {
     Write-Host ''
     Write-Host 'Project files installed, but laptop token is missing or invalid.'
-    Write-Host 'Run laptop setup once:'
-    Write-Host '  powershell -ExecutionPolicy Bypass -File "Appdoers CRM\hub-cursor-kit\setup-my-cursor-token.ps1"'
-    Write-Host 'Or download:'
-    $setupUrl = $GitHubBase + '/setup-my-cursor-token.ps1'
-    Write-Host ('  irm ' + $setupUrl + ' -OutFile $env:TEMP\setup-token.ps1; & $env:TEMP\setup-token.ps1')
+    Write-Host 'Generate a token in Hub -> My Account -> Cursor setup, then run:'
+    Write-Host '  powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/AppdoersDevTeam/Appdoers-Hub/master/hub-cursor-kit/setup-my-cursor-token.ps1 -OutFile $env:TEMP\setup-token.ps1; & $env:TEMP\setup-token.ps1"'
     exit 1
   }
   Write-Host ''

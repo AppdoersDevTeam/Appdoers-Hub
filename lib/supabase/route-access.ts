@@ -2,7 +2,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 type AccessDenied = { ok: false; status: 401 | 403; message: string }
-type TeamAccess = { ok: true; db: SupabaseClient; userId: string }
+type TeamAccess = { ok: true; db: SupabaseClient; userId: string; role: string }
 type PortalAccess = { ok: true; db: SupabaseClient; userId: string; clientId: string }
 
 export async function requireTeamAccess(): Promise<TeamAccess | AccessDenied> {
@@ -17,7 +17,7 @@ export async function requireTeamAccess(): Promise<TeamAccess | AccessDenied> {
 
   const { data: teamUser } = await auth
     .from('team_users')
-    .select('id')
+    .select('id, role')
     .eq('id', user.id)
     .eq('is_active', true)
     .maybeSingle()
@@ -27,7 +27,16 @@ export async function requireTeamAccess(): Promise<TeamAccess | AccessDenied> {
   }
 
   const db = await createServiceClient()
-  return { ok: true, db, userId: user.id }
+  return { ok: true, db, userId: user.id, role: teamUser.role as string }
+}
+
+export async function requireDirectorAccess(): Promise<TeamAccess | AccessDenied> {
+  const access = await requireTeamAccess()
+  if (!access.ok) return access
+  if (access.role !== 'director') {
+    return { ok: false, status: 403, message: 'Forbidden' }
+  }
+  return access
 }
 
 export async function requirePortalAccess(): Promise<PortalAccess | AccessDenied> {

@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   },
 })
 
-const HUB_URL = 'https://appdoers-hub-two.vercel.app'
+const HUB_URL = 'https://hub.appdoers.co.nz'
 const PROJECT_INSTALL = `powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/AppdoersDevTeam/Appdoers-Hub/master/hub-cursor-kit/install-project.ps1 -OutFile $env:TEMP\\hub-install.ps1; & $env:TEMP\\hub-install.ps1"`
 const LAPTOP_SETUP = `powershell -ExecutionPolicy Bypass -File "Appdoers CRM\\hub-cursor-kit\\setup-my-cursor-token.ps1"`
 

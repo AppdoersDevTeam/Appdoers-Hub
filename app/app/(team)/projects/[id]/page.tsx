@@ -8,6 +8,7 @@ import { TasksTable } from '@/components/team/tasks/tasks-table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ClientStatusSelector } from '@/components/team/projects/client-status-selector'
 import { formatDate } from '@/lib/utils/format'
+import { oneRelation } from '@/lib/documents'
 import { ArrowLeft, StickyNote } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import type { ProjectPhase } from '@/lib/types/database'
@@ -60,7 +61,8 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
   } = await supabase.auth.getUser()
 
   const clientName =
-    (project.clients as { company_name?: string } | null)?.company_name ?? '—'
+    oneRelation(project.clients as { company_name?: string } | { company_name?: string }[] | null)
+      ?.company_name ?? '—'
   const cs = clientStatusConfig[project.client_status] ?? clientStatusConfig.new
 
   return (
@@ -158,6 +160,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
             type: t.type,
             priority: t.priority,
             status: t.status,
+            workflow_stage: t.workflow_stage,
             project_id: t.project_id,
             project_name: project.name,
             client_id: project.client_id,

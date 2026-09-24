@@ -38,7 +38,7 @@ export function CursorSetupPanel({ tokens: initialTokens, hubUrl, hubEnvPath }: 
     ? `APPDOERS_HUB_URL=${hubUrl}\nAPPDOERS_CURSOR_TOKEN=${newToken}`
     : ''
 
-  const setupScript = `powershell -ExecutionPolicy Bypass -File "Appdoers CRM\\hub-cursor-kit\\setup-my-cursor-token.ps1"`
+  const setupScript = `powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/AppdoersDevTeam/Appdoers-Hub/master/hub-cursor-kit/setup-my-cursor-token.ps1 -OutFile $env:TEMP\\setup-token.ps1; & $env:TEMP\\setup-token.ps1"`
 
   const copyText = async (text: string, kind: 'env' | 'token' | 'script') => {
     await navigator.clipboard.writeText(text)
@@ -89,8 +89,7 @@ export function CursorSetupPanel({ tokens: initialTokens, hubUrl, hubEnvPath }: 
       <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-600">
         <li>Generate your token below.</li>
         <li>
-          Run the setup script once (from your <code className="rounded bg-slate-100 px-1">Appdoers Work</code>{' '}
-          folder) and paste the token when asked.
+          Run the setup script once on your laptop (no CRM clone needed) and paste the token when asked.
         </li>
         <li>
           Saved to{' '}

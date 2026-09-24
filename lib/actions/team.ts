@@ -191,6 +191,16 @@ export async function toggleTeamMemberActiveAction(
       .eq('id', id)
 
     if (error) return { success: false, error: error.message }
+
+    if (!is_active) {
+      const service = await createServiceClient()
+      await service
+        .from('cursor_api_tokens')
+        .update({ is_active: false })
+        .eq('team_user_id', id)
+        .eq('is_active', true)
+    }
+
     revalidatePath('/app/settings')
     return { success: true, data: undefined }
   } catch (err) {

@@ -1,16 +1,25 @@
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
-import { TasksTable } from '@/components/team/tasks/tasks-table'
+import { TasksWorkspace } from '@/components/team/tasks/tasks-workspace'
+import { todayYmd } from '@/lib/utils/format'
 
-export default async function TasksPage() {
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mine?: string }>
+}) {
+  const { mine } = await searchParams
   const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const [{ data: tasks }, { data: projects }, { data: clients }, { data: teamMembers }] =
     await Promise.all([
       supabase
         .from('tasks')
         .select(`
-          id, title, type, priority, status, project_id, assigned_to, time_spent,
+          id, title, type, priority, status, workflow_stage, project_id, assigned_to, time_spent,
           due_date, updated_at,
           team_users!assigned_to(full_name),
           projects(name, client_id, clients(company_name))
@@ -32,7 +41,7 @@ export default async function TasksPage() {
         .order('full_name'),
     ])
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayYmd()
   const allTasks = tasks ?? []
   const openCount = allTasks.filter((t) => t.status !== 'closed').length
   const overdueCount = allTasks.filter(
@@ -52,6 +61,7 @@ export default async function TasksPage() {
       type: t.type,
       priority: t.priority,
       status: t.status,
+      workflow_stage: t.workflow_stage,
       project_id: t.project_id,
       project_name: project?.name ?? '—',
       client_id: project?.client_id ?? '',
@@ -73,7 +83,7 @@ export default async function TasksPage() {
         title="Tasks"
         subtitle={`${openCount} open${overdueCount > 0 ? ` · ${overdueCount} overdue` : ''}`}
       />
-      <TasksTable
+      <TasksWorkspace
         tasks={rows}
         projects={activeProjects}
         filterProjects={(projects ?? []).map((p) => ({
@@ -84,6 +94,8 @@ export default async function TasksPage() {
         clients={clients ?? []}
         teamMembers={teamMembers ?? []}
         showProjectCol={true}
+        currentUserId={user?.id}
+        defaultMine={mine === '1'}
       />
     </div>
   )

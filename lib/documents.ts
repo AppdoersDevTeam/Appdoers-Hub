@@ -57,6 +57,25 @@ export function statusesForKind(kind: DocumentKind): readonly string[] {
   return kind === 'proposal' ? PROPOSAL_STATUSES : CONTRACT_STATUSES
 }
 
+export function documentStatusTimestamps(
+  kind: DocumentKind,
+  status: string,
+  now = new Date().toISOString()
+): Record<string, string | null> {
+  const updates: Record<string, string | null> = { status }
+  if (status === 'draft') {
+    updates.sent_at = null
+    if (kind === 'contract') updates.signed_at = null
+  } else if (status === 'signed' && kind === 'contract') {
+    updates.sent_at = now
+    updates.signed_at = now
+  } else {
+    updates.sent_at = now
+    if (kind === 'contract') updates.signed_at = null
+  }
+  return updates
+}
+
 export function tableForKind(kind: DocumentKind): 'proposals' | 'contracts' {
   return kind === 'proposal' ? 'proposals' : 'contracts'
 }

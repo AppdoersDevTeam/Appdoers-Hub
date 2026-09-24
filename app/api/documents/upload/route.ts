@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { revalidatePath } from 'next/cache'
 import { requireTeamAccess } from '@/lib/supabase/route-access'
 import { logActivity } from '@/lib/actions/activity'
+import { revalidateDocumentPaths } from '@/lib/documents/revalidate'
 import {
   DOCUMENT_BUCKET,
   DOCUMENT_MAX_SIZE,
   buildDocumentStoragePath,
+  documentStatusTimestamps,
   isAllowedDocument,
   parseDocumentKind,
   statusesForKind,
@@ -16,6 +17,7 @@ import {
 interface UploadBody {
   step?: string
   kind?: string
+  document_id?: string
   client_id?: string
   lead_id?: string
   title?: string
@@ -41,6 +43,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid upload request' }, { status: 400 })
     }
     const kind = parseDocumentKind(body.kind)
+    const documentId = String(body.document_id ?? '').trim()
     const clientId = String(body.client_id ?? '').trim()
     const leadId = String(body.lead_id ?? '').trim()
     const title = String(body.title ?? '').trim()
@@ -113,15 +116,75 @@ export async function POST(req: NextRequest) {
 
     const now = new Date().toISOString()
     const table = tableForKind(kind)
-    const row: Record<string, unknown> = {
-      client_id: clientId || null,
+    const fileFields = {
       title,
-      status,
+      client_id: clientId || null,
       file_name: fileName,
       storage_path: storagePath,
       mime_type: mimeType || null,
       file_size: fileSize || null,
       is_client_visible: Boolean(clientId) && isClientVisible,
+    }
+
+    if (documentId) {
+      const { data: existing, error: loadError } = await access.db
+        .from(table)
+        .select()
+        .eq('id', documentId)
+        .maybeSingle()
+
+      if (loadError) {
+        await access.db.storage.from(DOCUMENT_BUCKET).remove([storagePath])
+        return NextResponse.json({ error: loadError.message }, { status: 500 })
+      }
+      if (!existing) {
+        await access.db.storage.from(DOCUMENT_BUCKET).remove([storagePath])
+        return NextResponse.json({ error: 'Record not found' }, { status: 404 })
+      }
+
+      const updates: Record<string, unknown> = { ...fileFields }
+      if (kind === 'proposal') {
+        updates.lead_id = leadId || null
+        updates.version = Number(existing.version ?? 1) + 1
+      }
+      if (status !== existing.status) {
+        Object.assign(updates, documentStatusTimestamps(kind, status, now))
+      } else {
+        updates.status = status
+      }
+
+      const { data: record, error: dbError } = await access.db
+        .from(table)
+        .update(updates)
+        .eq('id', documentId)
+        .select()
+        .single()
+
+      if (dbError || !record) {
+        await access.db.storage.from(DOCUMENT_BUCKET).remove([storagePath])
+        return NextResponse.json({ error: dbError?.message ?? 'Failed to update record' }, { status: 500 })
+      }
+
+      if (existing.storage_path && existing.storage_path !== storagePath) {
+        await access.db.storage.from(DOCUMENT_BUCKET).remove([existing.storage_path])
+      }
+
+      await logActivity({
+        entityType: kind,
+        entityId: record.id,
+        clientId: clientId || null,
+        action: 'updated',
+        description: `${kind === 'proposal' ? 'Proposal' : 'Contract'} "${title}" file replaced`,
+      })
+
+      revalidateDocumentPaths(kind, existing.client_id, existing.lead_id ?? null)
+      revalidateDocumentPaths(kind, record.client_id, record.lead_id ?? null)
+      return NextResponse.json({ success: true, document: record })
+    }
+
+    const row: Record<string, unknown> = {
+      ...fileFields,
+      status,
       created_by: access.userId,
       sent_at: status === 'draft' ? null : now,
     }
@@ -156,13 +219,7 @@ export async function POST(req: NextRequest) {
       description: `${kind === 'proposal' ? 'Proposal' : 'Contract'} "${title}" uploaded`,
     })
 
-    const listPath = kind === 'proposal' ? '/app/proposals' : '/app/contracts'
-    const portalPath = kind === 'proposal' ? '/portal/proposals' : '/portal/contracts'
-    revalidatePath(listPath)
-    revalidatePath(portalPath)
-    if (clientId) revalidatePath(`/app/clients/${clientId}`)
-    if (leadId) revalidatePath(`/app/leads/${leadId}`)
-
+    revalidateDocumentPaths(kind, clientId || null, leadId || null)
     return NextResponse.json({ success: true, document: record })
   } catch (err) {
     console.error('Document upload error:', err)

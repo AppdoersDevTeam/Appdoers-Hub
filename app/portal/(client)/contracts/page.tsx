@@ -7,7 +7,7 @@ export default async function PortalContractsPage() {
 
   const { data: contact } = await supabase
     .from('client_contacts')
-    .select('client_id')
+    .select('client_id, full_name, email')
     .eq('portal_user_id', user?.id ?? '')
     .single()
 
@@ -31,6 +31,7 @@ export default async function PortalContractsPage() {
   return (
     <PortalDocumentList
       kind="contract"
+      signer={contact}
       documents={(contracts ?? []).map((c) => ({
         id: c.id,
         title: c.title,

@@ -1,27 +1,20 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient, createServiceClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
+import { revalidateDocumentPaths } from '@/lib/documents/revalidate'
 import {
   DOCUMENT_BUCKET,
+  documentStatusTimestamps,
   statusesForKind,
   tableForKind,
+  validateDocumentOwner,
   type DocumentKind,
 } from '@/lib/documents'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
   | { success: false; error: string }
-
-function revalidateDocumentPaths(kind: DocumentKind, clientId?: string | null, leadId?: string | null) {
-  const listPath = kind === 'proposal' ? '/app/proposals' : '/app/contracts'
-  const portalPath = kind === 'proposal' ? '/portal/proposals' : '/portal/contracts'
-  revalidatePath(listPath)
-  revalidatePath(portalPath)
-  if (clientId) revalidatePath(`/app/clients/${clientId}`)
-  if (leadId) revalidatePath(`/app/leads/${leadId}`)
-}
 
 export async function getDocumentDownloadUrlAction(
   kind: DocumentKind,
@@ -93,19 +86,7 @@ export async function updateDocumentStatusAction(
 
     const supabase = await createSupabaseClient()
     const table = tableForKind(kind)
-    const now = new Date().toISOString()
-    const updates: Record<string, string | null> = { status }
-
-    if (status === 'draft') {
-      updates.sent_at = null
-      if (kind === 'contract') updates.signed_at = null
-    } else if (status === 'signed' && kind === 'contract') {
-      updates.sent_at = now
-      updates.signed_at = now
-    } else {
-      updates.sent_at = now
-      if (kind === 'contract') updates.signed_at = null
-    }
+    const updates = documentStatusTimestamps(kind, status)
 
     const { data, error } = await supabase
       .from(table)
@@ -138,6 +119,74 @@ export async function toggleDocumentVisibilityAction(
       .maybeSingle()
 
     if (error) return { success: false, error: error.message }
+    revalidateDocumentPaths(kind, data?.client_id, data?.lead_id ?? null)
+    return { success: true, data: undefined }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
+
+export async function updateDocumentAction(
+  kind: DocumentKind,
+  id: string,
+  input: {
+    title: string
+    status: string
+    is_client_visible: boolean
+    client_id: string
+    lead_id: string
+  }
+): Promise<ActionResult<undefined>> {
+  try {
+    const title = input.title.trim()
+    const clientId = input.client_id.trim()
+    const leadId = input.lead_id.trim()
+    const ownerError = validateDocumentOwner(kind, clientId, leadId)
+    if (ownerError) return { success: false, error: ownerError }
+    if (!title) return { success: false, error: 'Title is required' }
+    if (!statusesForKind(kind).includes(input.status)) {
+      return { success: false, error: 'Invalid status' }
+    }
+
+    const supabase = await createSupabaseClient()
+    const table = tableForKind(kind)
+    const { data: existing, error: loadError } = await supabase
+      .from(table)
+      .select()
+      .eq('id', id)
+      .maybeSingle()
+
+    if (loadError) return { success: false, error: loadError.message }
+    if (!existing) return { success: false, error: 'Record not found' }
+
+    const updates: Record<string, unknown> = {
+      title,
+      client_id: clientId || null,
+      is_client_visible: Boolean(clientId) && input.is_client_visible,
+    }
+    if (kind === 'proposal') updates.lead_id = leadId || null
+    if (input.status !== existing.status) {
+      Object.assign(updates, documentStatusTimestamps(kind, input.status))
+    }
+
+    const { data, error } = await supabase
+      .from(table)
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .maybeSingle()
+
+    if (error) return { success: false, error: error.message }
+
+    await logActivity({
+      entityType: kind,
+      entityId: id,
+      clientId: clientId || null,
+      action: 'updated',
+      description: `${kind === 'proposal' ? 'Proposal' : 'Contract'} "${title}" updated`,
+    })
+
+    revalidateDocumentPaths(kind, existing.client_id, existing.lead_id ?? null)
     revalidateDocumentPaths(kind, data?.client_id, data?.lead_id ?? null)
     return { success: true, data: undefined }
   } catch (err) {

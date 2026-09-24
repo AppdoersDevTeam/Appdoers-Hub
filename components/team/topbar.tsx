@@ -1,5 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { SignOutButton } from '@/components/team/sign-out-button'
+import { NotificationBell } from '@/components/team/notification-bell'
+import { SearchTrigger } from '@/components/team/search-trigger'
+import { listMyNotificationsAction } from '@/lib/actions/notifications'
 
 export async function TopBar() {
   const supabase = await createClient()
@@ -16,6 +19,8 @@ export async function TopBar() {
       .single()
     teamUser = data
   }
+
+  const notifications = teamUser ? await listMyNotificationsAction() : []
 
   const initials = teamUser?.full_name
     ? teamUser.full_name
@@ -35,11 +40,10 @@ export async function TopBar() {
 
   return (
     <header className="fixed right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6 left-60">
-      {/* Breadcrumb placeholder — filled per page */}
-      <div id="topbar-breadcrumb" />
+      <SearchTrigger />
 
-      {/* User area */}
       <div className="flex items-center gap-3">
+        <NotificationBell notifications={notifications} />
         <div className="text-right">
           <p className="text-sm font-medium text-slate-900">{teamUser?.full_name ?? 'Team Member'}</p>
           <p className="text-xs text-slate-500">{roleLabel[teamUser?.role ?? ''] ?? 'Team'}</p>

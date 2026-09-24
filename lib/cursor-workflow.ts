@@ -21,3 +21,17 @@ export function stageToTaskStatus(stage: CursorStage) {
   if (stage === 'done') return 'closed'
   return 'open'
 }
+
+export function statusToWorkflowStage(
+  status: 'open' | 'in_progress' | 'awaiting_review' | 'closed',
+  currentStage?: CursorStage | null
+): CursorStage {
+  if (status === 'closed') return 'done'
+  if (status === 'in_progress') return 'developer'
+  if (status === 'awaiting_review') {
+    if (currentStage === 'reviewer' || currentStage === 'qa') return currentStage
+    return 'qa'
+  }
+  if (currentStage === 'designer' || currentStage === 'pm') return currentStage
+  return 'pm'
+}

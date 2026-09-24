@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
 import { sendSlackAlert } from '@/lib/slack'
+import { oneRelation } from '@/lib/documents'
+import { todayYmd } from '@/lib/utils/format'
 import type { InvoiceLine } from '@/lib/invoices/types'
 
 export type { InvoiceLine } from '@/lib/invoices/types'
@@ -88,12 +90,13 @@ export async function updateInvoiceAction(
   try {
     const supabase = await createSupabaseClient()
 
-    const updates: Record<string, unknown> = {
-      project_id: input.project_id ?? null,
-      issue_date: input.issue_date,
-      due_date: input.due_date,
-      notes: input.notes ?? null,
-    }
+    const updates: Record<string, unknown> = {}
+    if (input.project_id !== undefined) updates.project_id = input.project_id
+    if (input.issue_date !== undefined) updates.issue_date = input.issue_date
+    if (input.due_date !== undefined) updates.due_date = input.due_date
+    if (input.notes !== undefined) updates.notes = input.notes
+    if (input.client_id !== undefined) updates.client_id = input.client_id
+    if (input.type !== undefined) updates.type = input.type
 
     if (input.lines) {
       const { subtotal, gst_amount, total } = calcTotals(input.lines)
@@ -101,6 +104,10 @@ export async function updateInvoiceAction(
       updates.subtotal = subtotal
       updates.gst_amount = gst_amount
       updates.total = total
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return { success: true, data: undefined }
     }
 
     const { error } = await supabase.from('invoices').update(updates).eq('id', id)
@@ -133,10 +140,12 @@ export async function sendInvoiceAction(id: string): Promise<ActionResult<undefi
 
     if (error) return { success: false, error: error.message }
 
-    const num = (invoice as { invoice_number?: string } | null)?.invoice_number ?? id
-    const total = (invoice as { total?: number } | null)?.total ?? 0
-    const dueDate = (invoice as { due_date?: string } | null)?.due_date ?? ''
-    const clientName = ((invoice as { clients?: { company_name?: string } } | null)?.clients?.company_name) ?? 'client'
+    const num = invoice?.invoice_number ?? id
+    const total = invoice?.total ?? 0
+    const dueDate = invoice?.due_date ?? ''
+    const clientName =
+      oneRelation(invoice?.clients as { company_name?: string } | { company_name?: string }[] | null)
+        ?.company_name ?? 'client'
 
     await logActivity({
       entityType: 'invoice',
@@ -183,16 +192,18 @@ export async function markInvoicePaidAction(
       .from('invoices')
       .update({
         status: 'paid',
-        paid_at: new Date().toISOString().split('T')[0],
+        paid_at: todayYmd(),
         payment_reference: paymentReference ?? null,
       })
       .eq('id', id)
 
     if (error) return { success: false, error: error.message }
 
-    const num = (invoice as { invoice_number?: string } | null)?.invoice_number ?? id
-    const total = (invoice as { total?: number } | null)?.total ?? 0
-    const clientName = ((invoice as { clients?: { company_name?: string } } | null)?.clients?.company_name) ?? 'client'
+    const num = invoice?.invoice_number ?? id
+    const total = invoice?.total ?? 0
+    const clientName =
+      oneRelation(invoice?.clients as { company_name?: string } | { company_name?: string }[] | null)
+        ?.company_name ?? 'client'
 
     await logActivity({
       entityType: 'invoice',
@@ -247,10 +258,9 @@ export async function createInvoiceFromTimeAction(
     const supabase = await createSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Fetch the time entries
     const { data: entries } = await supabase
       .from('time_entries')
-      .select('id, description, hours, hourly_rate, tasks(title)')
+      .select('id, description, hours, team_users(hourly_rate), tasks(title)')
       .in('id', timeEntryIds)
       .eq('is_invoiced', false)
 
@@ -259,12 +269,17 @@ export async function createInvoiceFromTimeAction(
     }
 
     const lines: InvoiceLine[] = entries.map((e) => {
-      const rate = (e.hourly_rate as number | null) ?? 150
-      const amount = parseFloat(((e.hours as number) * rate).toFixed(2))
-      const taskTitle = (e.tasks as { title?: string } | null)?.title
+      const rate =
+        Number(
+          oneRelation(e.team_users as { hourly_rate?: number } | { hourly_rate?: number }[] | null)
+            ?.hourly_rate ?? 0
+        ) || 150
+      const hours = Number(e.hours) || 0
+      const amount = parseFloat((hours * rate).toFixed(2))
+      const taskTitle = oneRelation(e.tasks as { title?: string } | { title?: string }[] | null)?.title
       return {
-        description: e.description || taskTitle || 'Development work',
-        quantity: e.hours as number,
+        description: (e.description as string | null) || taskTitle || 'Development work',
+        quantity: hours,
         unit_price: rate,
         amount,
         time_entry_id: e.id as string,
@@ -272,7 +287,7 @@ export async function createInvoiceFromTimeAction(
     })
 
     const { subtotal, gst_amount, total } = calcTotals(lines)
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayYmd()
 
     const { data, error } = await supabase
       .from('invoices')
@@ -297,11 +312,13 @@ export async function createInvoiceFromTimeAction(
       return { success: false, error: 'Invoice could not be created. Please try again.' }
     }
 
-    // Mark time entries as invoiced
     await supabase
       .from('time_entries')
-      .update({ is_invoiced: true })
-      .in('id', timeEntryIds)
+      .update({ is_invoiced: true, invoice_id: data.id })
+      .in(
+        'id',
+        entries.map((e) => e.id as string)
+      )
 
     await logActivity({
       entityType: 'invoice',
@@ -312,8 +329,42 @@ export async function createInvoiceFromTimeAction(
     })
 
     revalidatePath('/app/invoices')
+    revalidatePath(`/app/invoices/${data.id}`)
     revalidatePath(`/app/projects/${projectId}`)
     return { success: true, data: { id: data.id, invoice_number: data.invoice_number } }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
+
+export async function voidInvoiceAction(id: string): Promise<ActionResult<undefined>> {
+  try {
+    const supabase = await createSupabaseClient()
+    const { data: invoice, error: loadError } = await supabase
+      .from('invoices')
+      .select('status, invoice_number')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (loadError) return { success: false, error: loadError.message }
+    if (!invoice) return { success: false, error: 'Invoice not found' }
+    if (invoice.status === 'paid') {
+      return { success: false, error: 'Paid invoices cannot be voided' }
+    }
+
+    const { error } = await supabase.from('invoices').update({ status: 'void' }).eq('id', id)
+    if (error) return { success: false, error: error.message }
+
+    await logActivity({
+      entityType: 'invoice',
+      entityId: id,
+      action: 'voided',
+      description: `Invoice ${invoice.invoice_number ?? id} voided`,
+    })
+
+    revalidatePath(`/app/invoices/${id}`)
+    revalidatePath('/app/invoices')
+    return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: String(err) }
   }

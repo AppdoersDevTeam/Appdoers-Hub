@@ -13,7 +13,7 @@ export default async function AccountPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) redirect('/login')
+  if (!user) redirect('/app/login')
 
   const { data: teamUser } = await supabase
     .from('team_users')
@@ -21,7 +21,7 @@ export default async function AccountPage() {
     .eq('id', user.id)
     .single()
 
-  if (!teamUser) redirect('/login')
+  if (!teamUser) redirect('/app/login')
 
   const tokensResult = await listMyCursorTokensAction()
   const tokens = tokensResult.success ? tokensResult.data : []
@@ -29,7 +29,7 @@ export default async function AccountPage() {
   const hubUrl =
     process.env.APPDOERS_HUB_URL?.replace(/\/+$/, '') ??
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, '') ??
-    'https://appdoers-hub-two.vercel.app'
+    'https://hub.appdoers.co.nz'
 
   const hubEnvPath = path.join(
     process.env.USERPROFILE || process.env.HOME || os.homedir(),

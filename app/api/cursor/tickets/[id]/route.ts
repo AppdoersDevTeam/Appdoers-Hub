@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
-import { CURSOR_STAGES, hashApiToken, stageToTaskStatus } from '@/lib/cursor-workflow'
+import { CURSOR_STAGES, stageToTaskStatus } from '@/lib/cursor-workflow'
 import { formatTicket, getJoinedClientName, ticketSelect } from '@/lib/cursor-ticket-format'
 import { hubTaskUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
 import { getTeamMemberName, slackPeopleContext } from '@/lib/team-member'
 import { getTaskHoursLogged, logCursorTaskTime } from '@/lib/cursor-time'
 import { setTaskTimeSpent } from '@/lib/task-time'
 import { closedAtForStatus } from '@/lib/tasks/closed-at'
+import { authenticateCursorRequest, cursorAuthFailed } from '@/lib/cursor-auth'
 
 const updateTicketSchema = z.object({
   project_id: z.string().uuid().optional(),
@@ -52,32 +53,9 @@ async function getProjectSummary(
   }
 }
 
-async function authenticateCursorRequest(req: Request) {
-  const authHeader = req.headers.get('authorization')
-  const headerToken = req.headers.get('x-appdoers-api-token')
-  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null
-  const token = (headerToken ?? bearerToken ?? '').trim()
-
-  if (!token) return { error: 'Missing API token' as const }
-
-  const service = await createServiceClient()
-  const { data, error } = await service
-    .from('cursor_api_tokens')
-    .select('id, team_user_id')
-    .eq('token_hash', hashApiToken(token))
-    .eq('is_active', true)
-    .single()
-
-  if (error || !data) return { error: 'Invalid API token' as const }
-
-  await service.from('cursor_api_tokens').update({ last_used_at: new Date().toISOString() }).eq('id', data.id)
-  const teamMemberName = await getTeamMemberName(service, data.team_user_id)
-  return { service, teamUserId: data.team_user_id, teamMemberName }
-}
-
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await authenticateCursorRequest(req)
-  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: 401 })
+  if (cursorAuthFailed(auth)) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const { id } = await params
   const { data, error } = await auth.service.from('tasks').select(ticketSelect).eq('id', id).single()
@@ -95,7 +73,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await authenticateCursorRequest(req)
-  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: 401 })
+  if (cursorAuthFailed(auth)) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const { id } = await params
   const parsed = updateTicketSchema.safeParse(await req.json().catch(() => ({})))

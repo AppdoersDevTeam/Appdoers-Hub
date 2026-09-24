@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { todayYmd } from '@/lib/utils/format'
 
 export async function getTaskTimeSpent(
   service: SupabaseClient,
@@ -69,7 +70,7 @@ export async function setTaskTimeSpent(
       project_id: input.projectId,
       task_id: input.taskId,
       team_user_id: input.teamUserId,
-      date: new Date().toISOString().split('T')[0],
+      date: todayYmd(),
       hours: delta,
       description: input.description?.trim() || 'Time spent updated on task',
       is_billable: true,

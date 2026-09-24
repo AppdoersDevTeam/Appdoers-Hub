@@ -2,8 +2,9 @@
 
 import { randomBytes } from 'crypto'
 import { revalidatePath } from 'next/cache'
+import { requireTeamAccess } from '@/lib/supabase/route-access'
+import { createServiceClient } from '@/lib/supabase/server'
 import { hashApiToken } from '@/lib/cursor-workflow'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -21,22 +22,19 @@ function makeToken() {
   return `apd_${randomBytes(24).toString('hex')}`
 }
 
-async function requireUser(): Promise<
+async function requireActiveTeamUser(): Promise<
   { user: { id: string } } | { error: string }
 > {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not authenticated' }
-  return { user }
+  const access = await requireTeamAccess()
+  if (!access.ok) return { error: access.message }
+  return { user: { id: access.userId } }
 }
 
 export async function listMyCursorTokensAction(): Promise<
   ActionResult<CursorTokenSummary[]>
 > {
   try {
-    const auth = await requireUser()
+    const auth = await requireActiveTeamUser()
     if (!('user' in auth)) return { success: false, error: auth.error }
 
     const service = await createServiceClient()
@@ -58,7 +56,7 @@ export async function createCursorTokenAction(
   name: string
 ): Promise<ActionResult<{ token: string; name: string }>> {
   try {
-    const auth = await requireUser()
+    const auth = await requireActiveTeamUser()
     if (!('user' in auth)) return { success: false, error: auth.error }
 
     const tokenName = name.trim()
@@ -86,7 +84,7 @@ export async function revokeCursorTokenAction(
   tokenId: string
 ): Promise<ActionResult<undefined>> {
   try {
-    const auth = await requireUser()
+    const auth = await requireActiveTeamUser()
     if (!('user' in auth)) return { success: false, error: auth.error }
 
     const service = await createServiceClient()

@@ -1,23 +1,18 @@
 import { NextResponse } from 'next/server'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { requireTeamAccess } from '@/lib/supabase/route-access'
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const access = await requireTeamAccess()
+  if (!access.ok) {
+    return NextResponse.json({ error: access.message }, { status: access.status })
   }
 
-  const service = await createServiceClient()
-  const { error } = await service
+  const { error } = await access.db
     .from('cursor_api_tokens')
     .update({ is_active: false })
     .eq('id', id)
-    .eq('team_user_id', user.id)
+    .eq('team_user_id', access.userId)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Download, FileText } from 'lucide-react'
 import { getDocumentDownloadUrlAction } from '@/lib/actions/documents'
+import { signContractAction } from '@/lib/actions/contracts'
 import type { DocumentKind } from '@/lib/documents'
 import { formatDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
@@ -29,18 +31,24 @@ export interface PortalDocument {
 export function PortalDocumentList({
   kind,
   documents,
+  signer,
 }: {
   kind: DocumentKind
   documents: PortalDocument[]
+  signer?: { full_name: string; email: string }
 }) {
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [signingId, setSigningId] = useState<string | null>(null)
+  const [signerName, setSignerName] = useState(signer?.full_name ?? '')
+  const [agreed, setAgreed] = useState(false)
   const noun = kind === 'proposal' ? 'proposals' : 'contracts'
   const heading = kind === 'proposal' ? 'Proposals' : 'Contracts'
   const subtitle =
     kind === 'proposal'
       ? 'Download proposal documents from Appdoers.'
-      : 'Download contract documents from Appdoers.'
+      : 'Download and sign contract documents from Appdoers.'
 
   const handleDownload = (doc: PortalDocument) => {
     startTransition(async () => {
@@ -57,6 +65,28 @@ export function PortalDocumentList({
       document.body.appendChild(a)
       a.click()
       a.remove()
+    })
+  }
+
+  const handleSign = (doc: PortalDocument) => {
+    if (!signerName.trim()) {
+      setError('Enter your full legal name to sign.')
+      return
+    }
+    if (!agreed) {
+      setError('Confirm you have read and agree to the contract.')
+      return
+    }
+    setError(null)
+    startTransition(async () => {
+      const result = await signContractAction(doc.id, signerName.trim())
+      if (!result.success) {
+        setError(result.error)
+        return
+      }
+      setSigningId(null)
+      setAgreed(false)
+      router.refresh()
     })
   }
 
@@ -83,10 +113,8 @@ export function PortalDocumentList({
           {documents.map((doc) => {
             const st = statusConfig[doc.status] ?? { label: doc.status, cls: 'bg-gray-100 text-gray-600' }
             return (
-              <div
-                key={doc.id}
-                className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-5 py-4"
-              >
+              <div key={doc.id} className="rounded-xl border border-gray-200 bg-white px-5 py-4 space-y-4">
+                <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-50">
                     <FileText className="h-5 w-5 text-gray-400" />
@@ -113,8 +141,48 @@ export function PortalDocumentList({
                     <Download className="h-4 w-4" />
                     Download
                   </button>
+                  {kind === 'contract' && doc.status === 'sent' && (
+                    <button
+                      type="button"
+                      onClick={() => setSigningId(signingId === doc.id ? null : doc.id)}
+                      className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+                    >
+                      Sign
+                    </button>
+                  )}
                   <span className={cn('rounded-full px-3 py-1 text-xs font-medium', st.cls)}>{st.label}</span>
                 </div>
+                </div>
+                {signingId === doc.id && kind === 'contract' && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 space-y-3">
+                    <p className="text-sm text-emerald-900">
+                      Download and read the contract, then type your full legal name to sign electronically.
+                    </p>
+                    <input
+                      value={signerName}
+                      onChange={(e) => setSignerName(e.target.value)}
+                      placeholder="Full legal name"
+                      className="w-full max-w-sm rounded-md border border-emerald-200 bg-white px-3 py-2 text-sm"
+                    />
+                    <label className="flex items-start gap-2 text-sm text-emerald-900">
+                      <input
+                        type="checkbox"
+                        checked={agreed}
+                        onChange={(e) => setAgreed(e.target.checked)}
+                        className="mt-1"
+                      />
+                      I have read this contract and agree to be bound by its terms.
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleSign(doc)}
+                      disabled={isPending || !agreed || !signerName.trim()}
+                      className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                    >
+                      {isPending ? 'Signing…' : 'Sign contract'}
+                    </button>
+                  </div>
+                )}
               </div>
             )
           })}

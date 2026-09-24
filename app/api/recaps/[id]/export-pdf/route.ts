@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { normalizeRecapWorkItems } from '@/lib/recaps/normalize'
 import { renderPdfRoute } from '@/lib/pdf/render-route'
-import { requireTeamAccess } from '@/lib/supabase/route-access'
+import { requirePortalAccess, requireTeamAccess } from '@/lib/supabase/route-access'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,16 +12,14 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const access = await requireTeamAccess()
-  if (!access.ok) {
-    return Response.json({ error: access.message }, { status: access.status })
-  }
-
-  const { data: recap, error } = await access.db
+async function loadAndRender(
+  db: SupabaseClient,
+  id: string,
+  options?: { requireSent?: boolean; clientId?: string }
+) {
+  const { data: recap, error } = await db
     .from('monthly_recaps')
-    .select('id, month, year, intro_text, work_completed, performance_notes, coming_next, sent_at, client_id')
+    .select('id, month, year, intro_text, work_completed, performance_notes, coming_next, sent_at, client_id, is_sent')
     .eq('id', id)
     .maybeSingle()
 
@@ -33,7 +32,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return Response.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const { data: client } = await access.db
+  if (options?.clientId && recap.client_id !== options.clientId) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  if (options?.requireSent && !recap.is_sent) {
+    return Response.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  const { data: client } = await db
     .from('clients')
     .select('company_name')
     .eq('id', recap.client_id)
@@ -59,4 +66,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const { renderRecapPdfToBuffer } = await import('@/lib/pdf/render-recap-pdf')
     return renderRecapPdfToBuffer(pdfProps)
   }, `${clientName}_${periodSlug}_Progress_Report.pdf`)
+}
+
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const team = await requireTeamAccess()
+  if (team.ok) {
+    return loadAndRender(team.db, id)
+  }
+
+  const portal = await requirePortalAccess()
+  if (!portal.ok) {
+    return Response.json({ error: portal.message }, { status: portal.status })
+  }
+
+  return loadAndRender(portal.db, id, { requireSent: true, clientId: portal.clientId })
 }

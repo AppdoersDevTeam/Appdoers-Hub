@@ -1,27 +1,22 @@
 import { randomBytes } from 'crypto'
 import { NextResponse } from 'next/server'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { hashApiToken } from '@/lib/cursor-workflow'
+import { requireTeamAccess } from '@/lib/supabase/route-access'
 
 function makeToken() {
   return `apd_${randomBytes(24).toString('hex')}`
 }
 
 export async function GET() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const access = await requireTeamAccess()
+  if (!access.ok) {
+    return NextResponse.json({ error: access.message }, { status: access.status })
   }
 
-  const service = await createServiceClient()
-  const { data, error } = await service
+  const { data, error } = await access.db
     .from('cursor_api_tokens')
     .select('id, name, team_user_id, is_active, last_used_at, created_at')
-    .eq('team_user_id', user.id)
+    .eq('team_user_id', access.userId)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -32,13 +27,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const access = await requireTeamAccess()
+  if (!access.ok) {
+    return NextResponse.json({ error: access.message }, { status: access.status })
   }
 
   const body = (await req.json().catch(() => ({}))) as { name?: string }
@@ -49,13 +40,12 @@ export async function POST(req: Request) {
 
   const token = makeToken()
   const tokenHash = hashApiToken(token)
-  const service = await createServiceClient()
 
-  const { error } = await service.from('cursor_api_tokens').insert({
+  const { error } = await access.db.from('cursor_api_tokens').insert({
     name,
     token_hash: tokenHash,
-    team_user_id: user.id,
-    created_by: user.id,
+    team_user_id: access.userId,
+    created_by: access.userId,
   })
 
   if (error) {

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { RecapEditor } from '@/components/team/recaps/recap-editor'
+import { fetchClientDisplayInfo } from '@/lib/clients/fetch-client-display'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,18 +21,14 @@ export default async function RecapDetailPage({ params }: Props) {
 
   if (error || !recap) notFound()
 
-  const { data: client } = await supabase
-    .from('clients')
-    .select('id, company_name, contact_name')
-    .eq('id', recap.client_id)
-    .single()
+  const client = await fetchClientDisplayInfo(supabase, recap.client_id)
 
   return (
     <RecapEditor
       recap={recap}
-      clientName={client?.company_name ?? '—'}
-      clientId={client?.id ?? recap.client_id}
-      contactName={client?.contact_name}
+      clientName={client.companyName}
+      clientId={recap.client_id}
+      contactName={client.contactName}
     />
   )
 }

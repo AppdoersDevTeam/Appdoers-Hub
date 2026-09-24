@@ -20,10 +20,24 @@ export default function TeamLoginPage() {
     setError(null)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (error) {
+    if (error || !data.user) {
       setError('Invalid email or password. Please try again.')
+      setLoading(false)
+      return
+    }
+
+    const { data: teamUser } = await supabase
+      .from('team_users')
+      .select('id')
+      .eq('id', data.user.id)
+      .eq('is_active', true)
+      .maybeSingle()
+
+    if (!teamUser) {
+      await supabase.auth.signOut()
+      setError('No team access found for this account. Clients should use the portal login.')
       setLoading(false)
       return
     }

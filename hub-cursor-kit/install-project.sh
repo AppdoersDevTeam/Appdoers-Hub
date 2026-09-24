@@ -119,7 +119,7 @@ if (cd "$TARGET_PROJECT" && node "$TOOLS_DIR/hub-workflow-cli.mjs" verify-setup)
 else
   echo ""
   echo "Project files installed, but laptop token is missing or invalid."
-  echo "Run laptop setup once:"
-  echo "  bash hub-cursor-kit/setup-my-cursor-token.ps1  # or use setup-hub-workflow.ps1 from kit"
+  echo "Generate a token in Hub -> My Account -> Cursor setup, then run:"
+  echo "  curl -fsSL https://raw.githubusercontent.com/AppdoersDevTeam/Appdoers-Hub/master/hub-cursor-kit/setup-my-cursor-token.sh | bash"
   exit 1
 fi

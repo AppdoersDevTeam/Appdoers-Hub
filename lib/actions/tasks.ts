@@ -6,10 +6,11 @@ import { logActivity } from './activity'
 import { buildSlackAlert, hubTaskUrl, notifyTaskActivity, type SlackAlertField } from '@/lib/slack'
 import { getTeamMemberName, slackPeopleContext } from '@/lib/team-member'
 import type { TaskStatus, TaskType, TaskPriority, WorkflowStage } from '@/lib/types/database'
-import { stageToTaskStatus } from '@/lib/cursor-workflow'
+import { stageToTaskStatus, statusToWorkflowStage } from '@/lib/cursor-workflow'
 import { WORKFLOW_STAGE_CONFIG, TASK_STATUS_CONFIG } from '@/lib/tasks/constants'
 import { setTaskTimeSpent } from '@/lib/task-time'
 import { closedAtForStatus } from '@/lib/tasks/closed-at'
+import { createNotifications, listActiveTeamUsers, mentionedUserIds } from '@/lib/notifications'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -163,6 +164,20 @@ export async function createTaskAction(
       taskId: task.id,
     })
 
+    if (input.assigned_to && input.assigned_to !== user?.id) {
+      await createNotifications([
+        {
+          teamUserId: input.assigned_to,
+          type: 'assigned',
+          title: `Assigned: ${task.title}`,
+          body: requestedBy ? `Assigned by ${requestedBy}` : null,
+          entityType: 'task',
+          entityId: task.id,
+          href: `/app/tasks/${task.id}`,
+        },
+      ])
+    }
+
     revalidatePath('/app/tasks')
     revalidatePath(`/app/projects/${input.project_id}`)
     return { success: true, data: { id: task.id } }
@@ -226,7 +241,7 @@ export async function updateTaskDetailsAction(
 
     const { data: existing } = await supabase
       .from('tasks')
-      .select('title, project_id, status, workflow_stage, time_spent, created_by, closed_at')
+      .select('title, project_id, status, workflow_stage, time_spent, created_by, closed_at, assigned_to')
       .eq('id', id)
       .single()
 
@@ -249,6 +264,10 @@ export async function updateTaskDetailsAction(
       updateData.status = input.status ?? stageToTaskStatus(input.workflow_stage)
     } else if (input.status !== undefined) {
       updateData.status = input.status
+      updateData.workflow_stage = statusToWorkflowStage(
+        input.status,
+        existing.workflow_stage as WorkflowStage
+      )
     }
 
     const nextStatus =
@@ -387,6 +406,23 @@ export async function updateTaskDetailsAction(
       revalidatePath(`/app/projects/${nextProjectId}`)
     }
 
+    if (
+      input.assigned_to &&
+      input.assigned_to !== existing.assigned_to &&
+      input.assigned_to !== user?.id
+    ) {
+      await createNotifications([
+        {
+          teamUserId: input.assigned_to,
+          type: 'assigned',
+          title: `Assigned: ${taskTitle}`,
+          entityType: 'task',
+          entityId: id,
+          href: `/app/tasks/${id}`,
+        },
+      ])
+    }
+
     return { success: true, data: { projectId: nextProjectId } }
   } catch (err) {
     return { success: false, error: String(err) }
@@ -403,14 +439,20 @@ export async function updateTaskStatusAction(
 
     const { data: task } = await supabase
       .from('tasks')
-      .select('title, created_by, status, closed_at')
+      .select('title, created_by, status, workflow_stage, closed_at')
       .eq('id', id)
       .single()
+
+    const workflowStage = statusToWorkflowStage(
+      status,
+      (task?.workflow_stage as WorkflowStage | undefined) ?? null
+    )
 
     const { error } = await supabase
       .from('tasks')
       .update({
         status,
+        workflow_stage: workflowStage,
         closed_at: closedAtForStatus(status, task?.status, task?.closed_at),
         updated_at: new Date().toISOString(),
       })
@@ -548,6 +590,22 @@ export async function addTaskNoteAction(
     }
 
     await supabase.from('tasks').update({ updated_at: new Date().toISOString() }).eq('id', taskId)
+
+    const members = await listActiveTeamUsers()
+    const mentioned = mentionedUserIds(content, members, user.id)
+    if (mentioned.length > 0) {
+      await createNotifications(
+        mentioned.map((teamUserId) => ({
+          teamUserId,
+          type: 'mention' as const,
+          title: `Mentioned on: ${task?.title ?? 'Task'}`,
+          body: content.slice(0, 180),
+          entityType: 'task',
+          entityId: taskId,
+          href: `/app/tasks/${taskId}`,
+        }))
+      )
+    }
 
     revalidatePath('/app/tasks')
     revalidatePath(`/app/tasks/${taskId}`)

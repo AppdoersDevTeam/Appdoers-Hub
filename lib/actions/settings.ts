@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient as createSupabaseClient } from '@/lib/supabase/server'
+import { requireDirectorAccess } from '@/lib/supabase/route-access'
 import {
   sendSlackAlert,
   SLACK_CHANNEL_LABELS,
@@ -17,8 +17,10 @@ export async function updateSettingAction(
   value: Record<string, unknown>
 ): Promise<ActionResult<undefined>> {
   try {
-    const supabase = await createSupabaseClient()
-    const { error } = await supabase.from('settings').upsert(
+    const access = await requireDirectorAccess()
+    if (!access.ok) return { success: false, error: access.message }
+
+    const { error } = await access.db.from('settings').upsert(
       { key, value, updated_at: new Date().toISOString() },
       { onConflict: 'key' }
     )
@@ -36,6 +38,9 @@ export async function testSlackChannelAction(
   channel: SlackChannel
 ): Promise<ActionResult<undefined>> {
   try {
+    const access = await requireDirectorAccess()
+    if (!access.ok) return { success: false, error: access.message }
+
     const label = SLACK_CHANNEL_LABELS[channel]
     const result = await sendSlackAlert(
       channel,

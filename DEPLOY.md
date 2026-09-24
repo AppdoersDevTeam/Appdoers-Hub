@@ -57,18 +57,18 @@ In Supabase → **Settings** → **API**:
 1. Push this repo to GitHub (create a new private repo called `appdoers-hub`)
 2. Go to [vercel.com](https://vercel.com) → **New Project** → import the repo
 3. Add all environment variables from `.env.local` (except use your live Supabase keys)
-4. Set `NEXT_PUBLIC_APP_URL` = your Vercel auto-domain (e.g. `https://appdoers-hub.vercel.app`)
+4. Set `NEXT_PUBLIC_APP_URL` = `https://hub.appdoers.co.nz` (production custom domain)
 5. Deploy
 
 ## Step 7: Configure Supabase Auth Redirect
 
 In Supabase → **Authentication** → **URL Configuration**:
-- **Site URL**: `https://your-vercel-url.vercel.app`
-- **Redirect URLs**: `https://your-vercel-url.vercel.app/api/auth/callback`
+- **Site URL**: `https://hub.appdoers.co.nz`
+- **Redirect URLs**: `https://hub.appdoers.co.nz/api/auth/callback` (also keep `http://localhost:3000/api/auth/callback` for local login)
 
 ## Step 8: Verify
 
-- [ ] Visit your Vercel URL
+- [ ] Visit https://hub.appdoers.co.nz
 - [ ] `/app/login` renders correctly
 - [ ] Sign in with your director account
 - [ ] Dashboard loads

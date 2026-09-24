@@ -37,7 +37,7 @@ done
 ENV_PATH="$TARGET_PROJECT/.env.local"
 if [[ ! -f "$ENV_PATH" ]]; then
   cat > "$ENV_PATH" <<'EOF'
-APPDOERS_HUB_URL=https://appdoers-hub-two.vercel.app
+APPDOERS_HUB_URL=https://hub.appdoers.co.nz
 APPDOERS_CURSOR_TOKEN=your_token_here
 EOF
   echo "  Created .env.local template — add your APPDOERS_CURSOR_TOKEN"

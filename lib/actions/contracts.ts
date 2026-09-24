@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { logActivity } from './activity'
 import { hubContractUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
+import { createNotifications, listActiveTeamUsers } from '@/lib/notifications'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -187,10 +188,24 @@ export async function sendContractAction(id: string): Promise<ActionResult<undef
 export async function signContractAction(
   id: string,
   signedByName: string,
-  signedByEmail: string
+  _signedByEmail?: string
 ): Promise<ActionResult<undefined>> {
   try {
     const supabase = await createSupabaseClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Unauthorized' }
+
+    const { data: contact } = await supabase
+      .from('client_contacts')
+      .select('client_id, full_name, email')
+      .eq('portal_user_id', user.id)
+      .eq('has_portal_access', true)
+      .maybeSingle()
+
+    if (!contact) return { success: false, error: 'No portal access found.' }
+
     const headersList = await headers()
     const ip =
       headersList.get('x-forwarded-for')?.split(',')[0] ??
@@ -199,17 +214,28 @@ export async function signContractAction(
 
     const { data: contract } = await supabase
       .from('contracts')
-      .select('title, client_id, clients(company_name)')
+      .select('title, client_id, status, clients(company_name)')
       .eq('id', id)
       .single()
+
+    if (!contract || contract.client_id !== contact.client_id) {
+      return { success: false, error: 'Contract not found.' }
+    }
+
+    if (contract.status === 'signed') {
+      return { success: false, error: 'This contract is already signed.' }
+    }
+
+    const signerName = signedByName.trim() || contact.full_name
+    const signerEmail = contact.email
 
     const { error } = await supabase
       .from('contracts')
       .update({
         status: 'signed',
         signed_at: new Date().toISOString(),
-        signed_by_name: signedByName,
-        signed_by_email: signedByEmail,
+        signed_by_name: signerName,
+        signed_by_email: signerEmail,
         signed_ip: ip,
       })
       .eq('id', id)
@@ -227,7 +253,7 @@ export async function signContractAction(
       entityId: id,
       clientId: clientId ?? null,
       action: 'signed',
-      description: `Contract "${title}" signed by ${signedByName}`,
+      description: `Contract "${title}" signed by ${signerName}`,
     })
 
     await sendSlackAlert('general', {
@@ -236,13 +262,28 @@ export async function signContractAction(
       fields: [
         { label: 'Contract', value: title },
         { label: 'Client', value: clientName },
-        { label: 'Signed by', value: `${signedByName} (${signedByEmail})` },
+        { label: 'Signed by', value: `${signerName} (${signerEmail})` },
         { label: 'Signed at', value: new Date().toLocaleString('en-NZ') },
       ],
       action: slackOpenHub(hubContractUrl(id)),
     })
 
+    const directors = (await listActiveTeamUsers()).filter((member) => member.role === 'director')
+    await createNotifications(
+      directors.map((member) => ({
+        teamUserId: member.id,
+        type: 'contract_signed' as const,
+        title: `Contract signed: ${title}`,
+        body: `${signerName} signed for ${clientName}`,
+        entityType: 'contract',
+        entityId: id,
+        href: '/app/contracts',
+      }))
+    )
+
     revalidatePath(`/app/contracts/${id}`)
+    revalidatePath('/app/contracts')
+    revalidatePath('/portal/contracts')
     return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: String(err) }

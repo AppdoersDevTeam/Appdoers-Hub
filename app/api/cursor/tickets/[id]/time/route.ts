@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createServiceClient } from '@/lib/supabase/server'
-import { hashApiToken } from '@/lib/cursor-workflow'
 import { logCursorTaskTime } from '@/lib/cursor-time'
+import { authenticateCursorRequest, cursorAuthFailed } from '@/lib/cursor-auth'
+import { todayYmd } from '@/lib/utils/format'
 
 const logTimeSchema = z.object({
   hours: z.number().positive().max(24),
@@ -11,31 +11,9 @@ const logTimeSchema = z.object({
   is_billable: z.boolean().optional(),
 })
 
-async function authenticateCursorRequest(req: Request) {
-  const authHeader = req.headers.get('authorization')
-  const headerToken = req.headers.get('x-appdoers-api-token')
-  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null
-  const token = (headerToken ?? bearerToken ?? '').trim()
-
-  if (!token) return { error: 'Missing API token' as const }
-
-  const service = await createServiceClient()
-  const { data, error } = await service
-    .from('cursor_api_tokens')
-    .select('id, team_user_id')
-    .eq('token_hash', hashApiToken(token))
-    .eq('is_active', true)
-    .single()
-
-  if (error || !data) return { error: 'Invalid API token' as const }
-
-  await service.from('cursor_api_tokens').update({ last_used_at: new Date().toISOString() }).eq('id', data.id)
-  return { service, teamUserId: data.team_user_id }
-}
-
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await authenticateCursorRequest(req)
-  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: 401 })
+  if (cursorAuthFailed(auth)) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   const { id } = await params
   const parsed = logTimeSchema.safeParse(await req.json().catch(() => ({})))
@@ -88,7 +66,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         id: result.id,
         task_id: task.id,
         hours: parsed.data.hours,
-        date: parsed.data.date ?? new Date().toISOString().split('T')[0],
+        date: parsed.data.date ?? todayYmd(),
       },
     },
     { status: 201 }
