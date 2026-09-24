@@ -17,6 +17,7 @@ interface Props {
   iconOnly?: boolean
   size?: 'default' | 'sm'
   fullWidth?: boolean
+  variant?: 'destructive' | 'outline'
   className?: string
   onDelete: () => Promise<DeleteResult>
   redirectTo?: string
@@ -30,6 +31,7 @@ export function DeleteRecordButton({
   iconOnly = false,
   size = 'default',
   fullWidth,
+  variant = 'destructive',
   className,
   onDelete,
   redirectTo,
@@ -72,11 +74,16 @@ export function DeleteRecordButton({
       ) : (
         <Button
           type="button"
-          variant="destructive"
+          variant={variant}
           size={size}
           onClick={() => setOpen(true)}
           disabled={isPending}
-          className={cn((fullWidth ?? size !== 'sm') && 'w-full', size === 'sm' && 'shrink-0')}
+          className={cn(
+            (fullWidth ?? size !== 'sm') && 'w-full',
+            size === 'sm' && 'shrink-0',
+            variant === 'outline' &&
+              'border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700'
+          )}
         >
           <Trash2 className={size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
           {isPending ? 'Deleting…' : label}

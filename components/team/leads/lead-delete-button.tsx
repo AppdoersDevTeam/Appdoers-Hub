@@ -8,6 +8,7 @@ interface Props {
   leadName: string
   size?: 'default' | 'sm'
   fullWidth?: boolean
+  variant?: 'destructive' | 'outline'
   className?: string
 }
 
@@ -16,6 +17,7 @@ export function LeadDeleteButton({
   leadName,
   size = 'default',
   fullWidth,
+  variant = 'destructive',
   className,
 }: Props) {
   return (
@@ -26,6 +28,7 @@ export function LeadDeleteButton({
       buttonLabel="Delete Lead"
       size={size}
       fullWidth={fullWidth}
+      variant={variant}
       className={className}
       onDelete={() => deleteLeadAction(leadId)}
       redirectTo="/app/leads"
