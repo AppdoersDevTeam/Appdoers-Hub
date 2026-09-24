@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { LayoutGrid, Table2 } from 'lucide-react'
 import { TasksTable } from './tasks-table'
 import { TasksKanban } from './tasks-kanban'
@@ -45,29 +45,43 @@ export function TasksWorkspace({
   defaultMine?: boolean
 }) {
   const [view, setView] = useState<'table' | 'board'>('table')
-  const [mine, setMine] = useState(Boolean(defaultMine))
+  const [assigneeFilter, setAssigneeFilter] = useState(() =>
+    defaultMine && currentUserId ? currentUserId : 'all'
+  )
 
-  const visible = useMemo(() => {
-    if (!mine || !currentUserId) return tasks
-    return tasks.filter((task) => task.assigned_to === currentUserId)
-  }, [mine, currentUserId, tasks])
+  useEffect(() => {
+    if (defaultMine && currentUserId) {
+      setAssigneeFilter(currentUserId)
+    }
+  }, [defaultMine, currentUserId])
+
+  const mine = Boolean(currentUserId && assigneeFilter === currentUserId)
+
+  const boardTasks = useMemo(() => {
+    if (assigneeFilter === 'all') return tasks
+    if (assigneeFilter === 'unassigned') return tasks.filter((task) => !task.assigned_to)
+    return tasks.filter((task) => task.assigned_to === assigneeFilter)
+  }, [tasks, assigneeFilter])
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         {currentUserId && (
           <button
             type="button"
-            onClick={() => setMine((value) => !value)}
+            onClick={() =>
+              setAssigneeFilter((value) => (value === currentUserId ? 'all' : currentUserId))
+            }
             className={cn(
               'rounded-md border px-3 py-1.5 text-xs font-medium',
               mine ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600'
             )}
+            title={mine ? 'Showing your tasks — click to show everyone' : 'Show only your tasks'}
           >
             My tasks
           </button>
         )}
-        <div className="ml-auto inline-flex rounded-md border border-slate-200 p-0.5">
+        <div className="inline-flex rounded-md border border-slate-200 p-0.5 sm:ml-auto">
           <button
             type="button"
             onClick={() => setView('table')}
@@ -92,16 +106,19 @@ export function TasksWorkspace({
       </div>
       {view === 'table' ? (
         <TasksTable
-          tasks={visible}
+          tasks={tasks}
           projects={projects}
           filterProjects={filterProjects}
           clients={clients}
           teamMembers={teamMembers}
           showProjectCol={showProjectCol}
+          currentUserId={currentUserId}
+          assigneeFilter={assigneeFilter}
+          onAssigneeFilterChange={setAssigneeFilter}
         />
       ) : (
         <TasksKanban
-          tasks={visible.map((task) => ({
+          tasks={boardTasks.map((task) => ({
             id: task.id,
             title: task.title,
             project_id: task.project_id,

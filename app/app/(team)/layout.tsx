@@ -35,8 +35,8 @@ export default async function TeamLayout({ children }: { children: React.ReactNo
       <Sidebar hiddenHrefs={hiddenHrefs} />
       <TopBar />
       <HubCommandPalette />
-      <main className="ml-60 pt-14">
-        <div className="animate-fade-in p-6">{children}</div>
+      <main className="ml-60 min-w-0 pt-14">
+        <div className="min-w-0 max-w-full animate-fade-in p-6">{children}</div>
       </main>
     </div>
   )

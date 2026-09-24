@@ -34,7 +34,7 @@ export function DataTable({ columns, widthFor, children, className }: DataTableP
   return (
     <table
       className={cn('table-fixed text-sm', className)}
-      style={{ width: total, minWidth: '100%' }}
+      style={{ width: Math.max(total, 640), minWidth: total }}
     >
       <colgroup>
         {columns.map((col) => (

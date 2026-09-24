@@ -61,14 +61,14 @@ const STATUS_ORDER: Record<string, number> = { open: 0, in_progress: 1, awaiting
 const ALL_STATUS_VALUES = TASK_STATUS_OPTIONS.map((option) => option.value)
 
 const TASK_COLUMNS_FULL: TableColumnDef[] = [
-  { id: 'title', label: 'Title', defaultWidth: 240, sortable: true },
-  { id: 'type', label: 'Type', defaultWidth: 100, sortable: true },
+  { id: 'title', label: 'Title', defaultWidth: 220, sortable: true },
+  { id: 'type', label: 'Type', defaultWidth: 96, sortable: true },
   { id: 'priority', label: 'Priority', defaultWidth: 80, sortable: true },
-  { id: 'project', label: 'Project', defaultWidth: 148, sortable: true },
-  { id: 'client', label: 'Client', defaultWidth: 128, sortable: true },
-  { id: 'assigned', label: 'Assigned To', defaultWidth: 132, sortable: true },
-  { id: 'due', label: 'Due Date', defaultWidth: 100, sortable: true },
-  { id: 'time', label: 'Time', defaultWidth: 72, sortable: true },
+  { id: 'project', label: 'Project', defaultWidth: 140, sortable: true },
+  { id: 'client', label: 'Client', defaultWidth: 120, sortable: true },
+  { id: 'assigned', label: 'Assigned To', defaultWidth: 128, sortable: true },
+  { id: 'due', label: 'Due Date', defaultWidth: 100, defaultVisible: false, sortable: true },
+  { id: 'time', label: 'Time', defaultWidth: 72, defaultVisible: false, sortable: true },
   { id: 'status', label: 'Status', defaultWidth: 168, sortable: true },
   { id: 'actions', label: 'Actions', defaultWidth: 48, hideable: false, sortable: false },
 ]
@@ -98,6 +98,10 @@ interface Props {
   defaultProjectId?: string
   defaultClientId?: string
   showProjectCol?: boolean
+  currentUserId?: string
+  /** Controlled assignee filter (`all` | `unassigned` | team user id) */
+  assigneeFilter?: string
+  onAssigneeFilterChange?: (value: string) => void
 }
 
 export function TasksTable({
@@ -109,6 +113,9 @@ export function TasksTable({
   defaultProjectId,
   defaultClientId,
   showProjectCol = true,
+  currentUserId,
+  assigneeFilter: assigneeFilterProp,
+  onAssigneeFilterChange,
 }: Props) {
   const columns = showProjectCol ? TASK_COLUMNS_FULL : TASK_COLUMNS_SCOPED
   const tableId = showProjectCol ? 'tasks' : 'tasks-scoped'
@@ -126,7 +133,9 @@ export function TasksTable({
   const [search, setSearch] = useState('')
   const [clientFilter, setClientFilter] = useState(defaultClientId ?? 'all')
   const [projectFilter, setProjectFilter] = useState(defaultProjectId ?? 'all')
-  const [assigneeFilter, setAssigneeFilter] = useState('all')
+  const [assigneeFilterInternal, setAssigneeFilterInternal] = useState('all')
+  const assigneeFilter = assigneeFilterProp ?? assigneeFilterInternal
+  const setAssigneeFilter = onAssigneeFilterChange ?? setAssigneeFilterInternal
   const [typeFilter, setTypeFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<string[]>(ALL_STATUS_VALUES)
@@ -144,9 +153,7 @@ export function TasksTable({
     (p) => clientFilter === 'all' || p.client_id === clientFilter
   )
 
-  const secondaryActiveCount = [assigneeFilter !== 'all', typeFilter !== 'all', priorityFilter !== 'all'].filter(
-    Boolean
-  ).length
+  const secondaryActiveCount = [typeFilter !== 'all', priorityFilter !== 'all'].filter(Boolean).length
 
   const handleClientFilterChange = (value: string) => {
     setClientFilter(value)
@@ -312,7 +319,7 @@ export function TasksTable({
   }
 
   return (
-    <>
+    <div className="min-w-0 space-y-3">
       <ListToolbar
         search={
           <>
@@ -355,6 +362,23 @@ export function TasksTable({
                 ))}
               </select>
             )}
+            <select
+              className={LIST_SELECT_CLASS}
+              value={assigneeFilter}
+              onChange={(e) => setAssigneeFilter(e.target.value)}
+              aria-label="Filter by assignee"
+            >
+              <option value="all">All Assignees</option>
+              {currentUserId ? <option value={currentUserId}>Me</option> : null}
+              <option value="unassigned">Unassigned</option>
+              {teamMembers
+                .filter((m) => m.id !== currentUserId)
+                .map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.full_name}
+                  </option>
+                ))}
+            </select>
             <MultiSelectFilter
               label="Filter by status"
               allLabel="All Statuses"
@@ -363,23 +387,16 @@ export function TasksTable({
               value={statusFilter}
               onChange={setStatusFilter}
             />
+            <ColumnVisibilityMenu
+              columns={columns}
+              visible={prefs.visible}
+              onToggle={toggleVisible}
+              onReset={reset}
+            />
           </>
         }
         secondaryFilters={
           <>
-            <select
-              className={cn(LIST_SELECT_CLASS, 'w-full max-w-none')}
-              value={assigneeFilter}
-              onChange={(e) => setAssigneeFilter(e.target.value)}
-            >
-              <option value="all">All Assignees</option>
-              <option value="unassigned">Unassigned</option>
-              {teamMembers.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.full_name}
-                </option>
-              ))}
-            </select>
             <select
               className={cn(LIST_SELECT_CLASS, 'w-full max-w-none')}
               value={typeFilter}
@@ -409,12 +426,6 @@ export function TasksTable({
         secondaryActiveCount={secondaryActiveCount}
         actions={
           <>
-            <ColumnVisibilityMenu
-              columns={columns}
-              visible={prefs.visible}
-              onToggle={toggleVisible}
-              onReset={reset}
-            />
             <Button
               variant="outline"
               onClick={handleExportPdf}
@@ -434,7 +445,7 @@ export function TasksTable({
       {exportError ? <p className="text-sm text-red-600">{exportError}</p> : null}
 
       <div className="hub-card min-w-0 overflow-hidden p-0">
-        <div className="overflow-x-auto">
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
           <RowHoverPreviewProvider>
             <DataTable columns={visibleColumns} widthFor={widthFor}>
               <thead>
@@ -583,6 +594,6 @@ export function TasksTable({
         onCancel={() => setDeleteTarget(null)}
         isPending={isPending}
       />
-    </>
+    </div>
   )
 }

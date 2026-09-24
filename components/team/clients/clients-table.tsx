@@ -143,25 +143,23 @@ export function ClientsTable({
               <option value="inactive">Inactive</option>
               <option value="churned">Churned</option>
             </select>
-          </>
-        }
-        actions={
-          <>
             <ColumnVisibilityMenu
               columns={CLIENT_COLUMNS}
               visible={prefs.visible}
               onToggle={toggleVisible}
               onReset={reset}
             />
-            <Button onClick={() => setShowNew(true)}>
-              <Plus className="mr-1.5 h-4 w-4" /> New Client
-            </Button>
           </>
+        }
+        actions={
+          <Button onClick={() => setShowNew(true)}>
+            <Plus className="mr-1.5 h-4 w-4" /> New Client
+          </Button>
         }
       />
 
       <div className="hub-card min-w-0 overflow-hidden p-0">
-        <div className="overflow-x-auto">
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
           <RowHoverPreviewProvider>
             <DataTable columns={visibleColumns} widthFor={widthFor}>
               <thead>

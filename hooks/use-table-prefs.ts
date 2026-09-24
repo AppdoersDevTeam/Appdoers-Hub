@@ -31,8 +31,8 @@ export function resolveColumnWidth(
 }
 
 function storageKey(tableId: string) {
-  // v2: prior prefs used crushed widths under table-fixed + w-full
-  return `hub:table:${tableId}:v2`
+  // v3: default-hide due/time so Status fits; reset crushed v1/v2 prefs
+  return `hub:table:${tableId}:v3`
 }
 
 function buildDefaults(columns: TableColumnDef[]): TablePrefs {

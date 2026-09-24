@@ -188,25 +188,23 @@ export function ProjectsTable({ projects, clients }: Props) {
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
             </select>
-          </>
-        }
-        actions={
-          <>
             <ColumnVisibilityMenu
               columns={PROJECT_COLUMNS}
               visible={prefs.visible}
               onToggle={toggleVisible}
               onReset={reset}
             />
-            <Button onClick={() => setShowNew(true)}>
-              <Plus className="mr-1.5 h-4 w-4" /> New Project
-            </Button>
           </>
+        }
+        actions={
+          <Button onClick={() => setShowNew(true)}>
+            <Plus className="mr-1.5 h-4 w-4" /> New Project
+          </Button>
         }
       />
 
       <div className="hub-card min-w-0 overflow-hidden p-0">
-        <div className="overflow-x-auto">
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
           <RowHoverPreviewProvider>
             <DataTable columns={visibleColumns} widthFor={widthFor}>
               <thead>
