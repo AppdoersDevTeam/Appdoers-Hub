@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useState, useTransition, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Plus, Search, Trash2 } from 'lucide-react'
@@ -9,7 +9,11 @@ import { Input } from '@/components/ui/input'
 import { NewProjectSlideOver } from './new-project-slide-over'
 import { deleteProjectAction } from '@/lib/actions/projects'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
-import { SortableTh } from '@/components/ui/sortable-th'
+import { ListToolbar, LIST_SELECT_CLASS } from '@/components/ui/list-toolbar'
+import { ColumnVisibilityMenu } from '@/components/ui/column-visibility-menu'
+import { ResizableSortableTh } from '@/components/ui/resizable-sortable-th'
+import { RowHoverPreview, RowHoverPreviewProvider } from '@/components/ui/row-hover-preview'
+import { useTablePrefs, type TableColumnDef } from '@/hooks/use-table-prefs'
 import { formatDate, formatHours } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import { sortRows, type SortDir, type SortValue } from '@/lib/utils/table-sort'
@@ -79,6 +83,18 @@ const PROJECT_STATUS_ORDER: Record<string, number> = {
   cancelled: 3,
 }
 
+const PROJECT_COLUMNS: TableColumnDef[] = [
+  { id: 'name', label: 'Project', sortable: true },
+  { id: 'client', label: 'Client', defaultWidth: 160, sortable: true },
+  { id: 'type', label: 'Type', defaultWidth: 96, sortable: true },
+  { id: 'phase', label: 'Phase', defaultWidth: 120, sortable: true },
+  { id: 'clientStatus', label: 'Client Status', defaultWidth: 128, sortable: true },
+  { id: 'launch', label: 'Launch Date', defaultWidth: 112, sortable: true },
+  { id: 'hours', label: 'Hours', defaultWidth: 96, sortable: true },
+  { id: 'status', label: 'Status', defaultWidth: 104, sortable: true },
+  { id: 'actions', label: 'Actions', defaultWidth: 48, hideable: false, sortable: false },
+]
+
 const PROJECT_SORT_GETTERS: Record<string, (p: ProjectRow) => SortValue> = {
   name: (p) => p.name,
   client: (p) => p.client_name,
@@ -97,6 +113,10 @@ interface Props {
 
 export function ProjectsTable({ projects, clients }: Props) {
   const router = useRouter()
+  const { prefs, isVisible, widthFor, toggleVisible, setWidth, reset, minWidth } = useTablePrefs(
+    'projects',
+    PROJECT_COLUMNS
+  )
   const [isPending, startTransition] = useTransition()
   const [search, setSearch] = useState('')
   const [phaseFilter, setPhaseFilter] = useState('all')
@@ -128,94 +148,185 @@ export function ProjectsTable({ projects, clients }: Props) {
     setSortDir(dir)
   }
 
-  const selectClass =
-    'rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
-
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search projects…" className="pl-9" />
-        </div>
-        <select className={selectClass} value={phaseFilter} onChange={(e) => setPhaseFilter(e.target.value)}>
-          <option value="all">All Phases</option>
-          {Object.entries(phaseLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
-        <select className={selectClass} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="all">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="on_hold">On Hold</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-        <Button onClick={() => setShowNew(true)}>
-          <Plus className="mr-1.5 h-4 w-4" /> New Project
-        </Button>
-      </div>
+      <ListToolbar
+        search={
+          <>
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search projects…"
+              className="pl-9"
+            />
+          </>
+        }
+        filters={
+          <>
+            <select
+              className={LIST_SELECT_CLASS}
+              value={phaseFilter}
+              onChange={(e) => setPhaseFilter(e.target.value)}
+            >
+              <option value="all">All Phases</option>
+              {Object.entries(phaseLabels).map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </select>
+            <select
+              className={LIST_SELECT_CLASS}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="on_hold">On Hold</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </>
+        }
+        actions={
+          <>
+            <ColumnVisibilityMenu
+              columns={PROJECT_COLUMNS}
+              visible={prefs.visible}
+              onToggle={toggleVisible}
+              onReset={reset}
+            />
+            <Button onClick={() => setShowNew(true)}>
+              <Plus className="mr-1.5 h-4 w-4" /> New Project
+            </Button>
+          </>
+        }
+      />
 
       <div className="hub-card overflow-hidden p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <SortableTh label="Project" column="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Client" column="client" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Type" column="type" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Phase" column="phase" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Client Status" column="clientStatus" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Launch Date" column="launch" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Hours" column="hours" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Status" column="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {sorted.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
-                    {projects.length === 0 ? 'No projects yet. Create your first project.' : 'No projects match your filters.'}
-                  </td>
+          <RowHoverPreviewProvider>
+            <table className="w-full table-fixed text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  {PROJECT_COLUMNS.filter((c) => isVisible(c.id)).map((col) =>
+                    col.id === 'actions' ? (
+                      <th
+                        key={col.id}
+                        aria-label="Delete"
+                        style={{ width: widthFor(col.id), minWidth: widthFor(col.id) }}
+                        className="px-4 py-3"
+                      />
+                    ) : (
+                      <ResizableSortableTh
+                        key={col.id}
+                        label={col.label}
+                        column={col.id}
+                        sortKey={sortKey}
+                        sortDir={sortDir}
+                        onSort={handleSort}
+                        width={widthFor(col.id)}
+                        onResize={setWidth}
+                        minWidth={minWidth}
+                        sortable={col.sortable !== false}
+                        resizable={col.id !== 'name'}
+                      />
+                    )
+                  )}
                 </tr>
-              ) : (
-                sorted.map((p) => {
-                  const cs = clientStatusConfig[p.client_status] ?? clientStatusConfig.new
-                  const ps = projectStatusConfig[p.status] ?? projectStatusConfig.active
-                  const hoursDisplay = p.estimated_hours
-                    ? `${formatHours(p.logged_hours, '0h')} / ${p.estimated_hours}h`
-                    : formatHours(p.logged_hours)
-                  return (
-                    <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-slate-900">
-                        <Link href={`/app/projects/${p.id}`} className="hover:text-blue-600 transition-colors">{p.name}</Link>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">{p.client_name}</td>
-                      <td className="px-4 py-3 capitalize text-slate-600">{p.type}</td>
-                      <td className="px-4 py-3 text-slate-600">{phaseLabels[p.current_phase] ?? p.current_phase}</td>
-                      <td className="px-4 py-3">
-                        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', cs.cls)}>{cs.label}</span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">{p.target_launch_date ? formatDate(p.target_launch_date) : '—'}</td>
-                      <td className="px-4 py-3 text-slate-600">{hoursDisplay}</td>
-                      <td className="px-4 py-3">
-                        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', ps.cls)}>{ps.label}</span>
-                      </td>
-                      <td className="px-4 py-3">
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {sorted.length === 0 ? (
+                  <tr>
+                    <td colSpan={prefs.visible.length} className="px-4 py-10 text-center text-slate-500">
+                      {projects.length === 0
+                        ? 'No projects yet. Create your first project.'
+                        : 'No projects match your filters.'}
+                    </td>
+                  </tr>
+                ) : (
+                  sorted.map((p) => {
+                    const cs = clientStatusConfig[p.client_status] ?? clientStatusConfig.new
+                    const ps = projectStatusConfig[p.status] ?? projectStatusConfig.active
+                    const hoursDisplay = p.estimated_hours
+                      ? `${formatHours(p.logged_hours, '0h')} / ${p.estimated_hours}h`
+                      : formatHours(p.logged_hours)
+                    const cells: Record<string, ReactNode> = {
+                      name: (
+                        <RowHoverPreview
+                          title={p.name}
+                          meta={[
+                            { label: 'Client', value: p.client_name },
+                            { label: 'Type', value: p.type },
+                            { label: 'Phase', value: phaseLabels[p.current_phase] ?? p.current_phase },
+                            { label: 'Client status', value: cs.label },
+                            {
+                              label: 'Launch',
+                              value: p.target_launch_date ? formatDate(p.target_launch_date) : '—',
+                            },
+                            { label: 'Hours', value: hoursDisplay },
+                            { label: 'Status', value: ps.label },
+                          ]}
+                        >
+                          <Link
+                            href={`/app/projects/${p.id}`}
+                            className="min-w-0 truncate font-medium text-slate-900 transition-colors hover:text-blue-600"
+                          >
+                            {p.name}
+                          </Link>
+                        </RowHoverPreview>
+                      ),
+                      client: p.client_name,
+                      type: <span className="capitalize">{p.type}</span>,
+                      phase: phaseLabels[p.current_phase] ?? p.current_phase,
+                      clientStatus: (
+                        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', cs.cls)}>
+                          {cs.label}
+                        </span>
+                      ),
+                      launch: p.target_launch_date ? formatDate(p.target_launch_date) : '—',
+                      hours: hoursDisplay,
+                      status: (
+                        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', ps.cls)}>
+                          {ps.label}
+                        </span>
+                      ),
+                      actions: (
                         <button
                           onClick={() => setDeleteTarget(p)}
                           disabled={isPending}
-                          className="rounded p-1 text-slate-500 hover:text-red-600 transition-colors"
+                          className="rounded p-1 text-slate-500 transition-colors hover:text-red-600"
                           title="Delete project"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+                      ),
+                    }
+
+                    return (
+                      <tr key={p.id} className="transition-colors hover:bg-slate-50">
+                        {PROJECT_COLUMNS.filter((c) => isVisible(c.id)).map((c) => (
+                          <td
+                            key={c.id}
+                            className={cn(
+                              'px-4 py-3',
+                              c.id !== 'name' && c.id !== 'clientStatus' && c.id !== 'status' && c.id !== 'actions'
+                                ? 'text-slate-600'
+                                : undefined,
+                              c.id === 'name' && 'min-w-0 font-medium text-slate-900'
+                            )}
+                          >
+                            {cells[c.id]}
+                          </td>
+                        ))}
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </RowHoverPreviewProvider>
         </div>
       </div>
 

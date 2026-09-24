@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,11 @@ import { DeleteRecordButton } from '@/components/ui/delete-record-button'
 import { deleteClientAction } from '@/lib/actions/clients'
 import { formatRecurringFee, recurringFeeToMonthly } from '@/lib/clients/billing'
 import type { CatalogServiceOption } from '@/lib/clients/catalog-options'
-import { SortableTh } from '@/components/ui/sortable-th'
+import { ListToolbar, LIST_SELECT_CLASS } from '@/components/ui/list-toolbar'
+import { ColumnVisibilityMenu } from '@/components/ui/column-visibility-menu'
+import { ResizableSortableTh } from '@/components/ui/resizable-sortable-th'
+import { RowHoverPreview, RowHoverPreviewProvider } from '@/components/ui/row-hover-preview'
+import { useTablePrefs, type TableColumnDef } from '@/hooks/use-table-prefs'
 import { formatRelativeTime } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import { sortRows, type SortDir, type SortValue } from '@/lib/utils/table-sort'
@@ -36,6 +40,16 @@ const statusConfig: Record<string, { label: string; cls: string }> = {
 
 const CLIENT_STATUS_ORDER: Record<string, number> = { active: 0, inactive: 1, churned: 2 }
 
+const CLIENT_COLUMNS: TableColumnDef[] = [
+  { id: 'company', label: 'Company', sortable: true },
+  { id: 'contact', label: 'Primary Contact', defaultWidth: 160, sortable: true },
+  { id: 'plan', label: 'Plan', defaultWidth: 128, sortable: true },
+  { id: 'fee', label: 'Fee', defaultWidth: 112, sortable: true },
+  { id: 'status', label: 'Status', defaultWidth: 104, sortable: true },
+  { id: 'activity', label: 'Last Activity', defaultWidth: 120, sortable: true },
+  { id: 'actions', label: 'Actions', defaultWidth: 88, hideable: false, sortable: false },
+]
+
 const CLIENT_SORT_GETTERS: Record<string, (c: ClientRow) => SortValue> = {
   company: (c) => c.company_name,
   contact: (c) => c.primary_contact,
@@ -52,6 +66,10 @@ export function ClientsTable({
   clients: ClientRow[]
   catalogPlans?: CatalogServiceOption[]
 }) {
+  const { prefs, isVisible, widthFor, toggleVisible, setWidth, reset, minWidth } = useTablePrefs(
+    'clients',
+    CLIENT_COLUMNS
+  )
   const [search, setSearch] = useState('')
   const [planFilter, setPlanFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -86,115 +104,143 @@ export function ClientsTable({
     setSortDir(dir)
   }
 
-  const selectClass =
-    'rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
-
   return (
     <>
-      {/* Filters bar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search clients…"
-            className="pl-9"
-          />
-        </div>
-        <select
-          className={selectClass}
-          value={planFilter}
-          onChange={(e) => setPlanFilter(e.target.value)}
-        >
-          <option value="all">All Plans</option>
-          {planFilterOptions.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
-        <select
-          className={selectClass}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="all">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="churned">Churned</option>
-        </select>
-        <Button onClick={() => setShowNew(true)}>
-          <Plus className="mr-1.5 h-4 w-4" /> New Client
-        </Button>
-      </div>
+      <ListToolbar
+        search={
+          <>
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search clients…"
+              className="pl-9"
+            />
+          </>
+        }
+        filters={
+          <>
+            <select
+              className={LIST_SELECT_CLASS}
+              value={planFilter}
+              onChange={(e) => setPlanFilter(e.target.value)}
+            >
+              <option value="all">All Plans</option>
+              {planFilterOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <select
+              className={LIST_SELECT_CLASS}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="churned">Churned</option>
+            </select>
+          </>
+        }
+        actions={
+          <>
+            <ColumnVisibilityMenu
+              columns={CLIENT_COLUMNS}
+              visible={prefs.visible}
+              onToggle={toggleVisible}
+              onReset={reset}
+            />
+            <Button onClick={() => setShowNew(true)}>
+              <Plus className="mr-1.5 h-4 w-4" /> New Client
+            </Button>
+          </>
+        }
+      />
 
-      {/* Table */}
       <div className="hub-card overflow-hidden p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <SortableTh label="Company" column="company" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Primary Contact" column="contact" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Plan" column="plan" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Fee" column="fee" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Status" column="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Last Activity" column="activity" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {sorted.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-4 py-10 text-center text-slate-500"
-                  >
-                    {clients.length === 0
-                      ? 'No clients yet. Add your first client to get started.'
-                      : 'No clients match your filters.'}
-                  </td>
+          <RowHoverPreviewProvider>
+            <table className="w-full table-fixed text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  {CLIENT_COLUMNS.filter((c) => isVisible(c.id)).map((col) =>
+                    col.id === 'actions' ? (
+                      <ResizableSortableTh
+                        key={col.id}
+                        label={col.label}
+                        column={col.id}
+                        sortKey={sortKey}
+                        sortDir={sortDir}
+                        onSort={handleSort}
+                        width={widthFor(col.id)}
+                        onResize={setWidth}
+                        minWidth={minWidth}
+                        sortable={false}
+                        resizable
+                      />
+                    ) : (
+                      <ResizableSortableTh
+                        key={col.id}
+                        label={col.label}
+                        column={col.id}
+                        sortKey={sortKey}
+                        sortDir={sortDir}
+                        onSort={handleSort}
+                        width={widthFor(col.id)}
+                        onResize={setWidth}
+                        minWidth={minWidth}
+                        sortable={col.sortable !== false}
+                        resizable={col.id !== 'company'}
+                      />
+                    )
+                  )}
                 </tr>
-              ) : (
-                sorted.map((c) => {
-                  const st = statusConfig[c.status] ?? statusConfig.inactive
-                  return (
-                    <tr
-                      key={c.id}
-                      className="hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="px-4 py-3 font-medium text-slate-900">
-                        <Link
-                          href={`/app/clients/${c.id}`}
-                          className="hover:text-blue-600 transition-colors"
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {sorted.length === 0 ? (
+                  <tr>
+                    <td colSpan={prefs.visible.length} className="px-4 py-10 text-center text-slate-500">
+                      {clients.length === 0
+                        ? 'No clients yet. Add your first client to get started.'
+                        : 'No clients match your filters.'}
+                    </td>
+                  </tr>
+                ) : (
+                  sorted.map((c) => {
+                    const st = statusConfig[c.status] ?? statusConfig.inactive
+                    const fee = formatRecurringFee(c.monthly_fee, c.billing_cycle)
+                    const cells: Record<string, ReactNode> = {
+                      company: (
+                        <RowHoverPreview
+                          title={c.company_name}
+                          meta={[
+                            { label: 'Contact', value: c.primary_contact || '—' },
+                            { label: 'Plan', value: c.plan_name },
+                            { label: 'Fee', value: fee },
+                            { label: 'Status', value: st.label },
+                            { label: 'Last activity', value: formatRelativeTime(c.updated_at) },
+                          ]}
                         >
-                          {c.company_name}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {c.primary_contact}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">{c.plan_name}</td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {formatRecurringFee(c.monthly_fee, c.billing_cycle)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={cn(
-                            'rounded-full px-2.5 py-0.5 text-xs font-medium',
-                            st.cls
-                          )}
-                        >
+                          <Link
+                            href={`/app/clients/${c.id}`}
+                            className="min-w-0 truncate font-medium text-slate-900 transition-colors hover:text-blue-600"
+                          >
+                            {c.company_name}
+                          </Link>
+                        </RowHoverPreview>
+                      ),
+                      contact: c.primary_contact,
+                      plan: c.plan_name,
+                      fee,
+                      status: (
+                        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>
                           {st.label}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-500">
-                        {formatRelativeTime(c.updated_at)}
-                      </td>
-                      <td className="px-4 py-3">
+                      ),
+                      activity: formatRelativeTime(c.updated_at),
+                      actions: (
                         <DeleteRecordButton
                           iconOnly
                           title="Delete client"
@@ -203,13 +249,31 @@ export function ClientsTable({
                           buttonLabel={`Delete ${c.company_name}`}
                           onDelete={() => deleteClientAction(c.id)}
                         />
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+                      ),
+                    }
+
+                    return (
+                      <tr key={c.id} className="transition-colors hover:bg-slate-50">
+                        {CLIENT_COLUMNS.filter((cCol) => isVisible(cCol.id)).map((cCol) => (
+                          <td
+                            key={cCol.id}
+                            className={cn(
+                              'px-4 py-3',
+                              ['contact', 'plan', 'fee'].includes(cCol.id) && 'text-slate-600',
+                              cCol.id === 'activity' && 'text-slate-500',
+                              cCol.id === 'company' && 'min-w-0 font-medium text-slate-900'
+                            )}
+                          >
+                            {cells[cCol.id]}
+                          </td>
+                        ))}
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </RowHoverPreviewProvider>
         </div>
       </div>
 
