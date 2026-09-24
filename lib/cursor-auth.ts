@@ -13,23 +13,6 @@ type CursorAuthFailure = { error: string; status: 401 | 403 }
 
 export type CursorAuth = CursorAuthSuccess | CursorAuthFailure
 
-function joinedTeamUser(value: unknown): {
-  id: string
-  full_name: string | null
-  is_active: boolean
-} | null {
-  if (!value) return null
-  const row = Array.isArray(value) ? value[0] : value
-  if (!row || typeof row !== 'object') return null
-  const record = row as { id?: string; full_name?: string | null; is_active?: boolean }
-  if (!record.id) return null
-  return {
-    id: record.id,
-    full_name: record.full_name ?? null,
-    is_active: record.is_active === true,
-  }
-}
-
 export async function authenticateCursorRequest(req: Request): Promise<CursorAuth> {
   const authHeader = req.headers.get('authorization')
   const headerToken = req.headers.get('x-appdoers-api-token')
@@ -39,17 +22,31 @@ export async function authenticateCursorRequest(req: Request): Promise<CursorAut
   if (!token) return { error: 'Missing API token', status: 401 }
 
   const service = await createServiceClient()
+  // Two-step lookup: cursor_api_tokens has two FKs to team_users (team_user_id +
+  // created_by), so an embedded team_users!inner select is ambiguous in PostgREST
+  // and fails every request as "Invalid API token".
   const { data, error } = await service
     .from('cursor_api_tokens')
-    .select('id, name, team_user_id, team_users!inner(id, full_name, is_active)')
+    .select('id, name, team_user_id')
     .eq('token_hash', hashApiToken(token))
     .eq('is_active', true)
     .maybeSingle()
 
-  if (error || !data) return { error: 'Invalid API token', status: 401 }
+  if (error || !data?.team_user_id) {
+    return { error: 'Invalid API token', status: 401 }
+  }
 
-  const teamUser = joinedTeamUser(data.team_users)
-  if (!teamUser?.is_active) {
+  const { data: teamUser, error: teamError } = await service
+    .from('team_users')
+    .select('id, full_name, is_active')
+    .eq('id', data.team_user_id)
+    .maybeSingle()
+
+  if (teamError || !teamUser) {
+    return { error: 'Invalid API token', status: 401 }
+  }
+
+  if (teamUser.is_active !== true) {
     return { error: 'Team member is inactive', status: 403 }
   }
 
