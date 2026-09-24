@@ -7,8 +7,8 @@ export const MAX_BURST_MS = 90 * 60 * 1000
 /** Gaps longer than this between CLI touches are treated as idle and not counted. */
 export const IDLE_GAP_MS = 5 * 60 * 1000
 
-/** Minimum active time before creating a Hub time entry (0.01h ≈ 36s). */
-export const MIN_LOG_HOURS = 0.01
+/** Minimum hours logged for any positive work (0.1h = 6 minutes). Shorter work rounds up. */
+export const MIN_LOG_HOURS = 0.1
 
 const WORK_STAGES = new Set(['developer'])
 const FLUSH_STAGES = new Set(['qa', 'reviewer', 'done'])
@@ -57,6 +57,13 @@ export function createTicketTimeStore(workspaceRoot) {
 
   function msToHours(ms) {
     return parseFloat((ms / 3_600_000).toFixed(2))
+  }
+
+  /** Any positive unlogged time under 0.1h rounds up to 0.1h; otherwise use actual hours. */
+  function hoursForLog(unloggedMs) {
+    if (unloggedMs <= 0) return 0
+    const raw = msToHours(unloggedMs)
+    return Math.max(MIN_LOG_HOURS, raw)
   }
 
   function tickSession(session, now = Date.now(), { finalizeSlice = false } = {}) {
@@ -138,19 +145,21 @@ export function createTicketTimeStore(workspaceRoot) {
 
     tickSession(session, Date.now(), { finalizeSlice: true })
     const unloggedMs = getUnloggedMs(session)
-    const hours = msToHours(unloggedMs)
+    const rawHours = msToHours(unloggedMs)
+    const hours = hoursForLog(unloggedMs)
 
-    if (hours >= MIN_LOG_HOURS) {
+    if (hours > 0) {
       session.logged_ms = session.active_ms
     }
 
     const result = {
-      hours: hours >= MIN_LOG_HOURS ? hours : 0,
+      hours,
+      raw_hours: rawHours,
       active_ms: session.active_ms,
       logged_ms: session.logged_ms,
       unlogged_ms_before_flush: unloggedMs,
       finalize,
-      below_minimum: hours > 0 && hours < MIN_LOG_HOURS,
+      rounded_up: hours > 0 && rawHours < MIN_LOG_HOURS,
     }
 
     if (finalize) {
@@ -174,18 +183,21 @@ export function createTicketTimeStore(workspaceRoot) {
     getActiveTicketId,
     prepareFlush,
     msToHours,
+    hoursForLog,
   }
 }
 
 export async function logTicketHours(hubFetch, ticketId, hours, description) {
-  if (hours < MIN_LOG_HOURS) {
-    return { skipped: true, reason: 'below_minimum', hours }
+  if (!(hours > 0)) {
+    return { skipped: true, reason: 'no_time', hours }
   }
+
+  const loggedHours = hours < MIN_LOG_HOURS ? MIN_LOG_HOURS : parseFloat(Number(hours).toFixed(2))
 
   return hubFetch(`/api/cursor/tickets/${ticketId}/time`, {
     method: 'POST',
     body: JSON.stringify({
-      hours,
+      hours: loggedHours,
       description: description ?? 'Cursor active work (auto-logged)',
       is_billable: true,
     }),

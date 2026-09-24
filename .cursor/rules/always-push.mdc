@@ -1,0 +1,14 @@
+---
+description: Always commit related work and push to remote after finishing changes
+alwaysApply: true
+---
+
+# Always Push Changes
+
+After finishing implementation for a user request (or when the user asks to save/ship work):
+
+1. Commit the relevant files for that request (do not mix unrelated WIP).
+2. **Always push** to the remote (`git push -u origin HEAD` if upstream is missing).
+3. Do not wait to be asked again to push — pushing is part of completing the work.
+4. Still never force-push to main/master unless the user explicitly requests it.
+5. Still never commit secrets (`.env`, credentials, tokens).
