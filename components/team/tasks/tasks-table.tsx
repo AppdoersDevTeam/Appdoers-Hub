@@ -14,6 +14,7 @@ import { ListToolbar, LIST_SELECT_CLASS } from '@/components/ui/list-toolbar'
 import { ColumnVisibilityMenu } from '@/components/ui/column-visibility-menu'
 import { ResizableSortableTh } from '@/components/ui/resizable-sortable-th'
 import { RowHoverPreview, RowHoverPreviewProvider } from '@/components/ui/row-hover-preview'
+import { DataTable, dataTableCellClass } from '@/components/ui/data-table'
 import { useTablePrefs, type TableColumnDef } from '@/hooks/use-table-prefs'
 import { formatDate, formatHours, todayYmd } from '@/lib/utils/format'
 import { TASK_STATUS_CONFIG, TASK_STATUS_OPTIONS } from '@/lib/tasks/constants'
@@ -60,15 +61,15 @@ const STATUS_ORDER: Record<string, number> = { open: 0, in_progress: 1, awaiting
 const ALL_STATUS_VALUES = TASK_STATUS_OPTIONS.map((option) => option.value)
 
 const TASK_COLUMNS_FULL: TableColumnDef[] = [
-  { id: 'title', label: 'Title', sortable: true },
-  { id: 'type', label: 'Type', defaultWidth: 96, sortable: true },
-  { id: 'priority', label: 'Priority', defaultWidth: 72, sortable: true },
-  { id: 'project', label: 'Project', defaultWidth: 128, sortable: true },
-  { id: 'client', label: 'Client', defaultWidth: 112, sortable: true },
-  { id: 'assigned', label: 'Assigned To', defaultWidth: 128, sortable: true },
-  { id: 'due', label: 'Due Date', defaultWidth: 96, sortable: true },
-  { id: 'time', label: 'Time', defaultWidth: 64, sortable: true },
-  { id: 'status', label: 'Status', defaultWidth: 176, sortable: true },
+  { id: 'title', label: 'Title', defaultWidth: 240, sortable: true },
+  { id: 'type', label: 'Type', defaultWidth: 100, sortable: true },
+  { id: 'priority', label: 'Priority', defaultWidth: 80, sortable: true },
+  { id: 'project', label: 'Project', defaultWidth: 148, sortable: true },
+  { id: 'client', label: 'Client', defaultWidth: 128, sortable: true },
+  { id: 'assigned', label: 'Assigned To', defaultWidth: 132, sortable: true },
+  { id: 'due', label: 'Due Date', defaultWidth: 100, sortable: true },
+  { id: 'time', label: 'Time', defaultWidth: 72, sortable: true },
+  { id: 'status', label: 'Status', defaultWidth: 168, sortable: true },
   { id: 'actions', label: 'Actions', defaultWidth: 48, hideable: false, sortable: false },
 ]
 
@@ -113,12 +114,12 @@ export function TasksTable({
   const tableId = showProjectCol ? 'tasks' : 'tasks-scoped'
   const {
     prefs,
-    isVisible,
     widthFor,
     toggleVisible,
     setWidth,
     reset,
     minWidth,
+    visibleColumns,
   } = useTablePrefs(tableId, columns)
 
   const [isPending, startTransition] = useTransition()
@@ -289,8 +290,7 @@ export function TasksTable({
         <th
           key={col.id}
           aria-label="Delete"
-          style={{ width: widthFor(col.id), minWidth: widthFor(col.id) }}
-          className="px-2 py-3"
+          className="overflow-hidden px-2 py-3"
         />
       )
     }
@@ -306,7 +306,7 @@ export function TasksTable({
         onResize={setWidth}
         minWidth={minWidth}
         sortable={col.sortable !== false}
-        resizable={col.id !== 'title'}
+        resizable
       />
     )
   }
@@ -368,7 +368,7 @@ export function TasksTable({
         secondaryFilters={
           <>
             <select
-              className={cn(LIST_SELECT_CLASS, 'w-full')}
+              className={cn(LIST_SELECT_CLASS, 'w-full max-w-none')}
               value={assigneeFilter}
               onChange={(e) => setAssigneeFilter(e.target.value)}
             >
@@ -381,7 +381,7 @@ export function TasksTable({
               ))}
             </select>
             <select
-              className={cn(LIST_SELECT_CLASS, 'w-full')}
+              className={cn(LIST_SELECT_CLASS, 'w-full max-w-none')}
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
             >
@@ -393,7 +393,7 @@ export function TasksTable({
               ))}
             </select>
             <select
-              className={cn(LIST_SELECT_CLASS, 'w-full')}
+              className={cn(LIST_SELECT_CLASS, 'w-full max-w-none')}
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
             >
@@ -436,10 +436,10 @@ export function TasksTable({
       <div className="hub-card min-w-0 overflow-hidden p-0">
         <div className="overflow-x-auto">
           <RowHoverPreviewProvider>
-            <table className="w-full table-fixed text-sm">
+            <DataTable columns={visibleColumns} widthFor={widthFor}>
               <thead>
                 <tr className="border-b border-slate-200">
-                  {columns.filter((c) => isVisible(c.id)).map(renderHeader)}
+                  {visibleColumns.map(renderHeader)}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -482,7 +482,7 @@ export function TasksTable({
                           <Link
                             href={`/app/tasks/${t.id}`}
                             className={cn(
-                              'min-w-0 truncate font-medium transition-colors hover:text-blue-600',
+                              'block truncate font-medium transition-colors hover:text-blue-600',
                               isOverdue ? 'text-red-600' : 'text-slate-900'
                             )}
                           >
@@ -491,34 +491,36 @@ export function TasksTable({
                         </RowHoverPreview>
                       ),
                       type: (
-                        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', ty.cls)}>
+                        <span className={cn('inline-block max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-medium', ty.cls)}>
                           {ty.label}
                         </span>
                       ),
                       priority: (
-                        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', pr.cls)}>
+                        <span className={cn('inline-block max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-medium', pr.cls)}>
                           {pr.label}
                         </span>
                       ),
                       project: (
                         <Link
                           href={`/app/projects/${t.project_id}`}
-                          className="truncate transition-colors hover:text-blue-600"
+                          className="block truncate transition-colors hover:text-blue-600"
                         >
                           {t.project_name}
                         </Link>
                       ),
-                      client: <span className="truncate">{t.client_name}</span>,
-                      assigned: <span className="truncate">{t.assigned_to_name ?? '—'}</span>,
-                      due: t.due_date ? formatDate(t.due_date) : '—',
-                      time: formatHours(t.time_spent),
+                      client: <span className="block truncate">{t.client_name}</span>,
+                      assigned: <span className="block truncate">{t.assigned_to_name ?? '—'}</span>,
+                      due: <span className="block truncate">{t.due_date ? formatDate(t.due_date) : '—'}</span>,
+                      time: <span className="block truncate">{formatHours(t.time_spent)}</span>,
                       status: (
-                        <TaskStatusSelect
-                          taskId={t.id}
-                          projectId={t.project_id}
-                          value={t.status as 'open' | 'in_progress' | 'awaiting_review' | 'closed'}
-                          compact
-                        />
+                        <div className="min-w-0 max-w-full overflow-hidden">
+                          <TaskStatusSelect
+                            taskId={t.id}
+                            projectId={t.project_id}
+                            value={t.status as 'open' | 'in_progress' | 'awaiting_review' | 'closed'}
+                            compact
+                          />
+                        </div>
                       ),
                       actions: (
                         <button
@@ -541,26 +543,25 @@ export function TasksTable({
                           isOverdue && 'border-l-2 border-l-[#EF4444]'
                         )}
                       >
-                        {columns
-                          .filter((c) => isVisible(c.id))
-                          .map((c) => (
-                            <td
-                              key={c.id}
-                              className={cn(
-                                c.id === 'actions' ? 'w-12 px-2 py-3' : c.id === 'status' ? 'px-3 py-3' : 'px-4 py-3',
-                                ['project', 'client', 'assigned', 'due', 'time'].includes(c.id) && 'text-slate-600',
-                                c.id === 'title' && 'min-w-0'
-                              )}
-                            >
-                              {cells[c.id]}
-                            </td>
-                          ))}
+                        {visibleColumns.map((c) => (
+                          <td
+                            key={c.id}
+                            className={cn(
+                              dataTableCellClass,
+                              c.id === 'actions' && 'px-2',
+                              c.id === 'status' && 'px-3',
+                              ['project', 'client', 'assigned', 'due', 'time'].includes(c.id) && 'text-slate-600'
+                            )}
+                          >
+                            {cells[c.id]}
+                          </td>
+                        ))}
                       </tr>
                     )
                   })
                 )}
               </tbody>
-            </table>
+            </DataTable>
           </RowHoverPreviewProvider>
         </div>
       </div>

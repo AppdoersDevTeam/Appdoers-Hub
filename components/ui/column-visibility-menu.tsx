@@ -49,7 +49,7 @@ export function ColumnVisibilityMenu({ columns, visible, onToggle, onReset, clas
         aria-label="Show or hide columns"
         title="Columns"
         onClick={() => setOpen((v) => !v)}
-        className={cn(LIST_SELECT_CLASS, 'inline-flex items-center gap-1.5')}
+        className={cn(LIST_SELECT_CLASS, 'inline-flex max-w-none items-center gap-1.5')}
       >
         <Columns3 className="h-3.5 w-3.5 shrink-0" />
         Columns

@@ -14,6 +14,7 @@ import { ListToolbar, LIST_SELECT_CLASS } from '@/components/ui/list-toolbar'
 import { ColumnVisibilityMenu } from '@/components/ui/column-visibility-menu'
 import { ResizableSortableTh } from '@/components/ui/resizable-sortable-th'
 import { RowHoverPreview, RowHoverPreviewProvider } from '@/components/ui/row-hover-preview'
+import { DataTable, dataTableCellClass } from '@/components/ui/data-table'
 import { useTablePrefs, type TableColumnDef } from '@/hooks/use-table-prefs'
 import { formatRelativeTime } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
@@ -41,7 +42,7 @@ const statusConfig: Record<string, { label: string; cls: string }> = {
 const CLIENT_STATUS_ORDER: Record<string, number> = { active: 0, inactive: 1, churned: 2 }
 
 const CLIENT_COLUMNS: TableColumnDef[] = [
-  { id: 'company', label: 'Company', sortable: true },
+  { id: 'company', label: 'Company', defaultWidth: 220, sortable: true },
   { id: 'contact', label: 'Primary Contact', defaultWidth: 160, sortable: true },
   { id: 'plan', label: 'Plan', defaultWidth: 128, sortable: true },
   { id: 'fee', label: 'Fee', defaultWidth: 112, sortable: true },
@@ -66,7 +67,7 @@ export function ClientsTable({
   clients: ClientRow[]
   catalogPlans?: CatalogServiceOption[]
 }) {
-  const { prefs, isVisible, widthFor, toggleVisible, setWidth, reset, minWidth } = useTablePrefs(
+  const { prefs, widthFor, toggleVisible, setWidth, reset, minWidth, visibleColumns } = useTablePrefs(
     'clients',
     CLIENT_COLUMNS
   )
@@ -159,43 +160,27 @@ export function ClientsTable({
         }
       />
 
-      <div className="hub-card overflow-hidden p-0">
+      <div className="hub-card min-w-0 overflow-hidden p-0">
         <div className="overflow-x-auto">
           <RowHoverPreviewProvider>
-            <table className="w-full table-fixed text-sm">
+            <DataTable columns={visibleColumns} widthFor={widthFor}>
               <thead>
                 <tr className="border-b border-slate-200">
-                  {CLIENT_COLUMNS.filter((c) => isVisible(c.id)).map((col) =>
-                    col.id === 'actions' ? (
-                      <ResizableSortableTh
-                        key={col.id}
-                        label={col.label}
-                        column={col.id}
-                        sortKey={sortKey}
-                        sortDir={sortDir}
-                        onSort={handleSort}
-                        width={widthFor(col.id)}
-                        onResize={setWidth}
-                        minWidth={minWidth}
-                        sortable={false}
-                        resizable
-                      />
-                    ) : (
-                      <ResizableSortableTh
-                        key={col.id}
-                        label={col.label}
-                        column={col.id}
-                        sortKey={sortKey}
-                        sortDir={sortDir}
-                        onSort={handleSort}
-                        width={widthFor(col.id)}
-                        onResize={setWidth}
-                        minWidth={minWidth}
-                        sortable={col.sortable !== false}
-                        resizable={col.id !== 'company'}
-                      />
-                    )
-                  )}
+                  {visibleColumns.map((col) => (
+                    <ResizableSortableTh
+                      key={col.id}
+                      label={col.label}
+                      column={col.id}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={handleSort}
+                      width={widthFor(col.id)}
+                      onResize={setWidth}
+                      minWidth={minWidth}
+                      sortable={col.sortable !== false}
+                      resizable
+                    />
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -225,21 +210,28 @@ export function ClientsTable({
                         >
                           <Link
                             href={`/app/clients/${c.id}`}
-                            className="min-w-0 truncate font-medium text-slate-900 transition-colors hover:text-blue-600"
+                            className="block truncate font-medium text-slate-900 transition-colors hover:text-blue-600"
                           >
                             {c.company_name}
                           </Link>
                         </RowHoverPreview>
                       ),
-                      contact: c.primary_contact,
-                      plan: c.plan_name,
-                      fee,
+                      contact: <span className="block truncate">{c.primary_contact}</span>,
+                      plan: <span className="block truncate">{c.plan_name}</span>,
+                      fee: <span className="block truncate">{fee}</span>,
                       status: (
-                        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>
+                        <span
+                          className={cn(
+                            'inline-block max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-medium',
+                            st.cls
+                          )}
+                        >
                           {st.label}
                         </span>
                       ),
-                      activity: formatRelativeTime(c.updated_at),
+                      activity: (
+                        <span className="block truncate">{formatRelativeTime(c.updated_at)}</span>
+                      ),
                       actions: (
                         <DeleteRecordButton
                           iconOnly
@@ -254,14 +246,13 @@ export function ClientsTable({
 
                     return (
                       <tr key={c.id} className="transition-colors hover:bg-slate-50">
-                        {CLIENT_COLUMNS.filter((cCol) => isVisible(cCol.id)).map((cCol) => (
+                        {visibleColumns.map((cCol) => (
                           <td
                             key={cCol.id}
                             className={cn(
-                              'px-4 py-3',
+                              dataTableCellClass,
                               ['contact', 'plan', 'fee'].includes(cCol.id) && 'text-slate-600',
-                              cCol.id === 'activity' && 'text-slate-500',
-                              cCol.id === 'company' && 'min-w-0 font-medium text-slate-900'
+                              cCol.id === 'activity' && 'text-slate-500'
                             )}
                           >
                             {cells[cCol.id]}
@@ -272,7 +263,7 @@ export function ClientsTable({
                   })
                 )}
               </tbody>
-            </table>
+            </DataTable>
           </RowHoverPreviewProvider>
         </div>
       </div>

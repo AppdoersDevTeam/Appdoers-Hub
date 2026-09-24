@@ -12,6 +12,7 @@ import { ListToolbar, LIST_SELECT_CLASS } from '@/components/ui/list-toolbar'
 import { ColumnVisibilityMenu } from '@/components/ui/column-visibility-menu'
 import { ResizableSortableTh } from '@/components/ui/resizable-sortable-th'
 import { RowHoverPreview, RowHoverPreviewProvider } from '@/components/ui/row-hover-preview'
+import { DataTable, dataTableCellClass } from '@/components/ui/data-table'
 import { useTablePrefs, type TableColumnDef } from '@/hooks/use-table-prefs'
 import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
@@ -44,7 +45,7 @@ const LEAD_STATUS_ORDER: Record<string, number> = Object.fromEntries(
 )
 
 const LEAD_COLUMNS: TableColumnDef[] = [
-  { id: 'company', label: 'Company', sortable: true },
+  { id: 'company', label: 'Company', defaultWidth: 200, sortable: true },
   { id: 'contact', label: 'Primary Contact', defaultWidth: 140, sortable: true },
   { id: 'source', label: 'Source', defaultWidth: 112, sortable: true },
   { id: 'value', label: 'Est. Value', defaultWidth: 104, sortable: true },
@@ -72,7 +73,7 @@ interface Props {
 }
 
 export function LeadsTable({ leads, teamMembers }: Props) {
-  const { prefs, isVisible, widthFor, toggleVisible, setWidth, reset, minWidth } = useTablePrefs(
+  const { prefs, widthFor, toggleVisible, setWidth, reset, minWidth, visibleColumns } = useTablePrefs(
     'leads',
     LEAD_COLUMNS
   )
@@ -162,18 +163,17 @@ export function LeadsTable({ leads, teamMembers }: Props) {
         }
       />
 
-      <div className="hub-card overflow-hidden p-0">
+      <div className="hub-card min-w-0 overflow-hidden p-0">
         <div className="overflow-x-auto">
           <RowHoverPreviewProvider>
-            <table className="w-full table-fixed text-sm">
+            <DataTable columns={visibleColumns} widthFor={widthFor}>
               <thead>
                 <tr className="border-b border-slate-200">
-                  {LEAD_COLUMNS.filter((c) => isVisible(c.id)).map((col) =>
+                  {visibleColumns.map((col) =>
                     col.id === 'actions' ? (
                       <th
                         key={col.id}
-                        style={{ width: widthFor(col.id), minWidth: widthFor(col.id) }}
-                        className="sticky right-0 bg-white px-3 py-3 text-right text-xs font-medium uppercase tracking-wide text-slate-500"
+                        className="sticky right-0 overflow-hidden bg-white px-3 py-3 text-right text-xs font-medium uppercase tracking-wide text-slate-500"
                       >
                         Actions
                       </th>
@@ -189,7 +189,7 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                         onResize={setWidth}
                         minWidth={minWidth}
                         sortable={col.sortable !== false}
-                        resizable={col.id !== 'company'}
+                        resizable
                       />
                     )
                   )}
@@ -232,28 +232,48 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                         >
                           <Link
                             href={`/app/leads/${l.id}`}
-                            className="min-w-0 truncate font-medium text-slate-900 transition-colors hover:text-blue-600"
+                            className="block truncate font-medium text-slate-900 transition-colors hover:text-blue-600"
                           >
                             {displayTitle}
                           </Link>
                         </RowHoverPreview>
                       ),
-                      contact: l.company_name ? l.contact_name : '—',
-                      source: sourceLabels[l.source as LeadSource] ?? l.source,
-                      value: l.estimated_value ? formatCurrency(l.estimated_value) : '—',
+                      contact: (
+                        <span className="block truncate">
+                          {l.company_name ? l.contact_name : '—'}
+                        </span>
+                      ),
+                      source: (
+                        <span className="block truncate">
+                          {sourceLabels[l.source as LeadSource] ?? l.source}
+                        </span>
+                      ),
+                      value: (
+                        <span className="block truncate">
+                          {l.estimated_value ? formatCurrency(l.estimated_value) : '—'}
+                        </span>
+                      ),
                       status: (
                         <span
                           className={cn(
-                            'inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium',
+                            'inline-block max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-medium',
                             stCls
                           )}
                         >
                           {stLabel}
                         </span>
                       ),
-                      assigned: l.assigned_to_name ?? '—',
-                      nextAction: l.next_action_date ? formatDate(l.next_action_date) : '—',
-                      activity: formatRelativeTime(l.updated_at),
+                      assigned: (
+                        <span className="block truncate">{l.assigned_to_name ?? '—'}</span>
+                      ),
+                      nextAction: (
+                        <span className="block truncate">
+                          {l.next_action_date ? formatDate(l.next_action_date) : '—'}
+                        </span>
+                      ),
+                      activity: (
+                        <span className="block truncate">{formatRelativeTime(l.updated_at)}</span>
+                      ),
                       actions: (
                         <div className="flex items-center justify-end gap-0.5">
                           {l.converted_client_id ? (
@@ -277,17 +297,16 @@ export function LeadsTable({ leads, teamMembers }: Props) {
 
                     return (
                       <tr key={l.id} className="group transition-colors hover:bg-slate-50">
-                        {LEAD_COLUMNS.filter((c) => isVisible(c.id)).map((c) => (
+                        {visibleColumns.map((c) => (
                           <td
                             key={c.id}
                             className={cn(
-                              c.id === 'actions'
-                                ? 'sticky right-0 bg-white px-3 py-3 group-hover:bg-slate-50'
-                                : 'px-4 py-3',
+                              dataTableCellClass,
+                              c.id === 'actions' &&
+                                'sticky right-0 bg-white px-3 group-hover:bg-slate-50',
                               ['contact', 'source', 'value', 'assigned', 'nextAction'].includes(c.id) &&
                                 'text-slate-600',
-                              c.id === 'activity' && 'text-slate-500',
-                              c.id === 'company' && 'min-w-0 font-medium text-slate-900'
+                              c.id === 'activity' && 'text-slate-500'
                             )}
                           >
                             {cells[c.id]}
@@ -298,7 +317,7 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                   })
                 )}
               </tbody>
-            </table>
+            </DataTable>
           </RowHoverPreviewProvider>
         </div>
       </div>

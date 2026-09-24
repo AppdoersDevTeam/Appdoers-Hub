@@ -18,19 +18,28 @@ export type TablePrefs = {
   widths: Record<string, number>
 }
 
-const MIN_WIDTH = 80
+export const FLEX_COLUMN_WIDTH = 240
+const MIN_WIDTH = 64
+
+export function resolveColumnWidth(
+  col: TableColumnDef,
+  widths: Record<string, number>
+): number {
+  if (widths[col.id] != null) return widths[col.id]
+  if (typeof col.defaultWidth === 'number') return col.defaultWidth
+  return FLEX_COLUMN_WIDTH
+}
 
 function storageKey(tableId: string) {
-  return `hub:table:${tableId}:v1`
+  // v2: prior prefs used crushed widths under table-fixed + w-full
+  return `hub:table:${tableId}:v2`
 }
 
 function buildDefaults(columns: TableColumnDef[]): TablePrefs {
-  const visible = columns
-    .filter((c) => c.defaultVisible !== false)
-    .map((c) => c.id)
+  const visible = columns.filter((c) => c.defaultVisible !== false).map((c) => c.id)
   const widths: Record<string, number> = {}
   for (const c of columns) {
-    if (typeof c.defaultWidth === 'number') widths[c.id] = c.defaultWidth
+    widths[c.id] = resolveColumnWidth(c, {})
   }
   return { visible, widths }
 }
@@ -48,11 +57,12 @@ function parseStored(raw: string | null, columns: TableColumnDef[]): TablePrefs 
     }
     if (visible.length === 0) return null
     const widths: Record<string, number> = {}
-    if (parsed.widths && typeof parsed.widths === 'object') {
-      for (const [id, w] of Object.entries(parsed.widths)) {
-        if (ids.has(id) && typeof w === 'number' && Number.isFinite(w)) {
-          widths[id] = Math.max(MIN_WIDTH, Math.round(w))
-        }
+    for (const col of columns) {
+      const stored = parsed.widths?.[col.id]
+      if (typeof stored === 'number' && Number.isFinite(stored)) {
+        widths[col.id] = Math.max(MIN_WIDTH, Math.round(stored))
+      } else {
+        widths[col.id] = resolveColumnWidth(col, {})
       }
     }
     return { visible, widths }
@@ -62,7 +72,6 @@ function parseStored(raw: string | null, columns: TableColumnDef[]): TablePrefs 
 }
 
 export function useTablePrefs(tableId: string, columns: TableColumnDef[]) {
-  // Prefer module-level column arrays so this identity stays stable across renders.
   const defaults = useMemo(() => buildDefaults(columns), [columns])
   const [prefs, setPrefs] = useState<TablePrefs>(defaults)
   const [hydrated, setHydrated] = useState(false)
@@ -71,8 +80,7 @@ export function useTablePrefs(tableId: string, columns: TableColumnDef[]) {
     const stored = parseStored(window.localStorage.getItem(storageKey(tableId)), columns)
     setPrefs(stored ?? defaults)
     setHydrated(true)
-    // Re-hydrate when table id changes; columns are expected to be stable module consts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- columns identity should be stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- columns identity should be stable module consts
   }, [tableId])
 
   useEffect(() => {
@@ -84,16 +92,13 @@ export function useTablePrefs(tableId: string, columns: TableColumnDef[]) {
     }
   }, [hydrated, prefs, tableId])
 
-  const isVisible = useCallback(
-    (id: string) => prefs.visible.includes(id),
-    [prefs.visible]
-  )
+  const isVisible = useCallback((id: string) => prefs.visible.includes(id), [prefs.visible])
 
   const widthFor = useCallback(
-    (id: string): number | undefined => {
+    (id: string): number => {
       if (prefs.widths[id] != null) return prefs.widths[id]
       const col = columns.find((c) => c.id === id)
-      return col?.defaultWidth
+      return col ? resolveColumnWidth(col, {}) : FLEX_COLUMN_WIDTH
     },
     [prefs.widths, columns]
   )
@@ -110,7 +115,6 @@ export function useTablePrefs(tableId: string, columns: TableColumnDef[]) {
         const has = prev.visible.includes(id)
         if (has) {
           const next = prev.visible.filter((v) => v !== id)
-          // Keep at least one data column visible
           if (next.length === 0) return prev
           return { ...prev, visible: next }
         }

@@ -70,7 +70,7 @@ export function ResizableSortableTh({
   return (
     <th
       aria-sort={ariaSort}
-      style={width != null ? { width, minWidth: width, maxWidth: width } : undefined}
+      style={width != null ? { width, minWidth: Math.min(width, minWidth) } : undefined}
       className={cn(
         'relative px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500',
         align === 'center' ? 'text-center' : 'text-left',

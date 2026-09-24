@@ -85,7 +85,7 @@ export function MultiSelectFilter({
         aria-label={label}
         title={buttonText}
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex min-w-[10.5rem] max-w-[16rem] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
+        className="inline-flex min-w-[8.5rem] max-w-[12rem] items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-left text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
       >
         <span className="truncate">{buttonText}</span>
         <ChevronDown className={cn('h-4 w-4 shrink-0 text-slate-500 transition-transform', open && 'rotate-180')} />

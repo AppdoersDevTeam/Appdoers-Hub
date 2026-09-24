@@ -13,6 +13,7 @@ import { ListToolbar, LIST_SELECT_CLASS } from '@/components/ui/list-toolbar'
 import { ColumnVisibilityMenu } from '@/components/ui/column-visibility-menu'
 import { ResizableSortableTh } from '@/components/ui/resizable-sortable-th'
 import { RowHoverPreview, RowHoverPreviewProvider } from '@/components/ui/row-hover-preview'
+import { DataTable, dataTableCellClass } from '@/components/ui/data-table'
 import { useTablePrefs, type TableColumnDef } from '@/hooks/use-table-prefs'
 import { formatDate, formatHours } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
@@ -84,13 +85,13 @@ const PROJECT_STATUS_ORDER: Record<string, number> = {
 }
 
 const PROJECT_COLUMNS: TableColumnDef[] = [
-  { id: 'name', label: 'Project', sortable: true },
+  { id: 'name', label: 'Project', defaultWidth: 220, sortable: true },
   { id: 'client', label: 'Client', defaultWidth: 160, sortable: true },
-  { id: 'type', label: 'Type', defaultWidth: 96, sortable: true },
+  { id: 'type', label: 'Type', defaultWidth: 100, sortable: true },
   { id: 'phase', label: 'Phase', defaultWidth: 120, sortable: true },
   { id: 'clientStatus', label: 'Client Status', defaultWidth: 128, sortable: true },
   { id: 'launch', label: 'Launch Date', defaultWidth: 112, sortable: true },
-  { id: 'hours', label: 'Hours', defaultWidth: 96, sortable: true },
+  { id: 'hours', label: 'Hours', defaultWidth: 100, sortable: true },
   { id: 'status', label: 'Status', defaultWidth: 104, sortable: true },
   { id: 'actions', label: 'Actions', defaultWidth: 48, hideable: false, sortable: false },
 ]
@@ -113,7 +114,7 @@ interface Props {
 
 export function ProjectsTable({ projects, clients }: Props) {
   const router = useRouter()
-  const { prefs, isVisible, widthFor, toggleVisible, setWidth, reset, minWidth } = useTablePrefs(
+  const { prefs, widthFor, toggleVisible, setWidth, reset, minWidth, visibleColumns } = useTablePrefs(
     'projects',
     PROJECT_COLUMNS
   )
@@ -204,20 +205,15 @@ export function ProjectsTable({ projects, clients }: Props) {
         }
       />
 
-      <div className="hub-card overflow-hidden p-0">
+      <div className="hub-card min-w-0 overflow-hidden p-0">
         <div className="overflow-x-auto">
           <RowHoverPreviewProvider>
-            <table className="w-full table-fixed text-sm">
+            <DataTable columns={visibleColumns} widthFor={widthFor}>
               <thead>
                 <tr className="border-b border-slate-200">
-                  {PROJECT_COLUMNS.filter((c) => isVisible(c.id)).map((col) =>
+                  {visibleColumns.map((col) =>
                     col.id === 'actions' ? (
-                      <th
-                        key={col.id}
-                        aria-label="Delete"
-                        style={{ width: widthFor(col.id), minWidth: widthFor(col.id) }}
-                        className="px-4 py-3"
-                      />
+                      <th key={col.id} aria-label="Delete" className="overflow-hidden px-4 py-3" />
                     ) : (
                       <ResizableSortableTh
                         key={col.id}
@@ -230,7 +226,7 @@ export function ProjectsTable({ projects, clients }: Props) {
                         onResize={setWidth}
                         minWidth={minWidth}
                         sortable={col.sortable !== false}
-                        resizable={col.id !== 'name'}
+                        resizable
                       />
                     )
                   )}
@@ -271,24 +267,42 @@ export function ProjectsTable({ projects, clients }: Props) {
                         >
                           <Link
                             href={`/app/projects/${p.id}`}
-                            className="min-w-0 truncate font-medium text-slate-900 transition-colors hover:text-blue-600"
+                            className="block truncate font-medium text-slate-900 transition-colors hover:text-blue-600"
                           >
                             {p.name}
                           </Link>
                         </RowHoverPreview>
                       ),
-                      client: p.client_name,
-                      type: <span className="capitalize">{p.type}</span>,
-                      phase: phaseLabels[p.current_phase] ?? p.current_phase,
+                      client: <span className="block truncate">{p.client_name}</span>,
+                      type: <span className="block truncate capitalize">{p.type}</span>,
+                      phase: (
+                        <span className="block truncate">
+                          {phaseLabels[p.current_phase] ?? p.current_phase}
+                        </span>
+                      ),
                       clientStatus: (
-                        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', cs.cls)}>
+                        <span
+                          className={cn(
+                            'inline-block max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-medium',
+                            cs.cls
+                          )}
+                        >
                           {cs.label}
                         </span>
                       ),
-                      launch: p.target_launch_date ? formatDate(p.target_launch_date) : '—',
-                      hours: hoursDisplay,
+                      launch: (
+                        <span className="block truncate">
+                          {p.target_launch_date ? formatDate(p.target_launch_date) : '—'}
+                        </span>
+                      ),
+                      hours: <span className="block truncate">{hoursDisplay}</span>,
                       status: (
-                        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', ps.cls)}>
+                        <span
+                          className={cn(
+                            'inline-block max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-medium',
+                            ps.cls
+                          )}
+                        >
                           {ps.label}
                         </span>
                       ),
@@ -306,15 +320,17 @@ export function ProjectsTable({ projects, clients }: Props) {
 
                     return (
                       <tr key={p.id} className="transition-colors hover:bg-slate-50">
-                        {PROJECT_COLUMNS.filter((c) => isVisible(c.id)).map((c) => (
+                        {visibleColumns.map((c) => (
                           <td
                             key={c.id}
                             className={cn(
-                              'px-4 py-3',
-                              c.id !== 'name' && c.id !== 'clientStatus' && c.id !== 'status' && c.id !== 'actions'
+                              dataTableCellClass,
+                              c.id !== 'name' &&
+                                c.id !== 'clientStatus' &&
+                                c.id !== 'status' &&
+                                c.id !== 'actions'
                                 ? 'text-slate-600'
-                                : undefined,
-                              c.id === 'name' && 'min-w-0 font-medium text-slate-900'
+                                : undefined
                             )}
                           >
                             {cells[c.id]}
@@ -325,7 +341,7 @@ export function ProjectsTable({ projects, clients }: Props) {
                   })
                 )}
               </tbody>
-            </table>
+            </DataTable>
           </RowHoverPreviewProvider>
         </div>
       </div>

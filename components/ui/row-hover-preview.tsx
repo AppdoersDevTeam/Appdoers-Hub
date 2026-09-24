@@ -29,8 +29,8 @@ export function RowHoverPreview({ title, meta, children, className, badge }: Pro
   return (
     <Tooltip.Root>
       <Tooltip.Trigger asChild>
-        <span className={cn('inline-flex min-w-0 max-w-full items-center gap-2', className)}>
-          {children}
+        <span className={cn('flex min-w-0 w-full max-w-full items-center gap-2', className)}>
+          <span className="min-w-0 flex-1 truncate">{children}</span>
           {badge}
         </span>
       </Tooltip.Trigger>
