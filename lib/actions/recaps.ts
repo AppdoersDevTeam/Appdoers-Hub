@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { hubRecapUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
 import type { RecapWorkItem } from '@/lib/recaps/types'
+import { fetchClientDisplayInfo } from '@/lib/clients/fetch-client-display'
+import { formatHours, roundHours } from '@/lib/utils/format'
 
 export type { RecapWorkItem } from '@/lib/recaps/types'
 
@@ -97,13 +99,13 @@ function buildPerformanceNotes(hoursByProject: Map<string, number>, hoursLogged:
 
   const lines = [...hoursByProject.entries()]
     .sort((a, b) => b[1] - a[1])
-    .map(([name, hours]) => `• ${name}: ${hours.toFixed(1)} hours`)
+    .map(([name, hours]) => `• ${name}: ${roundHours(hours)} hours`)
 
-  return `Time invested this month (${hoursLogged.toFixed(1)}h total):\n\n${lines.join('\n')}`
+  return `Time invested this month (${formatHours(hoursLogged, '0h')} total):\n\n${lines.join('\n')}`
 }
 
 function formatTaskWorkLabel(title: string, hours: number | null, projectName?: string | null): string {
-  const hoursLabel = hours !== null && hours > 0 ? ` — ${hours.toFixed(1)}h` : ''
+  const hoursLabel = hours !== null && hours > 0 ? ` — ${formatHours(hours)}` : ''
   const projectSuffix = projectName ? ` (${projectName})` : ''
   return `${title}${hoursLabel}${projectSuffix}`
 }
@@ -193,8 +195,8 @@ export async function generateRecapDataAction(
         .lte('updated_at', endDateTime),
     ])
 
-    const hoursLogged = parseFloat(
-      (timeEntries ?? []).reduce((sum, e) => sum + Number(e.hours), 0).toFixed(1)
+    const hoursLogged = roundHours(
+      (timeEntries ?? []).reduce((sum, e) => sum + Number(e.hours), 0)
     )
 
     const hoursByTask = new Map<string, number>()
@@ -283,11 +285,13 @@ export async function generateRecapDataAction(
       const hours = Number(entry.hours)
       const description = entry.description?.trim()
       if (description) {
-        addWorkItem(`${description} — ${hours.toFixed(1)}h`, 'Other')
+        addWorkItem(`${description} — ${formatHours(hours)}`, 'Other')
       } else {
         const projectName = (entry.projects as { name?: string } | null)?.name
         addWorkItem(
-          projectName ? `General project work — ${hours.toFixed(1)}h (${projectName})` : `General project work — ${hours.toFixed(1)}h`,
+          projectName
+            ? `General project work — ${formatHours(hours)} (${projectName})`
+            : `General project work — ${formatHours(hours)}`,
           'Other'
         )
       }
@@ -387,7 +391,7 @@ export async function sendRecapAction(recapId: string): Promise<ActionResult<und
 
     const { data: recap } = await supabase
       .from('monthly_recaps')
-      .select('*, clients(company_name, contact_name, contact_email)')
+      .select('*')
       .eq('id', recapId)
       .single()
 
@@ -400,7 +404,8 @@ export async function sendRecapAction(recapId: string): Promise<ActionResult<und
 
     if (error) return { success: false, error: error.message }
 
-    const clientName = (recap.clients as { company_name?: string } | null)?.company_name ?? 'client'
+    const client = await fetchClientDisplayInfo(supabase, recap.client_id as string)
+    const clientName = client.companyName
     const monthLabel = `${MONTH_NAMES[(recap.month as number) - 1]} ${recap.year}`
 
     await sendSlackAlert('clients', {

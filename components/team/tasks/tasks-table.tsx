@@ -11,7 +11,7 @@ import { deleteTaskAction } from '@/lib/actions/tasks'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { SortableTh } from '@/components/ui/sortable-th'
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter'
-import { formatDate } from '@/lib/utils/format'
+import { formatDate, formatHours, todayYmd } from '@/lib/utils/format'
 import { TASK_STATUS_OPTIONS } from '@/lib/tasks/constants'
 import { cn } from '@/lib/utils/cn'
 import { sortRows, type SortDir, type SortValue } from '@/lib/utils/table-sort'
@@ -23,6 +23,7 @@ type TaskRow = {
   type: string
   priority: string
   status: string
+  workflow_stage?: string
   project_id: string
   project_name: string
   client_id?: string
@@ -102,7 +103,7 @@ export function TasksTable({
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayYmd()
   const showClientFilter = showProjectCol && !defaultClientId
   const showProjectFilter = showProjectCol && !defaultProjectId
   const projectOptions = (filterProjects ?? projects.map((p) => ({ ...p, client_id: '' })))
@@ -154,7 +155,8 @@ export function TasksTable({
   const handleDelete = () => {
     if (!deleteTarget) return
     startTransition(async () => {
-      await deleteTaskAction(deleteTarget.id, deleteTarget.project_id)
+      const result = await deleteTaskAction(deleteTarget.id, deleteTarget.project_id)
+      if (!result.success) return
       setDeleteTarget(null)
     })
   }
@@ -368,7 +370,7 @@ export function TasksTable({
                       <td className="truncate px-4 py-3 text-slate-600">{t.assigned_to_name ?? '—'}</td>
                       <td className="px-4 py-3 text-slate-600">{t.due_date ? formatDate(t.due_date) : '—'}</td>
                       <td className="px-4 py-3 text-slate-600">
-                        {t.time_spent > 0 ? `${t.time_spent.toFixed(1)}h` : '—'}
+                        {formatHours(t.time_spent)}
                       </td>
                       <td className="px-3 py-3">
                         <TaskStatusSelect

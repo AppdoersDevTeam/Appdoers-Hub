@@ -10,7 +10,7 @@ import {
   Globe,
   ScrollText,
 } from 'lucide-react'
-import { formatCurrency, formatDate } from '@/lib/utils/format'
+import { formatCurrency, formatDate, formatHours } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import type { ClientOverviewStats, OverviewDomain } from '@/lib/clients/overview-stats'
 
@@ -43,7 +43,7 @@ function expiryValue(domain: OverviewDomain | null) {
 }
 
 function hoursLabel(hours: number) {
-  return `${hours.toFixed(hours % 1 === 0 ? 0 : 1)}h`
+  return formatHours(hours, '0h')
 }
 
 function Chip({ href, children }: { href: string; children: ReactNode }) {

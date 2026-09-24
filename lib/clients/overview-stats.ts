@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getNzWeekRange } from '@/lib/client-weekly-digest'
-import { APP_TIMEZONE } from '@/lib/utils/format'
+import { APP_TIMEZONE, roundHours } from '@/lib/utils/format'
 
 export interface OverviewProject {
   id: string
@@ -148,8 +148,8 @@ export async function getClientOverviewStats(
     const openTasks = (openTasksRes.data ?? []) as typeof tasks
     const closedTasks = (closedTasksRes.data ?? []) as typeof tasks
     tasks = [...openTasks, ...closedTasks]
-    hoursThisWeek = parseFloat(
-      ((timeRes.data ?? []).reduce((sum, row) => sum + Number(row.hours ?? 0), 0)).toFixed(1)
+    hoursThisWeek = roundHours(
+      (timeRes.data ?? []).reduce((sum, row) => sum + Number(row.hours ?? 0), 0)
     )
   }
 

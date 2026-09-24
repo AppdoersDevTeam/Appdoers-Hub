@@ -1,5 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { aggregateClientMrr } from '@/lib/analytics/mrr'
+import {
+  countActiveClientWebsites,
+  isInternalClient,
+} from '@/lib/clients/internal'
+import { selectActiveClientsForStats } from '@/lib/clients/stats-query'
 import type { LeadStatus, WorkflowStage } from '@/lib/types/database'
 import { WORKFLOW_STAGE_CONFIG } from '@/lib/tasks/constants'
 import {
@@ -17,6 +22,7 @@ import {
   WORKFLOW_STAGE_ORDER,
   type DashboardAnalytics,
 } from './types'
+import { roundHours } from '@/lib/utils/format'
 
 function one<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null
@@ -51,10 +57,7 @@ export async function getDashboardAnalytics(
         'id, contact_name, company_name, status, estimated_value, next_action, next_action_date, outcome_at'
       ),
 
-    supabase
-      .from('clients')
-      .select('id, monthly_fee, billing_cycle')
-      .eq('status', 'active'),
+    selectActiveClientsForStats(supabase),
 
     supabase.from('client_services').select('client_id, monthly_fee'),
 
@@ -120,25 +123,50 @@ export async function getDashboardAnalytics(
   const openTasks = openTasksRes.data ?? []
   const timeInPeriod = timeInPeriodRes.data ?? []
   const uninvoicedTime = uninvoicedTimeRes.data ?? []
+  const activeExternalClients = (clientsRes.data ?? []).filter(
+    (c) =>
+      !isInternalClient({
+        is_internal: c.is_internal as boolean | null,
+        company_name: c.company_name as string | null,
+      })
+  )
 
   const activeLeads = leads.filter((l) => !['won', 'lost'].includes(l.status))
   const pipelineValue = activeLeads.reduce(
     (sum, l) => sum + (Number(l.estimated_value) || 0),
     0
   )
+  const externalClientIds = new Set(activeExternalClients.map((c) => c.id as string))
   const { mrr: mrrTotal } = aggregateClientMrr(
-    (clientsRes.data ?? []).map((c) => ({
+    activeExternalClients.map((c) => ({
       id: c.id as string,
       monthly_fee: Number(c.monthly_fee),
       billing_cycle: (c.billing_cycle as string | null) ?? null,
     })),
-    (addonsRes.data ?? []).map((row) => ({
-      client_id: row.client_id as string,
-      monthly_fee: Number(row.monthly_fee),
-    }))
+    (addonsRes.data ?? [])
+      .filter((row) => externalClientIds.has(row.client_id as string))
+      .map((row) => ({
+        client_id: row.client_id as string,
+        monthly_fee: Number(row.monthly_fee),
+      }))
   )
-  const activeProjects = projects.filter((p) => p.status === 'active').length
-  const onHoldProjects = projects.filter((p) => p.status === 'on_hold').length
+  const websiteCounts = countActiveClientWebsites(
+    activeExternalClients.map((c) => {
+      const catalog = Array.isArray(c.service_catalog)
+        ? c.service_catalog[0]
+        : (c.service_catalog as { plan_key?: string | null } | null)
+      return {
+        company_name: c.company_name as string | null,
+        is_internal: c.is_internal as boolean | null,
+        status: (c.status as string | null) ?? 'active',
+        subscription_plan: c.subscription_plan as string | null,
+        catalog_plan_key: (catalog?.plan_key as string | null | undefined) ?? null,
+      }
+    })
+  )
+  const activeClientWebsites = websiteCounts.total
+  const basicWebsiteCount = websiteCounts.basic
+  const fullWebsiteCount = websiteCounts.full
   const openTasksCount = openTasks.length
   const overdueTasksCount = openTasks.filter(
     (t) => t.due_date && t.due_date < today
@@ -156,7 +184,7 @@ export async function getDashboardAnalytics(
     },
     { hours: 0, value: 0 }
   )
-  const billableWipHours = parseFloat(billableWip.hours.toFixed(1))
+  const billableWipHours = roundHours(billableWip.hours)
   const billableWipValueFinal = billableWip.value
 
   const hoursLogged = timeInPeriod.reduce((sum, e) => sum + Number(e.hours), 0)
@@ -197,8 +225,8 @@ export async function getDashboardAnalytics(
     return {
       date: bucket.key,
       label: bucket.label,
-      hours: parseFloat(totals.hours.toFixed(1)),
-      billableHours: parseFloat(totals.billableHours.toFixed(1)),
+      hours: roundHours(totals.hours),
+      billableHours: roundHours(totals.billableHours),
     }
   })
 
@@ -236,7 +264,7 @@ export async function getDashboardAnalytics(
     .sort((a, b) => b.hours - a.hours)
     .map((m) => ({
       label: m.name,
-      value: parseFloat(m.hours.toFixed(1)),
+      value: roundHours(m.hours),
     }))
 
   const overdueTaskItems = openTasks
@@ -283,7 +311,7 @@ export async function getDashboardAnalytics(
 
   const projectHealthItems = projects
     .map((p) => {
-      const loggedHours = parseFloat((hoursByProject.get(p.id as string) ?? 0).toFixed(1))
+      const loggedHours = roundHours(hoursByProject.get(p.id as string) ?? 0)
       const estimatedHours = p.estimated_hours ? Number(p.estimated_hours) : 0
       return {
         id: p.id as string,
@@ -293,7 +321,7 @@ export async function getDashboardAnalytics(
             ?.company_name ?? '—',
         estimatedHours,
         loggedHours,
-        overByHours: parseFloat(Math.max(0, loggedHours - estimatedHours).toFixed(1)),
+        overByHours: roundHours(Math.max(0, loggedHours - estimatedHours)),
       }
     })
     .filter((p) => p.estimatedHours > 0 && p.loggedHours > p.estimatedHours)
@@ -306,15 +334,16 @@ export async function getDashboardAnalytics(
 
     pipelineValue,
     mrrTotal,
-    activeProjects,
-    onHoldProjects,
+    activeClientWebsites,
+    basicWebsiteCount,
+    fullWebsiteCount,
     openTasks: openTasksCount,
     overdueTasks: overdueTasksCount,
     billableWipValue: billableWipValueFinal,
     billableWipHours,
 
-    hoursLogged: parseFloat(hoursLogged.toFixed(1)),
-    billableHoursLogged: parseFloat(billableHoursLogged.toFixed(1)),
+    hoursLogged: roundHours(hoursLogged),
+    billableHoursLogged: roundHours(billableHoursLogged),
     tasksClosed,
     leadsWon,
     leadsLost,
@@ -354,3 +383,4 @@ export async function getDashboardAnalytics(
 }
 
 export type { DashboardPeriod }
+                      

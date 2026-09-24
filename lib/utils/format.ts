@@ -2,12 +2,37 @@ import { formatDistanceToNow } from 'date-fns'
 
 export const APP_TIMEZONE = 'Pacific/Auckland'
 
+export function todayYmd(now = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: APP_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now)
+}
+
 export function formatCurrency(amount: number, currency = 'NZD'): string {
   return new Intl.NumberFormat('en-NZ', {
     style: 'currency',
     currency,
     minimumFractionDigits: 2,
   }).format(amount)
+}
+
+/** Round hours to 2 decimals — matches `lib/task-time.ts` storage precision. */
+export function roundHours(hours: number): number {
+  return Math.round((Number(hours) || 0) * 100) / 100
+}
+
+/**
+ * Display hours with up to 2 decimal places so small values (e.g. 0.02h)
+ * are not collapsed to 0.0h by 1-decimal formatting.
+ */
+export function formatHours(hours: number, empty = '—'): string {
+  const n = roundHours(hours)
+  if (!(n > 0)) return empty
+  const trimmed = n.toFixed(2).replace(/\.?0+$/, '')
+  return `${trimmed}h`
 }
 
 export function formatDate(date: string | Date): string {

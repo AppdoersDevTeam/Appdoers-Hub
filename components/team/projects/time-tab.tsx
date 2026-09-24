@@ -5,8 +5,7 @@ import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { logTimeAction, deleteTimeEntryAction } from '@/lib/actions/time'
-import { formatDate } from '@/lib/utils/format'
-import { formatCurrency } from '@/lib/utils/format'
+import { formatDate, formatCurrency, formatHours, todayYmd } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import type { TeamUser } from '@/lib/types/database'
 
@@ -43,7 +42,7 @@ export function TimeTab({ projectId, entries, estimatedHours, teamMembers, curre
   const [form, setForm] = useState({
     team_user_id: currentUserId,
     task_id: '',
-    date: new Date().toISOString().split('T')[0],
+    date: todayYmd(),
     hours: '',
     description: '',
     is_billable: true,
@@ -92,8 +91,8 @@ export function TimeTab({ projectId, entries, estimatedHours, teamMembers, curre
       {/* Summary bar */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: 'Total Hours', value: `${totalHours.toFixed(1)}h` },
-          { label: 'Billable Hours', value: `${billableHours.toFixed(1)}h` },
+          { label: 'Total Hours', value: formatHours(totalHours, '0h') },
+          { label: 'Billable Hours', value: formatHours(billableHours, '0h') },
           { label: 'Billable Value', value: formatCurrency(billableValue) },
           { label: 'Estimated', value: estimatedHours ? `${estimatedHours}h` : '—' },
         ].map((s) => (
@@ -186,7 +185,7 @@ export function TimeTab({ projectId, entries, estimatedHours, teamMembers, curre
                     <td className="px-4 py-3 text-slate-600">{formatDate(entry.date)}</td>
                     <td className="px-4 py-3 text-slate-600">{entry.team_users?.full_name ?? '—'}</td>
                     <td className="px-4 py-3 text-slate-600">{entry.tasks?.title ?? '—'}</td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{Number(entry.hours).toFixed(1)}h</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{formatHours(Number(entry.hours), '0h')}</td>
                     <td className="px-4 py-3 text-slate-600">{entry.description ?? '—'}</td>
                     <td className="px-4 py-3 text-center">
                       {entry.is_billable ? <span className="text-emerald-600">✓</span> : <span className="text-slate-500">—</span>}

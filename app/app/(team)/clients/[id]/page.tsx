@@ -21,11 +21,9 @@ import { DomainsSection } from '@/components/team/clients/domains-section'
 import { DocumentTracker, type TrackedDocument } from '@/components/team/documents/document-tracker'
 import { cn } from '@/lib/utils/cn'
 
-import { PLAN_LABELS } from '@/lib/constants/plans'
+import { resolveClientPlanDisplayName } from '@/lib/clients/plan-display'
 import { intakePublicUrl } from '@/lib/intake/token'
 import { mergeIntakeAnswers, type IntakeStatus } from '@/lib/intake/types'
-
-const planLabels: Record<string, string> = { ...PLAN_LABELS, none: '—' }
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -98,11 +96,19 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
             p.contract_months === (client.contract_months ?? 12)
         )?.id ?? null
       : null)
-  const planDisplayName =
-    selectedPlan?.name ??
-    catalogPlans?.find((p) => p.id === resolvedPlanServiceId)?.name ??
-    planLabels[client.subscription_plan] ??
-    client.subscription_plan
+  const planDisplayName = resolveClientPlanDisplayName({
+    subscription_plan: client.subscription_plan,
+    plan_service_id: client.plan_service_id,
+    catalogName: selectedPlan?.name ?? null,
+    catalogPlans: (catalogPlans ?? []).map((p) => ({
+      id: p.id as string,
+      name: p.name as string,
+      plan_key: (p.plan_key as string | null) ?? null,
+      contract_months: p.contract_months != null ? Number(p.contract_months) : null,
+    })),
+    contract_months: client.contract_months,
+    noneLabel: '—',
+  })
 
   // Fetch notes only when on notes tab
   const { data: clientNotes } = tab === 'notes'

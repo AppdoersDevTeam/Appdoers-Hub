@@ -6,7 +6,7 @@ import {
   createServiceClient,
 } from '@/lib/supabase/server'
 import { logActivity } from './activity'
-import { PLAN_LABELS } from '@/lib/constants/plans'
+import { resolveClientPlanDisplayName } from '@/lib/clients/plan-display'
 import { buildClientWeeklyDigest } from '@/lib/client-weekly-digest'
 import {
   addChannelBookmark,
@@ -209,43 +209,101 @@ export async function deleteContactAction(
 
 // ─── Portal Access ────────────────────────────────────────────────────────────
 
+async function requireActiveTeamUser() {
+  const supabase = await createSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' as const }
+
+  const { data: teamUser } = await supabase
+    .from('team_users')
+    .select('id')
+    .eq('id', user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!teamUser) return { error: 'Unauthorized' as const }
+  return { error: null }
+}
+
+async function findAuthUserIdByEmail(
+  email: string
+): Promise<string | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceRoleKey) return null
+
+  const res = await fetch(
+    `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
+    {
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+      },
+    }
+  )
+  if (!res.ok) return null
+
+  const payload = (await res.json()) as { users?: { id?: string; email?: string }[]; id?: string }
+  if (typeof payload.id === 'string') return payload.id
+  const match = (payload.users ?? []).find(
+    (u) => u.email?.toLowerCase() === email.toLowerCase()
+  )
+  if (match?.id) return match.id
+
+  const service = await createServiceClient()
+  const { data } = await service.auth.admin.listUsers({ page: 1, perPage: 200 })
+  return data.users.find((u) => u.email?.toLowerCase() === email.toLowerCase())?.id ?? null
+}
+
 export async function grantPortalAccessAction(
   contactId: string,
   clientId: string,
   email: string
 ): Promise<ActionResult<undefined>> {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    const authError = (await requireActiveTeamUser()).error
+    if (authError) return { success: false, error: authError }
 
-    const res = await fetch(`${supabaseUrl}/auth/v1/admin/invite`, {
-      method: 'POST',
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email }),
-    })
-
-    const resData = await res.json()
-    const userId: string | undefined = resData.id
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail) return { success: false, error: 'Email is required' }
 
     const serviceClient = await createServiceClient()
-    await serviceClient
+    const { data: invited, error: inviteError } = await serviceClient.auth.admin.inviteUserByEmail(
+      normalizedEmail
+    )
+
+    let userId = invited?.user?.id ?? null
+    if (!userId) {
+      userId = await findAuthUserIdByEmail(normalizedEmail)
+    }
+
+    if (!userId) {
+      return {
+        success: false,
+        error: inviteError?.message || 'Could not invite or find a portal user for that email',
+      }
+    }
+
+    await serviceClient.auth.admin.updateUserById(userId, { ban_duration: 'none' }).catch(() => undefined)
+
+    const { error: updateError } = await serviceClient
       .from('client_contacts')
       .update({
         has_portal_access: true,
-        ...(userId ? { portal_user_id: userId } : {}),
+        portal_user_id: userId,
       })
       .eq('id', contactId)
+
+    if (updateError) return { success: false, error: updateError.message }
 
     await logActivity({
       entityType: 'client_contact',
       entityId: contactId,
       clientId,
       action: 'portal_access_granted',
-      description: `Portal access granted to ${email}`,
+      description: `Portal access granted to ${normalizedEmail}`,
     })
 
     revalidatePath(`/app/clients/${clientId}`)
@@ -261,11 +319,30 @@ export async function revokePortalAccessAction(
   email: string
 ): Promise<ActionResult<undefined>> {
   try {
-    const supabase = await createSupabaseClient()
-    await supabase
+    const authError = (await requireActiveTeamUser()).error
+    if (authError) return { success: false, error: authError }
+
+    const serviceClient = await createServiceClient()
+    const { data: contact, error: loadError } = await serviceClient
       .from('client_contacts')
-      .update({ has_portal_access: false })
+      .select('portal_user_id')
       .eq('id', contactId)
+      .maybeSingle()
+
+    if (loadError) return { success: false, error: loadError.message }
+
+    const { error: updateError } = await serviceClient
+      .from('client_contacts')
+      .update({ has_portal_access: false, portal_user_id: null })
+      .eq('id', contactId)
+
+    if (updateError) return { success: false, error: updateError.message }
+
+    if (contact?.portal_user_id) {
+      await serviceClient.auth.admin
+        .updateUserById(contact.portal_user_id, { ban_duration: '876000h' })
+        .catch(() => undefined)
+    }
 
     await logActivity({
       entityType: 'client_contact',
@@ -293,7 +370,7 @@ export async function createClientSlackChannelAction(
     const { data: client, error } = await supabase
       .from('clients')
       .select(
-        'id, company_name, website, status, subscription_plan, slack_channel_id, slack_channel_name, slack_canvas_id'
+        'id, company_name, website, status, subscription_plan, plan_service_id, slack_channel_id, slack_channel_name, slack_canvas_id, service_catalog:plan_service_id(name)'
       )
       .eq('id', clientId)
       .single()
@@ -313,10 +390,16 @@ export async function createClientSlackChannelAction(
 
     await joinPublicChannel(channel.id)
 
+    const catalogName = Array.isArray(client.service_catalog)
+      ? client.service_catalog[0]?.name
+      : (client.service_catalog as { name?: string } | null)?.name
     const resolvedPlan =
       planLabel?.trim() ||
-      PLAN_LABELS[client.subscription_plan] ||
-      client.subscription_plan
+      resolveClientPlanDisplayName({
+        subscription_plan: client.subscription_plan,
+        plan_service_id: client.plan_service_id as string | null,
+        catalogName: catalogName ?? null,
+      })
     const hubUrl = hubClientUrl(client.id)
     const warnings: string[] = []
 

@@ -8,25 +8,27 @@ import { Input } from '@/components/ui/input'
 import { IndustrySelect } from '@/components/team/industry-select'
 import { createClientAction } from '@/lib/actions/clients'
 import {
+  formatPlanOptionLabel,
+  planKeyFromCatalog,
+  type CatalogServiceOption,
+} from '@/lib/clients/catalog-options'
+import {
   BILLING_CYCLE_OPTIONS,
   billingCycleFeeLabel,
   type ClientBillingCycle,
 } from '@/lib/clients/billing'
-import type { SubscriptionPlan } from '@/lib/types/database'
-import { FALLBACK_PLANS } from '@/lib/constants/plans'
-
-const PLANS: { value: SubscriptionPlan; label: string; fee: number; setup: number }[] = FALLBACK_PLANS
 
 interface Props {
   open: boolean
   onClose: () => void
+  catalogPlans?: CatalogServiceOption[]
 }
 
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 const selectClass =
   'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
 
-export function NewClientSlideOver({ open, onClose }: Props) {
+export function NewClientSlideOver({ open, onClose, catalogPlans = [] }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -36,25 +38,45 @@ export function NewClientSlideOver({ open, onClose }: Props) {
     industry: '',
     website: '',
     location: '',
-    subscription_plan: 'none' as SubscriptionPlan,
+    plan_service_id: '',
+    subscription_plan: 'none' as string,
+    contract_months: null as number | null,
     billing_cycle: '' as ClientBillingCycle | '',
     monthly_fee: 0,
     setup_fee: 0,
+    setup_upfront: 0,
     payment_terms: 7,
     status: 'active' as 'active' | 'inactive' | 'churned',
   })
 
-  const set = (field: string, value: string | number) =>
+  const set = (field: string, value: string | number | null) =>
     setForm((prev) => ({ ...prev, [field]: value }))
 
-  const handlePlanChange = (plan: SubscriptionPlan) => {
-    const found = PLANS.find((p) => p.value === plan)
+  const handlePlanChange = (serviceId: string) => {
+    if (!serviceId) {
+      setForm((prev) => ({
+        ...prev,
+        plan_service_id: '',
+        subscription_plan: 'none',
+        contract_months: null,
+        billing_cycle: 'monthly' as ClientBillingCycle,
+        monthly_fee: 0,
+        setup_fee: 0,
+        setup_upfront: 0,
+      }))
+      return
+    }
+    const plan = catalogPlans.find((p) => p.id === serviceId)
+    if (!plan) return
     setForm((prev) => ({
       ...prev,
-      subscription_plan: plan,
+      plan_service_id: serviceId,
+      subscription_plan: planKeyFromCatalog(plan.plan_key),
+      contract_months: plan.contract_months,
       billing_cycle: 'monthly' as ClientBillingCycle,
-      monthly_fee: found?.fee ?? prev.monthly_fee,
-      setup_fee: found?.setup ?? prev.setup_fee,
+      monthly_fee: plan.monthly_fee,
+      setup_fee: plan.setup_fee,
+      setup_upfront: plan.min_upfront ?? 0,
     }))
   }
 
@@ -77,9 +99,12 @@ export function NewClientSlideOver({ open, onClose }: Props) {
         website: form.website || undefined,
         location: form.location || undefined,
         subscription_plan: form.subscription_plan,
+        contract_months: form.contract_months,
+        plan_service_id: form.plan_service_id || null,
         billing_cycle: billingCycle,
         monthly_fee: form.monthly_fee,
         setup_fee: form.setup_fee,
+        setup_upfront: form.setup_upfront,
         payment_terms: form.payment_terms,
         status: form.status,
       })
@@ -101,7 +126,6 @@ export function NewClientSlideOver({ open, onClose }: Props) {
           </div>
         )}
 
-        {/* Company Name */}
         <div>
           <label className={labelClass}>Company Name *</label>
           <Input
@@ -113,7 +137,6 @@ export function NewClientSlideOver({ open, onClose }: Props) {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          {/* Industry */}
           <div>
             <label className={labelClass}>Industry</label>
             <IndustrySelect
@@ -122,7 +145,6 @@ export function NewClientSlideOver({ open, onClose }: Props) {
               onChange={(industry) => set('industry', industry)}
             />
           </div>
-          {/* Location */}
           <div>
             <label className={labelClass}>Location</label>
             <Input
@@ -133,7 +155,6 @@ export function NewClientSlideOver({ open, onClose }: Props) {
           </div>
         </div>
 
-        {/* Website */}
         <div>
           <label className={labelClass}>Website</label>
           <Input
@@ -143,19 +164,17 @@ export function NewClientSlideOver({ open, onClose }: Props) {
           />
         </div>
 
-        {/* Subscription Plan */}
         <div>
           <label className={labelClass}>Subscription Plan</label>
           <select
             className={selectClass}
-            value={form.subscription_plan}
-            onChange={(e) =>
-              handlePlanChange(e.target.value as SubscriptionPlan)
-            }
+            value={form.plan_service_id}
+            onChange={(e) => handlePlanChange(e.target.value)}
           >
-            {PLANS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
+            <option value="">No plan</option>
+            {catalogPlans.map((p) => (
+              <option key={p.id} value={p.id}>
+                {formatPlanOptionLabel(p)}
               </option>
             ))}
           </select>
@@ -213,7 +232,6 @@ export function NewClientSlideOver({ open, onClose }: Props) {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          {/* Payment Terms */}
           <div>
             <label className={labelClass}>Payment Terms (days)</label>
             <Input
@@ -223,7 +241,6 @@ export function NewClientSlideOver({ open, onClose }: Props) {
               onChange={(e) => set('payment_terms', parseInt(e.target.value) || 7)}
             />
           </div>
-          {/* Status */}
           <div>
             <label className={labelClass}>Status</label>
             <select
@@ -240,7 +257,6 @@ export function NewClientSlideOver({ open, onClose }: Props) {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex gap-3 pt-2">
           <Button type="submit" disabled={isPending} className="flex-1">
             {isPending ? 'Creating…' : 'Create Client'}

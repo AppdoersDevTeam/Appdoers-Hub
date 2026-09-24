@@ -9,6 +9,7 @@ import { NewClientSlideOver } from './new-client-slide-over'
 import { DeleteRecordButton } from '@/components/ui/delete-record-button'
 import { deleteClientAction } from '@/lib/actions/clients'
 import { formatRecurringFee, recurringFeeToMonthly } from '@/lib/clients/billing'
+import type { CatalogServiceOption } from '@/lib/clients/catalog-options'
 import { SortableTh } from '@/components/ui/sortable-th'
 import { formatRelativeTime } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
@@ -19,16 +20,13 @@ type ClientRow = {
   company_name: string
   primary_contact: string
   subscription_plan: string
+  plan_service_id: string | null
+  plan_name: string
   monthly_fee: number
   billing_cycle?: string
-  active_projects: number
   status: string
   updated_at: string
 }
-
-import { PLAN_LABELS } from '@/lib/constants/plans'
-
-const planLabels: Record<string, string> = PLAN_LABELS
 
 const statusConfig: Record<string, { label: string; cls: string }> = {
   active: { label: 'Active', cls: 'bg-emerald-50 text-emerald-700' },
@@ -41,14 +39,19 @@ const CLIENT_STATUS_ORDER: Record<string, number> = { active: 0, inactive: 1, ch
 const CLIENT_SORT_GETTERS: Record<string, (c: ClientRow) => SortValue> = {
   company: (c) => c.company_name,
   contact: (c) => c.primary_contact,
-  plan: (c) => planLabels[c.subscription_plan] ?? c.subscription_plan,
+  plan: (c) => c.plan_name,
   fee: (c) => recurringFeeToMonthly(c.monthly_fee, c.billing_cycle),
-  projects: (c) => c.active_projects,
   status: (c) => CLIENT_STATUS_ORDER[c.status] ?? 99,
   activity: (c) => c.updated_at,
 }
 
-export function ClientsTable({ clients }: { clients: ClientRow[] }) {
+export function ClientsTable({
+  clients,
+  catalogPlans = [],
+}: {
+  clients: ClientRow[]
+  catalogPlans?: CatalogServiceOption[]
+}) {
   const [search, setSearch] = useState('')
   const [planFilter, setPlanFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -56,11 +59,17 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
+  const planFilterOptions = useMemo(() => {
+    const names = new Set<string>()
+    for (const c of clients) names.add(c.plan_name)
+    return [...names].sort((a, b) => a.localeCompare(b))
+  }, [clients])
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     return clients.filter((c) => {
       const matchSearch = c.company_name.toLowerCase().includes(q)
-      const matchPlan = planFilter === 'all' || c.subscription_plan === planFilter
+      const matchPlan = planFilter === 'all' || c.plan_name === planFilter
       const matchStatus = statusFilter === 'all' || c.status === statusFilter
       return matchSearch && matchPlan && matchStatus
     })
@@ -99,9 +108,9 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
           onChange={(e) => setPlanFilter(e.target.value)}
         >
           <option value="all">All Plans</option>
-          {Object.entries(planLabels).map(([v, l]) => (
-            <option key={v} value={v}>
-              {l}
+          {planFilterOptions.map((name) => (
+            <option key={name} value={name}>
+              {name}
             </option>
           ))}
         </select>
@@ -130,7 +139,6 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                 <SortableTh label="Primary Contact" column="contact" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <SortableTh label="Plan" column="plan" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <SortableTh label="Fee" column="fee" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                <SortableTh label="Active Projects" column="projects" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <SortableTh label="Status" column="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <SortableTh label="Last Activity" column="activity" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -142,7 +150,7 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
               {sorted.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={7}
                     className="px-4 py-10 text-center text-slate-500"
                   >
                     {clients.length === 0
@@ -169,14 +177,9 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
                       <td className="px-4 py-3 text-slate-600">
                         {c.primary_contact}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {planLabels[c.subscription_plan] ?? c.subscription_plan}
-                      </td>
+                      <td className="px-4 py-3 text-slate-600">{c.plan_name}</td>
                       <td className="px-4 py-3 text-slate-600">
                         {formatRecurringFee(c.monthly_fee, c.billing_cycle)}
-                      </td>
-                      <td className="px-4 py-3 text-center text-slate-600">
-                        {c.active_projects}
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -210,7 +213,11 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
         </div>
       </div>
 
-      <NewClientSlideOver open={showNew} onClose={() => setShowNew(false)} />
+      <NewClientSlideOver
+        open={showNew}
+        onClose={() => setShowNew(false)}
+        catalogPlans={catalogPlans}
+      />
     </>
   )
 }

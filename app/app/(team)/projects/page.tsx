@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/ui/page-header'
 import { ProjectsTable } from '@/components/team/projects/projects-table'
+import { roundHours } from '@/lib/utils/format'
 
 export default async function ProjectsPage() {
   const supabase = await createClient()
@@ -31,7 +32,7 @@ export default async function ProjectsPage() {
     const orphanHours = (p.time_entries as { hours: number; task_id: string | null }[] ?? [])
       .filter((entry) => !entry.task_id)
       .reduce((sum, entry) => sum + (Number(entry.hours) || 0), 0)
-    const loggedHours = parseFloat((taskHours + orphanHours).toFixed(1))
+    const loggedHours = roundHours(taskHours + orphanHours)
     return {
       id: p.id,
       name: p.name,

@@ -17,7 +17,7 @@ import {
   pdfHeaderTextStyles,
 } from '@/lib/pdf/primitives'
 import { TASK_STATUS_CONFIG, TASK_TYPE_OPTIONS } from '@/lib/tasks/constants'
-import { formatDate } from '@/lib/utils/format'
+import { formatDate, formatHours } from '@/lib/utils/format'
 
 const company = APPDOERS_COMPANY_DEFAULTS
 
@@ -199,10 +199,6 @@ function colWidths(showProjectCol: boolean) {
   }
 }
 
-function formatHours(hours: number): string {
-  return hours > 0 ? `${hours.toFixed(1)}h` : '—'
-}
-
 function nzToday(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Auckland' }).format(new Date())
 }
@@ -331,7 +327,7 @@ export function TasksPDFDocument({
               </View>
               <View style={styles.totals}>
                 <Text style={styles.totalsText}>
-                  Total time logged: {formatHours(totalHours).replace('—', '0.0h')}
+                  Total time logged: {formatHours(totalHours, '0h')}
                 </Text>
               </View>
             </>

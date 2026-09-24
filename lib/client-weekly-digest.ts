@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { APP_TIMEZONE, formatMonthDay } from '@/lib/utils/format'
+import { APP_TIMEZONE, formatHours, formatMonthDay } from '@/lib/utils/format'
 import { hubClientUrl, type SlackBlock } from '@/lib/slack'
 
 const WEEKDAY_INDEX: Record<string, number> = {
@@ -51,10 +51,6 @@ export function getNzWeekRange(now = new Date()): {
     startIso: `${startDate}T00:00:00+12:00`,
     label: `${formatMonthDay(`${startDate}T12:00:00+12:00`)} – ${formatMonthDay(`${endDate}T12:00:00+12:00`)}`,
   }
-}
-
-function formatHours(n: number): string {
-  return `${Number(n.toFixed(1))}h`
 }
 
 function truncateList(lines: string[], max = 12): string {
@@ -160,7 +156,7 @@ export async function buildClientWeeklyDigest(
 
   const personLines = [...hoursByPerson.entries()]
     .sort((a, b) => b[1] - a[1])
-    .map(([name, hours]) => `• ${name} — ${formatHours(hours)}`)
+    .map(([name, hours]) => `• ${name} — ${formatHours(hours, '0h')}`)
 
   const closedIds = new Set(closed.map((t) => t.id))
   const doneLines = closed.map((task) => {
@@ -179,7 +175,7 @@ export async function buildClientWeeklyDigest(
   ]
 
   const hubUrl = hubClientUrl(client.id)
-  const text = `${client.company_name} · week of ${range.label} · ${formatHours(totalHours)} logged`
+  const text = `${client.company_name} · week of ${range.label} · ${formatHours(totalHours, '0h')} logged`
 
   const blocks: SlackBlock[] = [
     {
@@ -191,7 +187,7 @@ export async function buildClientWeeklyDigest(
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*Weekly digest · ${range.label}*\n*${formatHours(totalHours)}* logged`,
+        text: `*Weekly digest · ${range.label}*\n*${formatHours(totalHours, '0h')}* logged`,
       },
     },
   ]

@@ -10,7 +10,7 @@ import { NewProjectSlideOver } from './new-project-slide-over'
 import { deleteProjectAction } from '@/lib/actions/projects'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { SortableTh } from '@/components/ui/sortable-th'
-import { formatDate } from '@/lib/utils/format'
+import { formatDate, formatHours } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 import { sortRows, type SortDir, type SortValue } from '@/lib/utils/table-sort'
 
@@ -182,8 +182,8 @@ export function ProjectsTable({ projects, clients }: Props) {
                   const cs = clientStatusConfig[p.client_status] ?? clientStatusConfig.new
                   const ps = projectStatusConfig[p.status] ?? projectStatusConfig.active
                   const hoursDisplay = p.estimated_hours
-                    ? `${p.logged_hours.toFixed(1)} / ${p.estimated_hours}h`
-                    : `${p.logged_hours.toFixed(1)}h`
+                    ? `${formatHours(p.logged_hours, '0h')} / ${p.estimated_hours}h`
+                    : formatHours(p.logged_hours)
                   return (
                     <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-slate-900">
