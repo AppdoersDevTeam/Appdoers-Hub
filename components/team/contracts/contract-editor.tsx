@@ -81,18 +81,18 @@ export function ContractEditor({
   const portalLink = `/portal/contracts/${contract.id}`
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
+    <div className="flex h-[calc(100dvh-4rem-env(safe-area-inset-top,0px))] flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center gap-4 border-b border-slate-200 bg-slate-50 px-6 py-3">
-        <Link href="/app/contracts" className="text-slate-500 hover:text-slate-600 transition-colors">
+      <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
+        <Link href="/app/contracts" className="shrink-0 self-start text-slate-500 hover:text-slate-600 transition-colors">
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <div className="flex flex-1 items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3">
           <h1 className="font-semibold text-slate-900">{contract.title}</h1>
           <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>{st.label}</span>
           {client && <span className="text-sm text-slate-500">{client.company_name}</span>}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {proposal && (
             <Link href={`/app/proposals/${proposal.id}`} className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-600 transition-colors">
               <ExternalLink className="h-3 w-3" /> Proposal
@@ -140,16 +140,17 @@ export function ContractEditor({
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
         {/* Section nav */}
-        <div className="w-52 shrink-0 border-r border-slate-200 bg-white overflow-y-auto py-4">
-          <p className="px-4 pb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Sections</p>
+        <div className="shrink-0 border-b border-slate-200 bg-white overflow-x-auto md:w-52 md:shrink-0 md:overflow-y-auto md:border-b-0 md:border-r md:py-4">
+          <p className="hidden px-4 pb-2 text-xs font-medium uppercase tracking-wide text-slate-500 md:block">Sections</p>
+          <div className="flex md:block">
           {sections.map((s) => (
             <button
               key={s.id}
               onClick={() => setActiveSection(s.id)}
               className={cn(
-                'w-full px-4 py-2 text-left text-sm transition-colors',
+                'shrink-0 px-4 py-3 text-left text-sm transition-colors touch-manipulation md:w-full md:py-2',
                 activeSection === s.id
                   ? 'bg-slate-100 text-slate-900'
                   : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
@@ -158,9 +159,10 @@ export function ContractEditor({
               {s.title}
             </button>
           ))}
+          </div>
 
           {/* Meta info */}
-          <div className="mt-6 border-t border-slate-200 px-4 pt-4 space-y-3">
+          <div className="mt-6 hidden border-t border-slate-200 px-4 pt-4 space-y-3 md:block">
             <div>
               <p className="text-xs text-slate-500">Created</p>
               <p className="text-xs text-slate-500">{formatDate(contract.created_at)}</p>
@@ -181,7 +183,7 @@ export function ContractEditor({
         </div>
 
         {/* Editor */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {sections.map((s) => {
             if (s.id !== activeSection) return null
             return (

@@ -125,7 +125,7 @@ export function NotesSection({
                 <button
                   onClick={() => handleDelete(note.id)}
                   disabled={isPending}
-                  className="shrink-0 rounded p-1 text-slate-500 opacity-0 group-hover:opacity-100 hover:bg-slate-100 hover:text-red-600 transition-all"
+                  className="shrink-0 rounded p-2 text-slate-500 opacity-70 hover:bg-slate-100 hover:text-red-600 hover:opacity-100 transition-all touch-manipulation sm:opacity-0 sm:group-hover:opacity-100"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

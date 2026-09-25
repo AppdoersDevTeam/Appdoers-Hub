@@ -20,7 +20,7 @@ import {
 import { AppdoersLogo } from '@/components/brand/appdoers-logo'
 import { cn } from '@/lib/utils/cn'
 
-const navItems = [
+export const teamNavItems = [
   { href: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/app/analytics', label: 'Analytics', icon: PieChart },
   { href: '/app/clients', label: 'Clients', icon: Users },
@@ -35,42 +35,41 @@ const navItems = [
   { href: '/app/settings', label: 'Settings', icon: Settings },
 ]
 
-// These are always visible (not permission-gated)
-const bottomItems = [
+export const teamBottomItems = [
   { href: '/app/account', label: 'My Account', icon: UserCircle },
 ]
 
-interface Props {
+interface TeamNavProps {
   hiddenHrefs?: string[]
+  onNavigate?: () => void
+  className?: string
 }
 
-export function Sidebar({ hiddenHrefs = [] }: Props) {
+export function TeamNav({ hiddenHrefs = [], onNavigate, className }: TeamNavProps) {
   const pathname = usePathname()
-
-  const visible = navItems.filter(item => !hiddenHrefs.includes(item.href))
+  const visible = teamNavItems.filter((item) => !hiddenHrefs.includes(item.href))
 
   const isActive = (href: string) =>
     pathname === href || (href !== '/app/dashboard' && pathname.startsWith(href))
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-slate-200 bg-white">
-      {/* Logo */}
-      <div className="flex h-14 items-center border-b border-slate-200 px-4">
-        <Link href="/app/dashboard" className="flex items-center gap-2">
+    <div className={cn('flex h-full flex-col', className)}>
+      <div className="flex h-14 shrink-0 items-center border-b border-slate-200 px-4">
+        <Link href="/app/dashboard" onClick={onNavigate} className="flex items-center gap-2">
           <AppdoersLogo variant="icon" />
           <span className="text-sm font-semibold text-slate-900">Appdoers Hub</span>
         </Link>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-0.5">
           {visible.map(({ href, label, icon: Icon }) => (
             <li key={href}>
               <Link
                 href={href}
+                onClick={onNavigate}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors touch-manipulation',
                   isActive(href)
                     ? 'bg-blue-50 text-blue-600'
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
@@ -84,14 +83,14 @@ export function Sidebar({ hiddenHrefs = [] }: Props) {
         </ul>
       </nav>
 
-      {/* Bottom — always-visible items + version */}
-      <div className="border-t border-slate-200 px-3 py-3 space-y-0.5">
-        {bottomItems.map(({ href, label, icon: Icon }) => (
+      <div className="space-y-0.5 border-t border-slate-200 px-3 py-3 safe-bottom">
+        {teamBottomItems.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
+            onClick={onNavigate}
             className={cn(
-              'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+              'flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors touch-manipulation',
               isActive(href)
                 ? 'bg-blue-50 text-blue-600'
                 : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
@@ -103,6 +102,18 @@ export function Sidebar({ hiddenHrefs = [] }: Props) {
         ))}
         <p className="px-3 pt-2 text-xs text-slate-400">Appdoers Hub v0.1</p>
       </div>
+    </div>
+  )
+}
+
+interface SidebarProps {
+  hiddenHrefs?: string[]
+}
+
+export function Sidebar({ hiddenHrefs = [] }: SidebarProps) {
+  return (
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-slate-200 bg-white md:flex">
+      <TeamNav hiddenHrefs={hiddenHrefs} />
     </aside>
   )
 }

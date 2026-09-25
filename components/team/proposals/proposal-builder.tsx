@@ -138,23 +138,23 @@ export function ProposalBuilder({
   const st = statusConfig[proposal.status] ?? statusConfig.draft
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
+    <div className="flex h-[calc(100dvh-4rem-env(safe-area-inset-top,0px))] flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center gap-4 border-b border-slate-200 bg-slate-50 px-6 py-3">
-        <Link href="/app/proposals" className="text-slate-500 hover:text-slate-600 transition-colors">
+      <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
+        <Link href="/app/proposals" className="shrink-0 self-start text-slate-500 hover:text-slate-600 transition-colors">
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <div className="flex flex-1 items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3">
           <Input
             value={title}
             onChange={(e) => { setTitle(e.target.value); setSaveStatus('unsaved') }}
-            className="max-w-sm border-transparent bg-transparent text-slate-900 font-medium hover:border-slate-300 focus:border-blue-500"
+            className="max-w-full border-transparent bg-transparent text-slate-900 font-medium hover:border-slate-300 focus:border-blue-500 sm:max-w-sm"
           />
           <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>{st.label}</span>
           {client && <span className="text-sm text-slate-500">{client.company_name}</span>}
           <span className="text-xs text-slate-500">v{proposal.version}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className={cn('text-xs', saveStatus === 'saved' ? 'text-emerald-600' : saveStatus === 'saving' ? 'text-amber-600' : 'text-slate-500')}>
             {saveStatus === 'saved' ? 'Saved' : saveStatus === 'saving' ? 'Saving…' : 'Unsaved changes'}
           </span>
@@ -227,16 +227,17 @@ export function ProposalBuilder({
           />
         </div>
       ) : (
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
           {/* Section nav */}
-          <div className="w-52 shrink-0 border-r border-slate-200 bg-white overflow-y-auto py-4">
-            <p className="px-4 pb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Sections</p>
+          <div className="shrink-0 border-b border-slate-200 bg-white overflow-x-auto md:w-52 md:shrink-0 md:overflow-y-auto md:border-b-0 md:border-r md:py-4">
+            <p className="hidden px-4 pb-2 text-xs font-medium uppercase tracking-wide text-slate-500 md:block">Sections</p>
+            <div className="flex md:block">
             {sections.map((s) => (
               <button
                 key={s.id}
                 onClick={() => setActiveSection(s.id)}
                 className={cn(
-                  'w-full px-4 py-2 text-left text-sm transition-colors',
+                  'shrink-0 px-4 py-3 text-left text-sm transition-colors touch-manipulation md:w-full md:py-2',
                   activeSection === s.id
                     ? 'bg-slate-100 text-slate-900'
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
@@ -245,10 +246,11 @@ export function ProposalBuilder({
                 {s.title}
               </button>
             ))}
+            </div>
           </div>
 
           {/* Editor area */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             {sections.map((s) => {
               if (s.id !== activeSection) return null
               if (s.id === 'investment') {

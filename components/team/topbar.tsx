@@ -1,10 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { SignOutButton } from '@/components/team/sign-out-button'
 import { NotificationBell } from '@/components/team/notification-bell'
-import { SearchTrigger } from '@/components/team/search-trigger'
 import { listMyNotificationsAction } from '@/lib/actions/notifications'
 
-export async function TopBar() {
+export async function TopBarActions() {
   const supabase = await createClient()
   const {
     data: { user },
@@ -39,27 +38,35 @@ export async function TopBar() {
   }
 
   return (
-    <header className="fixed right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6 left-60">
-      <SearchTrigger />
-
-      <div className="flex items-center gap-3">
-        <NotificationBell notifications={notifications} />
-        <div className="text-right">
-          <p className="text-sm font-medium text-slate-900">{teamUser?.full_name ?? 'Team Member'}</p>
-          <p className="text-xs text-slate-500">{roleLabel[teamUser?.role ?? ''] ?? 'Team'}</p>
+    <>
+      <NotificationBell notifications={notifications} />
+      <div className="hidden text-right sm:block">
+        <p className="text-sm font-medium text-slate-900">{teamUser?.full_name ?? 'Team Member'}</p>
+        <p className="text-xs text-slate-500">{roleLabel[teamUser?.role ?? ''] ?? 'Team'}</p>
+      </div>
+      {teamUser?.avatar_url ? (
+        <img
+          src={teamUser.avatar_url}
+          alt={teamUser.full_name ?? 'Avatar'}
+          className="h-9 w-9 rounded-full border border-slate-200 object-cover"
+        />
+      ) : (
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
+          {initials}
         </div>
-        {teamUser?.avatar_url ? (
-          <img
-            src={teamUser.avatar_url}
-            alt={teamUser.full_name}
-            className="h-8 w-8 rounded-full object-cover border border-slate-200"
-          />
-        ) : (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
-            {initials}
-          </div>
-        )}
-        <SignOutButton />
+      )}
+      <SignOutButton />
+    </>
+  )
+}
+
+/** @deprecated Prefer TopBarActions + TeamShell */
+export async function TopBar() {
+  return (
+    <header className="fixed right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6 left-60">
+      <div />
+      <div className="flex items-center gap-3">
+        <TopBarActions />
       </div>
     </header>
   )

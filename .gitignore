@@ -40,6 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Serwist (webpack build artifacts; turbopack serves via /serwist)
+public/sw*
+public/swe-worker*
+
 # claude
 .claude/
 

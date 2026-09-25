@@ -165,7 +165,7 @@ export function PricingTableEditor({
         {/* Add custom item */}
         {addMode === 'custom' && (
           <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-1 gap-3 mb-3 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Name *</label>
                 <Input value={customItem.name} onChange={(e) => setCustomItem(f => ({ ...f, name: e.target.value }))} placeholder="Service name" />
@@ -265,7 +265,7 @@ export function PricingTableEditor({
 
       {/* Summary cards */}
       {pricingItems.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="hub-card">
             <p className="text-xs text-slate-500">One-time Setup</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{formatCurrency(totalSetup)}</p>

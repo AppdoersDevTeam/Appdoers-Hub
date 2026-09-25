@@ -216,8 +216,8 @@ export function RecapEditor({
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 space-y-5">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
 
           {/* Intro */}
           <div className="hub-card space-y-3">

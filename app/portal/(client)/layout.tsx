@@ -20,9 +20,9 @@ export default async function PortalClientLayout({ children }: { children: React
   }
 
   return (
-    <div className="theme-portal min-h-screen bg-[#F8FAFC]">
+    <div className="theme-portal min-h-dvh bg-[#F8FAFC]">
       <PortalTopNav clientName={clientName} />
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-6xl px-4 py-4 safe-bottom sm:px-6 sm:py-8">
         <div className="animate-fade-in">{children}</div>
       </main>
     </div>

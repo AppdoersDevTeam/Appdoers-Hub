@@ -209,7 +209,7 @@ export function DomainsSection({
                       <ExternalLink className="h-3 w-3 shrink-0" />
                     </a>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <div className="flex items-center gap-1 opacity-70 transition-opacity shrink-0 sm:opacity-0 sm:group-hover:opacity-100">
                     <button onClick={() => openEdit(d)} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600">
                       <Edit2 className="h-3.5 w-3.5" />
                     </button>

@@ -22,7 +22,7 @@ export function NotificationBell({ notifications }: { notifications: Notificatio
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="relative flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+        className="relative flex h-11 w-11 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 touch-manipulation"
         aria-label="Notifications"
       >
         <Bell className="h-4 w-4" />
@@ -31,7 +31,7 @@ export function NotificationBell({ notifications }: { notifications: Notificatio
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-10 z-50 w-80 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div className="absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-lg border border-slate-200 bg-white">
           <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
             <p className="text-xs font-medium text-slate-600">Notifications</p>
             {unread.length > 0 && (

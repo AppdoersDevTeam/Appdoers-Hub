@@ -1,13 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
-import { Sidebar } from '@/components/team/sidebar'
-import { TopBar } from '@/components/team/topbar'
+import { TeamShell } from '@/components/team/team-shell'
+import { TopBarActions } from '@/components/team/topbar'
 import { HubCommandPalette } from '@/components/team/hub-command-palette'
 import { getEffectivePermissions, getHiddenHrefs } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
 
 export default async function TeamLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!user) {
     redirect('/app/login')
@@ -31,13 +33,9 @@ export default async function TeamLayout({ children }: { children: React.ReactNo
   const hiddenHrefs = getHiddenHrefs(effective)
 
   return (
-    <div className="theme-team min-h-screen bg-[#F8FAFC]">
-      <Sidebar hiddenHrefs={hiddenHrefs} />
-      <TopBar />
+    <TeamShell hiddenHrefs={hiddenHrefs} headerActions={<TopBarActions />}>
       <HubCommandPalette />
-      <main className="ml-60 min-w-0 pt-14">
-        <div className="min-w-0 max-w-full animate-fade-in p-6">{children}</div>
-      </main>
-    </div>
+      {children}
+    </TeamShell>
   )
 }

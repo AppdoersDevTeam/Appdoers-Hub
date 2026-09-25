@@ -330,7 +330,7 @@ export function SubscriptionsTable({
                   <td className="px-4 py-3"><StatusBadge status={s.status} /></td>
                   <td className="px-4 py-3">
                     {canEdit && (
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 opacity-70 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                         <button onClick={() => openEdit(s)} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600">
                           <Edit2 className="h-3.5 w-3.5" />
                         </button>
