@@ -8,7 +8,7 @@ import { getTeamMemberName, slackPeopleContext } from '@/lib/team-member'
 import type { TaskStatus, TaskType, TaskPriority, WorkflowStage } from '@/lib/types/database'
 import { stageToTaskStatus, statusToWorkflowStage } from '@/lib/cursor-workflow'
 import { WORKFLOW_STAGE_CONFIG, TASK_STATUS_CONFIG } from '@/lib/tasks/constants'
-import { setTaskTimeSpent } from '@/lib/task-time'
+import { setTaskTimeSpent, syncTaskEntriesBillable } from '@/lib/task-time'
 import { closedAtForStatus } from '@/lib/tasks/closed-at'
 import { createNotifications, listActiveTeamUsers, mentionedUserIds } from '@/lib/notifications'
 
@@ -106,6 +106,7 @@ export interface CreateTaskInput {
   assigned_to?: string
   due_date?: string
   live_url?: string
+  is_billable?: boolean
 }
 
 export interface UpdateTaskDetailsInput {
@@ -119,6 +120,7 @@ export interface UpdateTaskDetailsInput {
   assigned_to?: string | null
   due_date?: string | null
   time_spent?: number
+  is_billable?: boolean
 }
 
 export async function createTaskAction(
@@ -132,7 +134,7 @@ export async function createTaskAction(
 
     const { data: task, error } = await supabase
       .from('tasks')
-      .insert({ ...input, status: 'open', created_by: user?.id })
+      .insert({ ...input, is_billable: input.is_billable ?? false, status: 'open', created_by: user?.id })
       .select('id, title')
       .single()
 
@@ -241,13 +243,13 @@ export async function updateTaskDetailsAction(
 
     const { data: existing } = await supabase
       .from('tasks')
-      .select('title, project_id, status, workflow_stage, time_spent, created_by, closed_at, assigned_to')
+      .select('title, project_id, status, workflow_stage, time_spent, is_billable, created_by, closed_at, assigned_to')
       .eq('id', id)
       .single()
 
     if (!existing) return { success: false, error: 'Task not found' }
 
-    const updateData: Record<string, string | number | null> = {
+    const updateData: Record<string, string | number | boolean | null> = {
       updated_at: new Date().toISOString(),
     }
 
@@ -258,6 +260,7 @@ export async function updateTaskDetailsAction(
     if (input.assigned_to !== undefined) updateData.assigned_to = input.assigned_to
     if (input.due_date !== undefined) updateData.due_date = input.due_date
     if (input.project_id !== undefined) updateData.project_id = input.project_id
+    if (input.is_billable !== undefined) updateData.is_billable = input.is_billable
 
     if (input.workflow_stage !== undefined) {
       updateData.workflow_stage = input.workflow_stage
@@ -299,6 +302,13 @@ export async function updateTaskDetailsAction(
 
     const { error } = await supabase.from('tasks').update(updateData).eq('id', id)
     if (error) return { success: false, error: error.message }
+
+    const billableChanged =
+      input.is_billable !== undefined && input.is_billable !== Boolean(existing.is_billable)
+    if (billableChanged) {
+      const syncResult = await syncTaskEntriesBillable(supabase, id, Boolean(input.is_billable))
+      if (syncResult.error) return { success: false, error: syncResult.error }
+    }
 
     const { data: nextProject } = await supabase
       .from('projects')
@@ -356,6 +366,7 @@ export async function updateTaskDetailsAction(
     if (input.assigned_to !== undefined) changes.push('assignee updated')
     if (input.due_date !== undefined) changes.push('due date updated')
     if (input.time_spent !== undefined) changes.push(`time spent → ${input.time_spent}h`)
+    if (billableChanged) changes.push(input.is_billable ? 'marked billable' : 'marked non-billable')
 
     if (changes.length > 0 && !(input.project_id && input.project_id !== previousProjectId)) {
       await logActivity({

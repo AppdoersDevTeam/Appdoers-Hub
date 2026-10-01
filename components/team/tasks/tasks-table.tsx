@@ -37,6 +37,7 @@ type TaskRow = {
   assigned_to_name: string | null
   due_date: string | null
   time_spent: number
+  is_billable?: boolean
   updated_at: string
 }
 
@@ -69,6 +70,7 @@ const TASK_COLUMNS_FULL: TableColumnDef[] = [
   { id: 'assigned', label: 'Assigned To', defaultWidth: 128, sortable: true },
   { id: 'due', label: 'Due Date', defaultWidth: 100, defaultVisible: false, sortable: true },
   { id: 'time', label: 'Time', defaultWidth: 72, defaultVisible: false, sortable: true },
+  { id: 'billable', label: 'Billable', defaultWidth: 80, defaultVisible: false, sortable: true },
   { id: 'status', label: 'Status', defaultWidth: 168, sortable: true },
   { id: 'actions', label: 'Actions', defaultWidth: 48, hideable: false, sortable: false },
 ]
@@ -86,6 +88,7 @@ const TASK_SORT_GETTERS: Record<string, (t: TaskRow) => SortValue> = {
   assigned: (t) => t.assigned_to_name,
   due: (t) => t.due_date,
   time: (t) => t.time_spent,
+  billable: (t) => (t.is_billable ? 1 : 0),
   status: (t) => STATUS_ORDER[t.status] ?? 99,
 }
 
@@ -523,6 +526,11 @@ export function TasksTable({
                       assigned: <span className="block truncate">{t.assigned_to_name ?? '—'}</span>,
                       due: <span className="block truncate">{t.due_date ? formatDate(t.due_date) : '—'}</span>,
                       time: <span className="block truncate">{formatHours(t.time_spent)}</span>,
+                      billable: t.is_billable ? (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Billable</span>
+                      ) : (
+                        <span className="text-xs text-slate-500">Plan</span>
+                      ),
                       status: (
                         <div className="min-w-0 max-w-full overflow-hidden">
                           <TaskStatusSelect

@@ -29,6 +29,7 @@ export default async function RecapDetailPage({ params }: Props) {
       clientName={client.companyName}
       clientId={recap.client_id}
       contactName={client.contactName}
+      contactEmail={client.contactEmail}
     />
   )
 }

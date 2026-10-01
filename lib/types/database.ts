@@ -216,6 +216,7 @@ export interface Task {
   assigned_to: string | null
   due_date: string | null
   time_spent: number
+  is_billable: boolean
   created_by: string | null
   closed_at: string | null
   created_at: string

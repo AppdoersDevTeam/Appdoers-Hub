@@ -5,8 +5,11 @@ import Link from 'next/link'
 import { ArrowLeft, Plus, Trash2, Send, RefreshCw, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { saveRecapAction, sendRecapAction, generateRecapDataAction, type RecapWorkItem } from '@/lib/actions/recaps'
+import { saveRecapAction, generateRecapDataAction, type RecapWorkItem } from '@/lib/actions/recaps'
+import type { RecapStats } from '@/lib/recaps/types'
+import { SendRecapDialog } from '@/components/team/recaps/send-recap-dialog'
 import { cn } from '@/lib/utils/cn'
+import { formatCurrency } from '@/lib/utils/format'
 
 const MONTHS = [
   'January','February','March','April','May','June',
@@ -25,6 +28,7 @@ interface Recap {
   performance_notes: string | null
   coming_next: string | null
   is_sent: boolean
+  sent_to_email?: string | null
 }
 
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
@@ -36,11 +40,13 @@ export function RecapEditor({
   clientName,
   clientId,
   contactName,
+  contactEmail,
 }: {
   recap: Recap
   clientName: string
   clientId: string
   contactName?: string | null
+  contactEmail?: string | null
 }) {
   const [isPending, startTransition] = useTransition()
   const [introText, setIntroText] = useState(recap.intro_text ?? '')
@@ -48,7 +54,10 @@ export function RecapEditor({
   const [performanceNotes, setPerformanceNotes] = useState(recap.performance_notes ?? '')
   const [comingNext, setComingNext] = useState(recap.coming_next ?? '')
   const [isSent, setIsSent] = useState(recap.is_sent)
-  const [sendConfirm, setSendConfirm] = useState(false)
+  const [sentTo, setSentTo] = useState<string | null>(recap.sent_to_email ?? null)
+  const [sendOpen, setSendOpen] = useState(false)
+  // undefined = keep the stored snapshot; set when Auto-fill regenerates it.
+  const [stats, setStats] = useState<RecapStats | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
   const [generateMsg, setGenerateMsg] = useState<string | null>(null)
   const autoFilledOnMount = useRef(false)
@@ -63,10 +72,12 @@ export function RecapEditor({
       introText: string
       comingNext: string
       performanceNotes: string
+      stats: RecapStats
     },
     options?: { refreshIntro?: boolean; refreshComingNext?: boolean; refreshPerformance?: boolean }
   ) => {
     setWorkItems(data.workCompleted)
+    setStats(data.stats)
     setGenerateMsg(
       `Auto-filled ${data.workCompleted.length} work items · ${data.tasksCompleted} tasks closed · ${data.hoursLogged}h logged this month`
     )
@@ -87,37 +98,35 @@ export function RecapEditor({
     setWorkItems(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: value } : item))
   }
 
+  const saveDraft = async (): Promise<boolean> => {
+    const result = await saveRecapAction({
+      client_id: recap.client_id,
+      month: recap.month,
+      year: recap.year,
+      intro_text: introText,
+      work_completed: workItems.filter(w => w.description.trim()),
+      performance_notes: performanceNotes,
+      coming_next: comingNext,
+      ...(stats !== undefined ? { stats } : {}),
+    }, recap.id)
+    if (!result.success) {
+      setError(result.error)
+      return false
+    }
+    setError(null)
+    return true
+  }
+
   const handleSave = () => {
     startTransition(async () => {
-      const result = await saveRecapAction({
-        client_id: recap.client_id,
-        month: recap.month,
-        year: recap.year,
-        intro_text: introText,
-        work_completed: workItems.filter(w => w.description.trim()),
-        performance_notes: performanceNotes,
-        coming_next: comingNext,
-      }, recap.id)
-      if (!result.success) setError(result.error)
+      await saveDraft()
     })
   }
 
-  const handleSend = () => {
-    startTransition(async () => {
-      await saveRecapAction({
-        client_id: recap.client_id,
-        month: recap.month,
-        year: recap.year,
-        intro_text: introText,
-        work_completed: workItems.filter(w => w.description.trim()),
-        performance_notes: performanceNotes,
-        coming_next: comingNext,
-      }, recap.id)
-      const result = await sendRecapAction(recap.id)
-      if (!result.success) { setError(result.error); return }
-      setIsSent(true)
-      setSendConfirm(false)
-    })
+  const handleSent = (recipient: string | null) => {
+    setIsSent(true)
+    setSentTo(recipient)
+    setSendOpen(false)
   }
 
   const handleAutoGenerate = (options?: {
@@ -188,7 +197,7 @@ export function RecapEditor({
                 <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Auto-fill from Data
               </Button>
               <Button size="sm" variant="outline" onClick={handleSave} disabled={isPending}>Save Draft</Button>
-              <Button size="sm" onClick={() => setSendConfirm(true)} disabled={isPending}>
+              <Button size="sm" onClick={() => setSendOpen(true)} disabled={isPending}>
                 <Send className="mr-1.5 h-3.5 w-3.5" /> Send to Client
               </Button>
             </>
@@ -197,13 +206,14 @@ export function RecapEditor({
       </div>
 
       {/* Banners */}
-      {sendConfirm && (
-        <div className="flex items-center gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="flex-1 text-sm text-amber-600">This will mark the recap as <strong>Sent</strong> and notify the team. Confirm?</p>
-          <Button size="sm" onClick={handleSend} disabled={isPending}>Confirm Send</Button>
-          <Button size="sm" variant="outline" onClick={() => setSendConfirm(false)}>Cancel</Button>
-        </div>
-      )}
+      <SendRecapDialog
+        open={sendOpen}
+        recapId={recap.id}
+        defaultEmail={contactEmail ?? null}
+        onBeforeSend={saveDraft}
+        onSent={handleSent}
+        onClose={() => setSendOpen(false)}
+      />
       {generateMsg && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-600">
           ✓ {generateMsg}
@@ -212,7 +222,7 @@ export function RecapEditor({
       {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
       {isSent && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">
-          ✓ This recap has been sent to the client and is visible in their portal.
+          ✓ {sentTo ? `Emailed to ${sentTo} and visible` : 'This recap has been sent to the client and is visible'} in their portal.
         </div>
       )}
 
@@ -329,6 +339,18 @@ export function RecapEditor({
                 <p className="text-xs text-slate-500">Status</p>
                 <p className={isSent ? 'text-emerald-600' : 'text-slate-500'}>{isSent ? 'Sent to client' : 'Draft'}</p>
               </div>
+              {stats?.savings ? (
+                <div>
+                  <p className="text-xs text-slate-500">Plan savings (Full plan)</p>
+                  <p className="text-slate-600">
+                    {formatCurrency(stats.savings.amount)} · {stats.savings.nonBillableHours}h non-billable
+                  </p>
+                </div>
+              ) : null}
+              <div>
+                <p className="text-xs text-slate-500">Email on record</p>
+                <p className="break-all text-slate-600">{contactEmail ?? 'None'}</p>
+              </div>
             </div>
           </div>
 
@@ -336,7 +358,7 @@ export function RecapEditor({
             <h3 className="text-sm font-semibold text-slate-900">Tips</h3>
             <ul className="space-y-1.5 text-xs text-slate-500">
               <li>• Save your draft before exporting — the PDF uses saved content</li>
-              <li>• Use "Auto-fill from Data" to pull tasks + hours from the month automatically</li>
+              <li>• Use "Auto-fill from Data" to pull tasks + hours and refresh the PDF charts and plan savings</li>
               <li>• Keep the intro friendly and personal — mention the client by name</li>
               <li>• Be specific about what was done — avoid vague phrases like "worked on the site"</li>
               <li>• "Coming Next" sets expectations and reduces client anxiety</li>

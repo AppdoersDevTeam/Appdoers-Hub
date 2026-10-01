@@ -22,6 +22,7 @@ type TaskRow = {
   assigned_to_name: string | null
   due_date: string | null
   time_spent: number
+  is_billable?: boolean
   updated_at: string
 }
 

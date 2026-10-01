@@ -34,6 +34,7 @@ interface TaskDetailsEditorProps {
   assignedTo: string | null
   dueDate: string | null
   timeSpent: number
+  isBillable: boolean
   createdAt: string
   updatedAt: string
   createdByName: string
@@ -59,6 +60,7 @@ export function TaskDetailsEditor({
   assignedTo,
   dueDate,
   timeSpent,
+  isBillable,
   createdAt,
   updatedAt,
   createdByName,
@@ -84,6 +86,7 @@ export function TaskDetailsEditor({
     assignedTo: assignedTo ?? '',
     dueDate: dueDate ?? '',
     timeSpent: String(timeSpent ?? 0),
+    isBillable,
   })
 
   const clients = useMemo(() => {
@@ -165,6 +168,7 @@ export function TaskDetailsEditor({
         assigned_to: form.assignedTo || null,
         due_date: form.dueDate || null,
         time_spent: parsedTimeSpent,
+        is_billable: form.isBillable,
       })
 
       if (!result.success) {
@@ -346,6 +350,21 @@ export function TaskDetailsEditor({
           Total hours on this task. Updates contribute to project totals and monthly recaps.
         </p>
       </div>
+
+      <label className="flex cursor-pointer items-start gap-2">
+        <input
+          type="checkbox"
+          checked={form.isBillable}
+          onChange={(e) => set('isBillable', e.target.checked)}
+          className="mt-0.5 rounded border-slate-200"
+        />
+        <span>
+          <span className="block text-sm text-slate-700">Billable</span>
+          <span className="block text-xs text-slate-500">
+            Unticked = covered by the client&apos;s plan. All time logged on this task follows this setting.
+          </span>
+        </span>
+      </label>
 
       <div>
         <label className={labelClass}>Description</label>

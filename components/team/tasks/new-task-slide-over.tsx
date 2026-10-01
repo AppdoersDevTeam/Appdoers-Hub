@@ -49,9 +49,10 @@ export function NewTaskSlideOver({ open, onClose, projects, teamMembers, default
     assigned_to: '',
     due_date: '',
     live_url: '',
+    is_billable: false,
   })
 
-  const set = (field: string, value: string) =>
+  const set = (field: string, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [field]: value }))
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -70,9 +71,10 @@ export function NewTaskSlideOver({ open, onClose, projects, teamMembers, default
         assigned_to: form.assigned_to || undefined,
         due_date: form.due_date || undefined,
         live_url: form.live_url || undefined,
+        is_billable: form.is_billable,
       })
       if (!result.success) { setError(result.error); return }
-      setForm((f) => ({ ...f, title: '', description: '', due_date: '', assigned_to: '', live_url: '' }))
+      setForm((f) => ({ ...f, title: '', description: '', due_date: '', assigned_to: '', live_url: '', is_billable: false }))
       onClose()
       router.refresh()
     })
@@ -141,6 +143,19 @@ export function NewTaskSlideOver({ open, onClose, projects, teamMembers, default
           <label className={labelClass}>Live URL</label>
           <Input type="url" value={form.live_url} onChange={(e) => set('live_url', e.target.value)} placeholder="https://example.com" />
         </div>
+
+        <label className="flex cursor-pointer items-start gap-2">
+          <input
+            type="checkbox"
+            checked={form.is_billable}
+            onChange={(e) => set('is_billable', e.target.checked)}
+            className="mt-0.5 rounded border-slate-200"
+          />
+          <span>
+            <span className="block text-sm text-slate-700">Billable</span>
+            <span className="block text-xs text-slate-500">Leave unticked if this work is covered by the client&apos;s plan.</span>
+          </span>
+        </label>
 
         <div className="flex gap-3 pt-2">
           <Button type="submit" disabled={isPending} className="flex-1">

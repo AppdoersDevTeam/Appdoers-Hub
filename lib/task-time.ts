@@ -9,6 +9,28 @@ export async function getTaskTimeSpent(
   return Number(data?.time_spent ?? 0)
 }
 
+/** Task-linked time entries always inherit the task's billable flag. */
+export async function getTaskIsBillable(
+  service: SupabaseClient,
+  taskId: string
+): Promise<boolean> {
+  const { data } = await service.from('tasks').select('is_billable').eq('id', taskId).single()
+  return Boolean(data?.is_billable)
+}
+
+export async function syncTaskEntriesBillable(
+  service: SupabaseClient,
+  taskId: string,
+  isBillable: boolean
+): Promise<{ error?: string }> {
+  const { error } = await service
+    .from('time_entries')
+    .update({ is_billable: isBillable })
+    .eq('task_id', taskId)
+    .eq('is_invoiced', false)
+  return error ? { error: error.message } : {}
+}
+
 export async function incrementTaskTimeSpent(
   service: SupabaseClient,
   taskId: string,
@@ -66,6 +88,7 @@ export async function setTaskTimeSpent(
   if (updateError) return { error: updateError.message }
 
   if (delta > 0) {
+    const isBillable = await getTaskIsBillable(service, input.taskId)
     const { error: entryError } = await service.from('time_entries').insert({
       project_id: input.projectId,
       task_id: input.taskId,
@@ -73,7 +96,7 @@ export async function setTaskTimeSpent(
       date: todayYmd(),
       hours: delta,
       description: input.description?.trim() || 'Time spent updated on task',
-      is_billable: true,
+      is_billable: isBillable,
       is_invoiced: false,
     })
 

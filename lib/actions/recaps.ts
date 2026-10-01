@@ -3,9 +3,21 @@
 import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
 import { hubRecapUrl, sendSlackAlert, slackOpenHub } from '@/lib/slack'
-import type { RecapWorkItem } from '@/lib/recaps/types'
+import type { RecapStats, RecapWorkItem } from '@/lib/recaps/types'
+import {
+  buildRecapStats,
+  resolveRecapPlanKey,
+  taskTypeToCategory,
+  type RecapStatsTaskInput,
+} from '@/lib/recaps/stats'
 import { fetchClientDisplayInfo } from '@/lib/clients/fetch-client-display'
 import { formatHours, roundHours } from '@/lib/utils/format'
+import { z } from 'zod'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { requireTeamAccess } from '@/lib/supabase/route-access'
+import { loadRecapPdfData } from '@/lib/recaps/load-recap-pdf'
+import { buildRecapEmail } from '@/lib/recaps/recap-email'
+import { sendEmail } from '@/lib/email/resend'
 
 export type { RecapWorkItem } from '@/lib/recaps/types'
 
@@ -22,6 +34,8 @@ export interface RecapInput {
   work_completed: RecapWorkItem[]
   performance_notes: string
   coming_next: string
+  /** Omit to leave the stored snapshot untouched. */
+  stats?: RecapStats | null
 }
 
 export interface GeneratedRecapData {
@@ -31,6 +45,7 @@ export interface GeneratedRecapData {
   introText: string
   comingNext: string
   performanceNotes: string
+  stats: RecapStats
 }
 
 const MONTH_NAMES = [
@@ -45,22 +60,6 @@ function monthDateRange(month: number, year: number) {
   return { startDate, endDate, endDateTime: `${endDate}T23:59:59.999Z` }
 }
 
-function taskTypeToCategory(type: string): string {
-  switch (type) {
-    case 'design':
-      return 'Design'
-    case 'content':
-      return 'Content'
-    case 'bug':
-    case 'revision':
-      return 'Maintenance'
-    case 'admin':
-      return 'Meetings'
-    default:
-      return 'Development'
-  }
-}
-
 function formatPhaseName(phase: string): string {
   return phase.replace(/_/g, ' ')
 }
@@ -72,7 +71,7 @@ function buildIntroText(
   contactName?: string | null
 ): string {
   const greeting = contactName?.trim() ? `Hi ${contactName.trim()},` : 'Hi there,'
-  return `${greeting}\n\nHere's your monthly progress update for ${periodLabel}. It was a productive month — we completed ${tasksCompleted} task${tasksCompleted !== 1 ? 's' : ''} and logged ${hoursLogged} hour${hoursLogged !== 1 ? 's' : ''} of work on your project.`
+  return `${greeting}\n\nHere is your progress update for ${periodLabel}. This month we completed ${tasksCompleted} task${tasksCompleted !== 1 ? 's' : ''} and logged ${hoursLogged} hour${hoursLogged !== 1 ? 's' : ''} of work on your project.`
 }
 
 function buildComingNextText(
@@ -123,10 +122,21 @@ export async function generateRecapDataAction(
     const { startDate, endDate, endDateTime } = monthDateRange(month, year)
     const periodLabel = `${MONTH_NAMES[month - 1]} ${year}`
 
-    const { data: projects } = await supabase
-      .from('projects')
-      .select('id, name')
-      .eq('client_id', clientId)
+    const [{ data: projects }, { data: client }] = await Promise.all([
+      supabase.from('projects').select('id, name').eq('client_id', clientId),
+      supabase
+        .from('clients')
+        .select('subscription_plan, service_catalog:plan_service_id(plan_key)')
+        .eq('id', clientId)
+        .maybeSingle(),
+    ])
+
+    const catalog = (client as { service_catalog?: { plan_key?: string | null } | { plan_key?: string | null }[] | null } | null)
+      ?.service_catalog
+    const plan = resolveRecapPlanKey({
+      catalogPlanKey: (Array.isArray(catalog) ? catalog[0] : catalog)?.plan_key ?? null,
+      subscriptionPlan: (client as { subscription_plan?: string | null } | null)?.subscription_plan ?? null,
+    })
 
     const projectIds = (projects ?? []).map((p) => p.id as string)
     const projectNames = (projects ?? []).map((p) => p.name as string)
@@ -141,6 +151,15 @@ export async function generateRecapDataAction(
           introText: buildIntroText(periodLabel, 0, 0, options?.contactName),
           comingNext: '',
           performanceNotes: '',
+          stats: buildRecapStats({
+            month,
+            year,
+            plan,
+            tasksCompleted: 0,
+            phasesCompleted: [],
+            tasks: [],
+            entries: [],
+          }),
         },
       }
     }
@@ -154,7 +173,7 @@ export async function generateRecapDataAction(
     ] = await Promise.all([
       supabase
         .from('tasks')
-        .select('id, title, type, project_id, projects(name)')
+        .select('id, title, type, status, is_billable, project_id, projects(name)')
         .in('project_id', projectIds)
         .eq('status', 'closed')
         .gte('updated_at', startDate)
@@ -163,7 +182,7 @@ export async function generateRecapDataAction(
 
       supabase
         .from('tasks')
-        .select('id, title, type, time_spent, project_id, projects(name)')
+        .select('id, title, type, status, is_billable, time_spent, project_id, projects(name)')
         .in('project_id', projectIds)
         .neq('status', 'open')
         .gte('updated_at', startDate)
@@ -181,7 +200,7 @@ export async function generateRecapDataAction(
 
       supabase
         .from('time_entries')
-        .select('hours, task_id, description, project_id, projects(name)')
+        .select('hours, date, is_billable, task_id, description, project_id, projects(name)')
         .in('project_id', projectIds)
         .gte('date', startDate)
         .lte('date', endDate),
@@ -233,14 +252,36 @@ export async function generateRecapDataAction(
       workCompleted.push({ description: description.trim(), category })
     }
 
+    const statsTasks = new Map<string, RecapStatsTaskInput>()
+    const addStatsTask = (task: {
+      id: unknown
+      title: unknown
+      type: unknown
+      status: unknown
+      is_billable: unknown
+      projects: unknown
+    }) => {
+      const id = task.id as string
+      if (statsTasks.has(id)) return
+      statsTasks.set(id, {
+        id,
+        title: task.title as string,
+        type: task.type as string,
+        status: task.status as string,
+        isBillable: Boolean(task.is_billable),
+        projectName: (task.projects as { name?: string } | null)?.name ?? null,
+      })
+    }
+
     if (hoursByTask.size > 0) {
       const { data: timedTasks } = await supabase
         .from('tasks')
-        .select('id, title, type, projects(name)')
+        .select('id, title, type, status, is_billable, projects(name)')
         .in('id', [...hoursByTask.keys()])
         .order('updated_at', { ascending: false })
 
       for (const task of timedTasks ?? []) {
+        addStatsTask(task)
         const projectName = (task.projects as { name?: string } | null)?.name
         addWorkItem(
           formatTaskWorkLabel(
@@ -261,6 +302,10 @@ export async function generateRecapDataAction(
         projectName ? `Completed ${label} phase — ${projectName}` : `Completed ${label} phase`,
         'Development'
       )
+    }
+
+    for (const task of [...(closedTasks ?? []), ...(workedTasks ?? [])]) {
+      addStatsTask(task)
     }
 
     for (const task of workedTasks ?? []) {
@@ -305,11 +350,31 @@ export async function generateRecapDataAction(
       projectNames
     )
 
+    const stats = buildRecapStats({
+      month,
+      year,
+      plan,
+      tasksCompleted,
+      phasesCompleted: (phases ?? []).map((phase) => {
+        const projectName = (phase.projects as { name?: string } | null)?.name
+        const label = formatPhaseName(phase.phase as string)
+        return projectName ? `${label} (${projectName})` : label
+      }),
+      tasks: [...statsTasks.values()],
+      entries: (timeEntries ?? []).map((e) => ({
+        hours: Number(e.hours),
+        date: String(e.date),
+        taskId: (e.task_id as string | null) ?? null,
+        isBillable: Boolean(e.is_billable),
+      })),
+    })
+
     return {
       success: true,
       data: {
         tasksCompleted,
         hoursLogged,
+        stats,
         workCompleted,
         introText: buildIntroText(periodLabel, tasksCompleted, hoursLogged, options?.contactName),
         comingNext,
@@ -346,7 +411,7 @@ export async function saveRecapAction(
       }
     }
 
-    let payload = {
+    const payload: Record<string, unknown> = {
       client_id: input.client_id,
       project_id: input.project_id ?? null,
       month: input.month,
@@ -357,6 +422,7 @@ export async function saveRecapAction(
       coming_next: input.coming_next,
       is_sent: false,
     }
+    if (input.stats !== undefined) payload.stats = input.stats
 
     let id: string
 
@@ -384,45 +450,157 @@ export async function saveRecapAction(
 
 // ─── Send Recap ───────────────────────────────────────────────────────────────
 
+async function markRecapSent(
+  db: SupabaseClient,
+  recapId: string,
+  userId: string | undefined,
+  delivery?: { toEmail: string; messageId: string }
+): Promise<ActionResult<undefined>> {
+  const { data: recap } = await db
+    .from('monthly_recaps')
+    .select('client_id, month, year, coming_next')
+    .eq('id', recapId)
+    .single()
+
+  if (!recap) return { success: false, error: 'Recap not found' }
+
+  const { error } = await db
+    .from('monthly_recaps')
+    .update({
+      is_sent: true,
+      sent_at: new Date().toISOString(),
+      sent_by: userId,
+      ...(delivery ? { sent_to_email: delivery.toEmail, email_message_id: delivery.messageId } : {}),
+    })
+    .eq('id', recapId)
+
+  if (error) return { success: false, error: error.message }
+
+  const client = await fetchClientDisplayInfo(db, recap.client_id as string)
+  const clientName = client.companyName
+  const monthLabel = `${MONTH_NAMES[(recap.month as number) - 1]} ${recap.year}`
+
+  await sendSlackAlert('clients', {
+    text: delivery
+      ? `Monthly recap emailed: ${clientName} — ${monthLabel}`
+      : `Monthly recap sent: ${clientName} — ${monthLabel}`,
+    title: delivery ? 'Monthly recap emailed' : 'Monthly recap sent',
+    fields: [
+      { label: 'Client', value: clientName },
+      { label: 'Period', value: monthLabel },
+      ...(delivery ? [{ label: 'Sent to', value: delivery.toEmail }] : []),
+    ],
+    body: recap.coming_next ? String(recap.coming_next) : null,
+    bodyLabel: recap.coming_next ? 'Coming next' : undefined,
+    action: slackOpenHub(hubRecapUrl(recapId)),
+  })
+
+  revalidatePath('/app/recaps')
+  revalidatePath(`/app/recaps/${recapId}`)
+  revalidatePath('/portal/recaps')
+  return { success: true, data: undefined }
+}
+
+/** Marks the recap as sent (visible in the portal) without emailing it. */
 export async function sendRecapAction(recapId: string): Promise<ActionResult<undefined>> {
   try {
     const supabase = await createSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
+    return markRecapSent(supabase, recapId, user?.id)
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
 
-    const { data: recap } = await supabase
-      .from('monthly_recaps')
-      .select('*')
-      .eq('id', recapId)
-      .single()
+function appBaseUrl(): string | null {
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '')
+  return base || null
+}
 
-    if (!recap) return { success: false, error: 'Recap not found' }
+/** Subject + preview text for the send dialog, built from the saved recap. */
+export async function previewRecapEmailAction(
+  recapId: string
+): Promise<ActionResult<{ subject: string; text: string }>> {
+  try {
+    const team = await requireTeamAccess()
+    if (!team.ok) return { success: false, error: team.message }
 
-    const { error } = await supabase
-      .from('monthly_recaps')
-      .update({ is_sent: true, sent_at: new Date().toISOString(), sent_by: user?.id })
-      .eq('id', recapId)
+    const loaded = await loadRecapPdfData(team.db, recapId)
+    if (!loaded.ok) return { success: false, error: loaded.error }
 
-    if (error) return { success: false, error: error.message }
+    const contact = await fetchClientDisplayInfo(team.db, loaded.data.clientId)
+    const email = buildRecapEmail({
+      clientName: loaded.data.props.clientName,
+      contactName: contact.contactName,
+      month: loaded.data.props.month,
+      year: loaded.data.props.year,
+      stats: loaded.data.props.stats,
+      workItems: loaded.data.props.workCompleted,
+      comingNext: loaded.data.props.comingNext,
+      portalUrl: null,
+      logoUrl: null,
+    })
+    return { success: true, data: { subject: email.subject, text: email.text } }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+}
 
-    const client = await fetchClientDisplayInfo(supabase, recap.client_id as string)
-    const clientName = client.companyName
-    const monthLabel = `${MONTH_NAMES[(recap.month as number) - 1]} ${recap.year}`
+const recipientSchema = z.string().trim().email('Enter a valid email address')
 
-    await sendSlackAlert('clients', {
-      text: `Monthly recap sent: ${clientName} — ${monthLabel}`,
-      title: 'Monthly recap sent',
-      fields: [
-        { label: 'Client', value: clientName },
-        { label: 'Period', value: monthLabel },
-      ],
-      body: recap.coming_next ? String(recap.coming_next) : null,
-      bodyLabel: recap.coming_next ? 'Coming next' : undefined,
-      action: slackOpenHub(hubRecapUrl(recapId)),
+/** Emails the recap (PDF attached) via Resend, then marks it sent. */
+export async function sendRecapEmailAction(
+  recapId: string,
+  toEmail: string
+): Promise<ActionResult<{ sentTo: string }>> {
+  try {
+    const parsed = recipientSchema.safeParse(toEmail)
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0].message }
+    const recipient = parsed.data
+
+    const team = await requireTeamAccess()
+    if (!team.ok) return { success: false, error: team.message }
+
+    const loaded = await loadRecapPdfData(team.db, recapId)
+    if (!loaded.ok) return { success: false, error: loaded.error }
+    const recap = loaded.data
+
+    const contact = await fetchClientDisplayInfo(team.db, recap.clientId)
+    const base = appBaseUrl()
+
+    const { renderRecapPdfToBuffer } = await import('@/lib/pdf/render-recap-pdf')
+    const pdf = await renderRecapPdfToBuffer({ ...recap.props, sentAt: new Date().toISOString() })
+
+    const email = buildRecapEmail({
+      clientName: recap.props.clientName,
+      contactName: contact.contactName,
+      month: recap.props.month,
+      year: recap.props.year,
+      stats: recap.props.stats,
+      workItems: recap.props.workCompleted,
+      comingNext: recap.props.comingNext,
+      portalUrl: base ? `${base}/portal/recaps` : null,
+      logoUrl: base ? `${base}/logo.png` : null,
     })
 
-    revalidatePath('/app/recaps')
-    revalidatePath(`/portal/recaps`)
-    return { success: true, data: undefined }
+    const sent = await sendEmail({
+      to: recipient,
+      subject: email.subject,
+      html: email.html,
+      text: email.text,
+      attachments: [{ filename: recap.filename.replace(/[^\w.-]+/g, '_'), content: pdf }],
+    })
+    if (!sent.ok) return { success: false, error: sent.error }
+
+    const marked = await markRecapSent(team.db, recapId, team.userId, {
+      toEmail: recipient,
+      messageId: sent.id,
+    })
+    if (!marked.success) {
+      return { success: false, error: `Email sent, but saving the sent status failed: ${marked.error}` }
+    }
+
+    return { success: true, data: { sentTo: recipient } }
   } catch (err) {
     return { success: false, error: String(err) }
   }

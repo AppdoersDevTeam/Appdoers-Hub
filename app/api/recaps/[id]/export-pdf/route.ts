@@ -1,71 +1,41 @@
 import { NextRequest } from 'next/server'
-import { normalizeRecapWorkItems } from '@/lib/recaps/normalize'
 import { renderPdfRoute } from '@/lib/pdf/render-route'
+import { loadRecapPdfData } from '@/lib/recaps/load-recap-pdf'
 import { requirePortalAccess, requireTeamAccess } from '@/lib/supabase/route-access'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
-
 async function loadAndRender(
   db: SupabaseClient,
   id: string,
   options?: { requireSent?: boolean; clientId?: string }
 ) {
-  const { data: recap, error } = await db
-    .from('monthly_recaps')
-    .select('id, month, year, intro_text, work_completed, performance_notes, coming_next, sent_at, client_id, is_sent')
-    .eq('id', id)
-    .maybeSingle()
+  const result = await loadRecapPdfData(db, id)
 
-  if (error) {
-    console.error('Recap PDF fetch error:', error.message)
-    return Response.json({ error: 'Failed to load recap' }, { status: 500 })
+  if (!result.ok) {
+    if (result.status === 500) console.error('Recap PDF fetch error:', result.error)
+    return Response.json(
+      { error: result.status === 500 ? 'Failed to load recap' : 'Not found' },
+      { status: result.status }
+    )
   }
 
-  if (!recap) {
-    return Response.json({ error: 'Not found' }, { status: 404 })
-  }
+  const recap = result.data
 
-  if (options?.clientId && recap.client_id !== options.clientId) {
+  if (options?.clientId && recap.clientId !== options.clientId) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  if (options?.requireSent && !recap.is_sent) {
+  if (options?.requireSent && !recap.isSent) {
     return Response.json({ error: 'Not found' }, { status: 404 })
-  }
-
-  const { data: client } = await db
-    .from('clients')
-    .select('company_name')
-    .eq('id', recap.client_id)
-    .maybeSingle()
-
-  const clientName = client?.company_name ?? 'Client'
-  const workCompleted = normalizeRecapWorkItems(recap.work_completed)
-  const safeMonth = Math.min(12, Math.max(1, Number(recap.month) || 1))
-  const periodSlug = `${MONTHS[safeMonth - 1]}_${recap.year}`
-
-  const pdfProps = {
-    clientName,
-    month: safeMonth,
-    year: Number(recap.year),
-    introText: recap.intro_text,
-    workCompleted,
-    performanceNotes: recap.performance_notes,
-    comingNext: recap.coming_next,
-    sentAt: recap.sent_at,
   }
 
   return renderPdfRoute(async () => {
     const { renderRecapPdfToBuffer } = await import('@/lib/pdf/render-recap-pdf')
-    return renderRecapPdfToBuffer(pdfProps)
-  }, `${clientName}_${periodSlug}_Progress_Report.pdf`)
+    return renderRecapPdfToBuffer(recap.props)
+  }, recap.filename)
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

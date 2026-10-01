@@ -146,15 +146,19 @@ export function TimeTab({ projectId, entries, estimatedHours, teamMembers, curre
             <label className={labelClass}>Description</label>
             <Input value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="What did you work on?" />
           </div>
-          <label className="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              checked={form.is_billable}
-              onChange={(e) => set('is_billable', e.target.checked)}
-              className="rounded border-slate-200"
-            />
-            <span className="text-sm text-slate-600">Billable</span>
-          </label>
+          {form.task_id ? (
+            <p className="text-xs text-slate-500">Billable status follows the selected task.</p>
+          ) : (
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.is_billable}
+                onChange={(e) => set('is_billable', e.target.checked)}
+                className="rounded border-slate-200"
+              />
+              <span className="text-sm text-slate-600">Billable</span>
+            </label>
+          )}
           <Button type="submit" disabled={isPending}>
             {isPending ? 'Logging…' : 'Log Time'}
           </Button>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
-import { adjustTaskTimeSpent, incrementTaskTimeSpent } from '@/lib/task-time'
+import { adjustTaskTimeSpent, getTaskIsBillable, incrementTaskTimeSpent } from '@/lib/task-time'
 
 type ActionResult<T = undefined> =
   | { success: true; data: T }
@@ -44,10 +44,13 @@ export async function logTimeAction(
     if (!session.ok) return { success: false, error: session.error }
 
     const teamUserId = session.role === 'director' ? input.team_user_id : session.userId
+    const isBillable = input.task_id
+      ? await getTaskIsBillable(session.supabase, input.task_id)
+      : input.is_billable
 
     const { data, error } = await session.supabase
       .from('time_entries')
-      .insert({ ...input, team_user_id: teamUserId, is_invoiced: false })
+      .insert({ ...input, team_user_id: teamUserId, is_billable: isBillable, is_invoiced: false })
       .select('id')
       .single()
 
@@ -91,6 +94,10 @@ export async function updateTimeEntryAction(
     const update = { ...input }
     if (session.role !== 'director') {
       delete update.team_user_id
+    }
+    const nextTaskId = input.task_id !== undefined ? input.task_id : entry?.task_id
+    if (nextTaskId) {
+      update.is_billable = await getTaskIsBillable(session.supabase, nextTaskId)
     }
 
     const { error } = await session.supabase
