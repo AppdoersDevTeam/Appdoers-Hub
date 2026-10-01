@@ -191,6 +191,28 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 9, color: MUTED },
   infoValue: { fontSize: 9.5, fontFamily: FONT_BOLD, color: BLACK, textAlign: 'right', maxWidth: '65%' },
 
+  statusCard: {
+    width: '48.5%',
+    borderWidth: 0.75,
+    borderColor: RULE,
+    borderStyle: 'solid',
+    borderRadius: 6,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusLegend: { flex: 1, marginLeft: 14 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
+  statusLabel: { flex: 1, fontSize: 9, color: BLACK },
+  statusCount: { fontFamily: FONT_BOLD, fontSize: 9, color: BLACK },
+  responseValue: { fontFamily: FONT_BOLD, fontSize: 26, color: TEAL_DARK, marginTop: 2 },
+  responseLabel: { fontSize: 9, color: MUTED, marginTop: 2 },
+  responseFast: { fontSize: 9, color: BLACK, marginTop: 10, lineHeight: 1.4 },
+
+  trendLegend: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 4 },
+  trendLegendItem: { flexDirection: 'row', alignItems: 'center', marginLeft: 12 },
+  trendLegendText: { fontSize: 8, color: MUTED, marginLeft: 4 },
+
   thanks: {
     backgroundColor: PURPLE,
     borderRadius: 6,
@@ -355,7 +377,16 @@ function IconCheck({ color }: { color: string }) {
   )
 }
 
-function IconClock({ color }: { color: string }) {
+function IconClock({ color, size = 38 }: { color: string; size?: number }) {
+  if (size !== 38) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 38 38">
+        <Circle cx={19} cy={19} r={19} fill={color} />
+        <Circle cx={19} cy={19} r={9.5} stroke="#ffffff" strokeWidth={2.4} fill="none" />
+        <Path d="M19 13.5V19l4 2.5" stroke="#ffffff" strokeWidth={2.4} fill="none" />
+      </Svg>
+    )
+  }
   return (
     <IconFrame color={color}>
       <Circle cx={19} cy={19} r={9.5} stroke="#ffffff" strokeWidth={2.4} fill="none" />
@@ -400,18 +431,6 @@ function IconSpark({ color, size = 22 }: { color: string; size?: number }) {
     <Svg width={size} height={size} viewBox="0 0 22 22">
       <Circle cx={11} cy={11} r={11} fill={color} />
       <Path d="M11 4.5l1.6 4.9 4.9 1.6-4.9 1.6L11 17.5l-1.6-4.9L4.5 11l4.9-1.6z" fill="#ffffff" />
-    </Svg>
-  )
-}
-
-function IconHeart() {
-  return (
-    <Svg width={54} height={54} viewBox="0 0 54 54" style={{ marginRight: 18 }}>
-      <Circle cx={27} cy={27} r={27} fill={LIME} />
-      <Path
-        d="M27 38s-11-6.6-11-14a6 6 0 0 1 11-3.4A6 6 0 0 1 38 24c0 7.4-11 14-11 14z"
-        fill={PURPLE}
-      />
     </Svg>
   )
 }
@@ -738,6 +757,175 @@ function oneDecimal(n: number): string {
   return (Math.round(n * 10) / 10).toString()
 }
 
+/** "45 mins", "5.5 hrs" or "2.3 days". */
+function formatDuration(hours: number): string {
+  if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} mins`
+  if (hours < 24) return `${oneDecimal(hours)} ${hours === 1 ? 'hr' : 'hrs'}`
+  const days = hours / 24
+  return `${oneDecimal(days)} ${days === 1 ? 'day' : 'days'}`
+}
+
+const STATUS_RING: { status: string; label: string; color: string }[] = [
+  { status: 'closed', label: 'Done', color: PURPLE },
+  { status: 'awaiting_review', label: 'Awaiting review', color: TEAL },
+  { status: 'in_progress', label: 'In progress', color: ORANGE },
+  { status: 'open', label: 'Scheduled', color: '#D4D4D8' },
+]
+
+function StatusRing({ tasks }: { tasks: RecapStatsTask[] }) {
+  const size = 96
+  const c = size / 2
+  const outer = 46
+  const inner = 33
+  const total = tasks.length
+  const counts = STATUS_RING.map((s) => ({ ...s, count: tasks.filter((t) => t.status === s.status).length }))
+  const done = counts[0].count
+  const pct = total ? Math.round((done / total) * 100) : 0
+  let angle = 0
+
+  return (
+    <View style={styles.statusCard} wrap={false}>
+      <View style={{ width: size, height: size }}>
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Circle cx={c} cy={c} r={(outer + inner) / 2} stroke="#F5F5F5" strokeWidth={outer - inner} fill="none" />
+          {counts
+            .filter((s) => s.count > 0)
+            .map((s, _i, list) => {
+              if (list.length === 1) {
+                return (
+                  <Circle
+                    key={s.status}
+                    cx={c}
+                    cy={c}
+                    r={(outer + inner) / 2}
+                    stroke={s.color}
+                    strokeWidth={outer - inner}
+                    fill="none"
+                  />
+                )
+              }
+              const sweep = (s.count / total) * 360
+              const start = angle
+              angle += sweep
+              return (
+                <Path
+                  key={s.status}
+                  d={donutSlice(c, c, outer, inner, start, start + Math.max(sweep - 1, 0.1))}
+                  fill={s.color}
+                />
+              )
+            })}
+        </Svg>
+        <View
+          style={{ position: 'absolute', top: 0, left: 0, width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={{ fontFamily: FONT_BOLD, fontSize: 18, color: PURPLE }}>{`${pct}%`}</Text>
+          <Text style={{ fontSize: 7, color: MUTED }}>complete</Text>
+        </View>
+      </View>
+      <View style={styles.statusLegend}>
+        <Text style={[styles.h3, { marginBottom: 8 }]}>Where things stand</Text>
+        {counts
+          .filter((s) => s.count > 0)
+          .map((s) => (
+            <View key={s.status} style={styles.statusRow}>
+              <View style={[styles.swatch, { backgroundColor: s.color }]} />
+              <Text style={styles.statusLabel}>{s.label}</Text>
+              <Text style={styles.statusCount}>{String(s.count)}</Text>
+            </View>
+          ))}
+      </View>
+    </View>
+  )
+}
+
+function ResponseCard({ turnaround }: { turnaround: NonNullable<RecapStats['turnaround']> }) {
+  return (
+    <View style={[styles.statusCard, { flexDirection: 'column', alignItems: 'flex-start' }]} wrap={false}>
+      <View style={styles.infoTitleRow}>
+        <IconClock color={TEAL_DARK} size={20} />
+        <Text style={styles.infoTitle}>Response time</Text>
+      </View>
+      <Text style={styles.responseValue}>{formatDuration(turnaround.averageHours)}</Text>
+      <Text style={styles.responseLabel}>
+        {`average from request to done, across ${turnaround.count} completed ${turnaround.count === 1 ? 'task' : 'tasks'}`}
+      </Text>
+      <Text style={styles.responseFast}>
+        <Text style={{ fontFamily: FONT_BOLD }}>{`Fastest: ${formatDuration(turnaround.fastestHours)}`}</Text>
+        {` for "${turnaround.fastestTitle}"`}
+      </Text>
+    </View>
+  )
+}
+
+function TrendChart({ months }: { months: { label: string; hours: number; tasks: number }[] }) {
+  const barArea = 80
+  const maxHours = Math.max(...months.map((m) => m.hours), 1)
+  const maxTasks = Math.max(...months.map((m) => m.tasks), 1)
+  const last = months.length - 1
+
+  return (
+    <View>
+      <View style={styles.trendLegend}>
+        <View style={styles.trendLegendItem}>
+          <View style={[styles.swatch, { backgroundColor: PURPLE_SOFT }]} />
+          <Text style={styles.trendLegendText}>Hours</Text>
+        </View>
+        <View style={styles.trendLegendItem}>
+          <View style={[styles.swatch, { backgroundColor: TEAL }]} />
+          <Text style={styles.trendLegendText}>Tasks completed</Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', borderBottomWidth: 0.75, borderBottomColor: RULE, borderBottomStyle: 'solid' }}>
+        {months.map((m, i) => {
+          const hoursH = m.hours > 0 ? Math.max(3, (barArea * m.hours) / maxHours) : 0
+          const tasksH = m.tasks > 0 ? Math.max(3, (barArea * m.tasks) / maxTasks) : 0
+          return (
+            <View key={`${m.label}-${i}`} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: barArea + 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+                <View style={{ alignItems: 'center', marginRight: 3 }}>
+                  <Text style={{ fontSize: 7, color: BLACK, marginBottom: 2 }}>{formatHours(m.hours, '0h')}</Text>
+                  <View
+                    style={{
+                      width: 18,
+                      height: hoursH,
+                      borderTopLeftRadius: 2,
+                      borderTopRightRadius: 2,
+                      backgroundColor: i === last ? PURPLE : PURPLE_SOFT,
+                    }}
+                  />
+                </View>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 7, color: BLACK, marginBottom: 2 }}>{String(m.tasks)}</Text>
+                  <View
+                    style={{
+                      width: 18,
+                      height: tasksH,
+                      borderTopLeftRadius: 2,
+                      borderTopRightRadius: 2,
+                      backgroundColor: i === last ? TEAL_DARK : TEAL,
+                    }}
+                  />
+                </View>
+              </View>
+            </View>
+          )
+        })}
+      </View>
+      <View style={{ flexDirection: 'row', marginTop: 4 }}>
+        {months.map((m, i) => (
+          <Text
+            key={`${m.label}-l-${i}`}
+            style={{ flex: 1, textAlign: 'center', fontSize: 8, color: i === last ? PURPLE : MUTED, fontFamily: i === last ? FONT_BOLD : FONT }}
+          >
+            {m.label}
+          </Text>
+        ))}
+      </View>
+    </View>
+  )
+}
+
 /** Plain-English comparisons that make the numbers relatable. */
 function funFacts(stats: RecapStats, monthName: string): { lead: string; rest: string }[] {
   const facts: { lead: string; rest: string }[] = []
@@ -761,6 +949,12 @@ function funFacts(stats: RecapStats, monthName: string): { lead: string; rest: s
     facts.push({
       lead: `${Math.round((top.hours / stats.hoursLogged) * 100)}% of our time`,
       rest: ` went into ${categoryMeta(top.name).label.toLowerCase()}.`,
+    })
+  }
+  if (stats.turnaround && stats.turnaround.count > 1) {
+    facts.push({
+      lead: `Our quickest turnaround was ${formatDuration(stats.turnaround.fastestHours)}`,
+      rest: `, for "${stats.turnaround.fastestTitle}".`,
     })
   }
   if (stats.ytd?.savings && stats.ytd.savings > 0) {
@@ -828,7 +1022,13 @@ export function RecapPDFDocument({
   const ytd = stats?.ytd ?? null
   const account = stats?.account ?? null
   const facts = stats ? funFacts(stats, monthName) : []
-  const sslSecure = account?.sslStatus?.toLowerCase() === 'active'
+  const domains = account?.domains ?? []
+  const isSecure = (status: string | null) => status?.toLowerCase() === 'active'
+  const allSecure = domains.length > 0 && domains.every((d) => isSecure(d.sslStatus))
+  const turnaround = stats?.turnaround ?? null
+  const trend = (stats?.trend ?? []).length === 6 && stats!.trend.some((m, i) => i < 5 && (m.hours > 0 || m.tasks > 0))
+    ? stats!.trend
+    : []
   const topTasks = tasks.filter((t) => t.hours > 0).slice(0, 3)
   const showCharts = Boolean(stats) && hours > 0
 
@@ -870,18 +1070,32 @@ export function RecapPDFDocument({
             color={TEAL_DARK}
             tint={TEAL_TINT}
           />
-          <NumberTile
-            icon={<IconGrid color={ORANGE} />}
-            value={String(areaCount)}
-            label={areaCount === 1 ? 'area of work' : 'areas of work'}
-            color={ORANGE}
-            tint={ORANGE_TINT}
-          />
-          {account?.domain ? (
+          {turnaround ? (
+            <NumberTile
+              icon={<IconClock color={ORANGE} />}
+              value={formatDuration(turnaround.averageHours)}
+              label="average time from request to done"
+              color={ORANGE}
+              tint={ORANGE_TINT}
+            />
+          ) : (
+            <NumberTile
+              icon={<IconGrid color={ORANGE} />}
+              value={String(areaCount)}
+              label={areaCount === 1 ? 'area of work' : 'areas of work'}
+              color={ORANGE}
+              tint={ORANGE_TINT}
+            />
+          )}
+          {domains.length > 0 ? (
             <NumberTile
               icon={<IconLock color={LIME_DARK} />}
-              value={sslSecure ? 'Secure' : 'Online'}
-              label={account.domain}
+              value={allSecure ? 'Secure' : 'Online'}
+              label={
+                domains.length === 1
+                  ? domains[0].domain
+                  : `${domains.length} websites ${allSecure ? 'protected with SSL' : 'online'}`
+              }
               color={LIME_DARK}
               tint={LIME_TINT}
             />
@@ -964,6 +1178,16 @@ export function RecapPDFDocument({
           </View>
         ) : null}
 
+        {tasks.length > 0 || turnaround ? (
+          <View style={styles.section} wrap={false}>
+            <Text style={styles.h2}>Progress and response times</Text>
+            <View style={styles.grid}>
+              {tasks.length > 0 ? <StatusRing tasks={tasks} /> : null}
+              {turnaround ? <ResponseCard turnaround={turnaround} /> : null}
+            </View>
+          </View>
+        ) : null}
+
         {showCharts ? (
           <View style={styles.section} wrap={false}>
             <Text style={styles.h2}>Where the time went</Text>
@@ -1021,7 +1245,14 @@ export function RecapPDFDocument({
           </View>
         ) : null}
 
-        {account && (account.planName || account.domain) ? (
+        {trend.length > 0 ? (
+          <View style={styles.section} wrap={false}>
+            <Text style={styles.h2}>Your last 6 months</Text>
+            <TrendChart months={trend} />
+          </View>
+        ) : null}
+
+        {account && (account.planName || domains.length > 0) ? (
           <View style={styles.section} wrap={false}>
             <Text style={styles.h2}>Your plan at a glance</Text>
             <View style={styles.grid}>
@@ -1042,40 +1273,56 @@ export function RecapPDFDocument({
               </View>
               <View style={styles.infoCard}>
                 <View style={styles.infoTitleRow}>
-                  <IconLock color={sslSecure ? TEAL_DARK : MUTED} size={20} />
-                  <Text style={styles.infoTitle}>Your website</Text>
+                  <IconLock color={allSecure ? TEAL_DARK : MUTED} size={20} />
+                  <Text style={styles.infoTitle}>{domains.length > 1 ? 'Your websites' : 'Your website'}</Text>
                 </View>
-                <InfoRow label="Domain" value={account.domain ?? 'Not set'} />
-                <InfoRow
-                  label="Security (SSL)"
-                  value={account.sslStatus ? (sslSecure ? 'Active and secure' : account.sslStatus) : 'Not recorded'}
-                />
+                {domains.length > 0 ? (
+                  domains.map((d) => (
+                    <InfoRow
+                      key={d.domain}
+                      label={d.domain}
+                      value={d.sslStatus ? (isSecure(d.sslStatus) ? 'Secure (SSL)' : d.sslStatus) : 'Not recorded'}
+                    />
+                  ))
+                ) : (
+                  <InfoRow label="Domain" value="Not set" />
+                )}
               </View>
             </View>
           </View>
         ) : null}
 
         {hasWork ? (
-          <View style={styles.section} break>
-            <Text style={styles.h2}>Work completed</Text>
+          <View style={styles.section}>
             {tasks.length > 0
-              ? groupBy(tasks, (t) => t.category).map(([category, items]) => (
+              ? groupBy(tasks, (t) => t.category).map(([category, items], index) => (
                   <View key={category} style={{ marginBottom: 8 }}>
-                    <CategoryHeader
-                      name={category}
-                      count={items.length}
-                      hours={items.reduce((sum, t) => sum + t.hours, 0)}
-                    />
+                    <View wrap={false}>
+                      {index === 0 ? <Text style={styles.h2}>Work completed</Text> : null}
+                      <CategoryHeader
+                        name={category}
+                        count={items.length}
+                        hours={items.reduce((sum, t) => sum + t.hours, 0)}
+                      />
+                      <View style={styles.cardGrid}>
+                        {items.slice(0, 2).map((task, i) => (
+                          <TaskCard key={`${category}-first-${i}`} task={task} />
+                        ))}
+                      </View>
+                    </View>
                     <View style={styles.cardGrid}>
-                      {items.map((task, i) => (
+                      {items.slice(2).map((task, i) => (
                         <TaskCard key={`${category}-${i}`} task={task} />
                       ))}
                     </View>
                   </View>
                 ))
-              : groupBy(workCompleted, (w) => w.category || 'Other').map(([category, items]) => (
+              : groupBy(workCompleted, (w) => w.category || 'Other').map(([category, items], index) => (
                   <View key={category} style={{ marginBottom: 8 }}>
-                    <CategoryHeader name={category} count={items.length} />
+                    <View wrap={false}>
+                      {index === 0 ? <Text style={styles.h2}>Work completed</Text> : null}
+                      <CategoryHeader name={category} count={items.length} />
+                    </View>
                     <View style={styles.cardGrid}>
                       {items.map((item, i) => (
                         <WorkItemCard key={`${category}-${i}`} item={item} />
@@ -1096,16 +1343,18 @@ export function RecapPDFDocument({
         ) : null}
 
         {tasks.length > 0 ? (
-          <View style={styles.section} break>
-            <Text style={styles.h2}>Full task list</Text>
-            <Text style={[styles.muted, { marginBottom: 8 }]}>
-              All tasks worked on during the period, with hours logged.
-            </Text>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.th, styles.colTask]}>Task</Text>
-              <Text style={[styles.th, styles.colArea]}>Area</Text>
-              <Text style={[styles.th, styles.colStatus]}>Status</Text>
-              <Text style={[styles.th, styles.colHours]}>Hours</Text>
+          <View style={styles.section}>
+            <View wrap={false}>
+              <Text style={styles.h2}>Full task list</Text>
+              <Text style={[styles.muted, { marginBottom: 8 }]}>
+                All tasks worked on during the period, with hours logged.
+              </Text>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.th, styles.colTask]}>Task</Text>
+                <Text style={[styles.th, styles.colArea]}>Area</Text>
+                <Text style={[styles.th, styles.colStatus]}>Status</Text>
+                <Text style={[styles.th, styles.colHours]}>Hours</Text>
+              </View>
             </View>
             {tasks.map((task, i) => (
               <View key={`row-${i}`} style={styles.tableRow} wrap={false}>
@@ -1120,7 +1369,6 @@ export function RecapPDFDocument({
 
         <View style={styles.section} wrap={false}>
           <View style={styles.thanks}>
-            <IconHeart />
             <View style={{ flex: 1 }}>
               <Text style={styles.thanksTitle}>Thank you for being with Appdoers</Text>
               <Text style={styles.thanksText}>

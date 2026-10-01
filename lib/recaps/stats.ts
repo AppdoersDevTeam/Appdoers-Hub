@@ -2,6 +2,8 @@ import { HOURLY_RATE } from '@/lib/pricing/appdoers-pricing'
 import { roundHours } from '@/lib/utils/format'
 import type {
   RecapAccount,
+  RecapTrendMonth,
+  RecapTurnaround,
   RecapPlanKey,
   RecapPreviousMonth,
   RecapYearToDate,
@@ -65,7 +67,32 @@ export interface BuildRecapStatsInput {
   previous?: RecapPreviousMonth | null
   ytd?: RecapYearToDate | null
   account?: RecapAccount | null
+  turnaround?: RecapTurnaround | null
+  trend?: RecapTrendMonth[]
   hourlyRate?: number
+}
+
+/** Average and fastest creation-to-completion time for completed tasks. */
+export function computeTurnaround(
+  tasks: { title: string; createdAt: string | null; closedAt: string | null }[]
+): RecapTurnaround | null {
+  const durations = tasks
+    .filter((t) => t.createdAt && t.closedAt)
+    .map((t) => ({
+      title: t.title,
+      hours: (new Date(t.closedAt!).getTime() - new Date(t.createdAt!).getTime()) / 3_600_000,
+    }))
+    .filter((d) => Number.isFinite(d.hours) && d.hours >= 0)
+
+  if (durations.length === 0) return null
+  const fastest = durations.reduce((a, b) => (b.hours < a.hours ? b : a))
+  const average = durations.reduce((sum, d) => sum + d.hours, 0) / durations.length
+  return {
+    averageHours: Math.round(average * 10) / 10,
+    fastestHours: Math.round(fastest.hours * 10) / 10,
+    fastestTitle: fastest.title,
+    count: durations.length,
+  }
 }
 
 function weekBuckets(month: number, year: number): { label: string; start: number; end: number }[] {
@@ -173,6 +200,8 @@ export function buildRecapStats(input: BuildRecapStatsInput): RecapStats {
     previous: input.previous ?? null,
     ytd: input.ytd ?? null,
     account: input.account ?? null,
+    turnaround: input.turnaround ?? null,
+    trend: input.trend ?? [],
   }
 }
 
@@ -200,9 +229,26 @@ export function parseRecapStats(value: unknown): RecapStats | null {
           }
         : null,
     ytd: stats.ytd && typeof stats.ytd === 'object' ? stats.ytd : null,
-    account:
-      stats.account && typeof stats.account === 'object'
-        ? { ...stats.account, addOns: Array.isArray(stats.account.addOns) ? stats.account.addOns : [] }
-        : null,
+    account: parseAccount(stats.account),
+    turnaround: stats.turnaround && typeof stats.turnaround === 'object' ? stats.turnaround : null,
+    trend: Array.isArray(stats.trend) ? stats.trend : [],
+  }
+}
+
+/** Accepts the current shape and the earlier single-domain snapshot shape. */
+function parseAccount(value: unknown): RecapAccount | null {
+  if (!value || typeof value !== 'object') return null
+  const raw = value as Partial<RecapAccount> & { domain?: string | null; sslStatus?: string | null }
+  const domains = Array.isArray(raw.domains)
+    ? raw.domains
+    : raw.domain
+      ? [{ domain: raw.domain, sslStatus: raw.sslStatus ?? null }]
+      : []
+  return {
+    planName: raw.planName ?? null,
+    renewalDate: raw.renewalDate ?? null,
+    monthsRemaining: raw.monthsRemaining ?? null,
+    addOns: Array.isArray(raw.addOns) ? raw.addOns : [],
+    domains,
   }
 }

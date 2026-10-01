@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildRecapStats, parseRecapStats, resolveRecapPlanKey } from './stats'
+import { buildRecapStats, computeTurnaround, parseRecapStats, resolveRecapPlanKey } from './stats'
 
 const tasks = [
   { id: 'a', title: 'Homepage design', type: 'design', status: 'closed', isBillable: false, projectName: 'Site' },
@@ -75,13 +75,48 @@ describe('year to date and account details', () => {
     const stats = buildRecapStats({
       month: 9, year: 2026, plan: 'full', tasksCompleted: 2, phasesCompleted: [], tasks, entries,
       ytd: { tasksCompleted: 40, hoursLogged: 80, savings: 1960 },
-      account: { planName: 'Full Website', renewalDate: null, monthsRemaining: null, addOns: [], domain: 'a.co.nz', sslStatus: 'active' },
+      account: {
+        planName: 'Full Website',
+        renewalDate: null,
+        monthsRemaining: null,
+        addOns: [],
+        domains: [
+          { domain: 'a.co.nz', sslStatus: 'active' },
+          { domain: 'b.co.nz', sslStatus: null },
+        ],
+      },
     })
     const parsed = parseRecapStats(JSON.parse(JSON.stringify(stats)))
     expect(parsed?.ytd).toEqual({ tasksCompleted: 40, hoursLogged: 80, savings: 1960 })
-    expect(parsed?.account?.domain).toBe('a.co.nz')
+    expect(parsed?.account?.domains.map((d) => d.domain)).toEqual(['a.co.nz', 'b.co.nz'])
     expect(build('basic').ytd).toBeNull()
     expect(build('basic').account).toBeNull()
+  })
+})
+
+describe('legacy snapshots', () => {
+  it('converts a single saved domain into the domains list', () => {
+    const legacy = JSON.parse(JSON.stringify(build('full')))
+    legacy.account = { planName: 'Full', renewalDate: null, monthsRemaining: null, addOns: [], domain: 'old.co.nz', sslStatus: 'active' }
+    delete legacy.trend
+    const parsed = parseRecapStats(legacy)
+    expect(parsed?.account?.domains).toEqual([{ domain: 'old.co.nz', sslStatus: 'active' }])
+    expect(parsed?.trend).toEqual([])
+  })
+})
+
+describe('computeTurnaround', () => {
+  it('averages creation-to-completion time and finds the fastest task', () => {
+    const result = computeTurnaround([
+      { title: 'Slow', createdAt: '2026-09-01T00:00:00Z', closedAt: '2026-09-03T00:00:00Z' },
+      { title: 'Quick', createdAt: '2026-09-10T09:00:00Z', closedAt: '2026-09-10T11:00:00Z' },
+      { title: 'No dates', createdAt: null, closedAt: '2026-09-10T11:00:00Z' },
+    ])
+    expect(result).toEqual({ averageHours: 25, fastestHours: 2, fastestTitle: 'Quick', count: 2 })
+  })
+
+  it('returns null when no task has both dates', () => {
+    expect(computeTurnaround([{ title: 'x', createdAt: null, closedAt: null }])).toBeNull()
   })
 })
 

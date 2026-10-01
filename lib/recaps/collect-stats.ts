@@ -1,11 +1,18 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   buildRecapStats,
+  computeTurnaround,
   resolveRecapPlanKey,
   type RecapStatsTaskInput,
 } from '@/lib/recaps/stats'
 import { HOURLY_RATE } from '@/lib/pricing/appdoers-pricing'
-import type { RecapAccount, RecapPlanKey, RecapStats, RecapYearToDate } from '@/lib/recaps/types'
+import type {
+  RecapAccount,
+  RecapPlanKey,
+  RecapStats,
+  RecapTrendMonth,
+  RecapYearToDate,
+} from '@/lib/recaps/types'
 import { roundHours } from '@/lib/utils/format'
 
 type ProjectRef = { name?: string } | null
@@ -17,6 +24,8 @@ export interface RecapTaskRow {
   status: string
   is_billable: boolean
   time_spent?: number | null
+  created_at?: string | null
+  closed_at?: string | null
   projects: ProjectRef
 }
 
@@ -68,7 +77,9 @@ function closedInMonthFilter(startDate: string, endDateTime: string): string {
   return `and(closed_at.gte.${startDate},closed_at.lte.${endDateTime}),and(closed_at.is.null,updated_at.gte.${startDate},updated_at.lte.${endDateTime})`
 }
 
-const TASK_COLUMNS = 'id, title, type, status, is_billable, time_spent, projects(name)'
+const TASK_COLUMNS = 'id, title, type, status, is_billable, time_spent, created_at, closed_at, projects(name)'
+
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 type CatalogRef = { plan_key?: string | null; name?: string | null }
 
@@ -112,8 +123,7 @@ async function loadAccount(
       .from('client_domains')
       .select('domain_name, ssl_status')
       .eq('client_id', clientId)
-      .order('created_at', { ascending: true })
-      .limit(1),
+      .order('created_at', { ascending: true }),
   ])
 
   const row = client as {
@@ -143,7 +153,6 @@ async function loadAccount(
     })
     .filter((name): name is string => !!name)
 
-  const domain = one(domains)
 
   return {
     plan,
@@ -152,8 +161,9 @@ async function loadAccount(
       renewalDate,
       monthsRemaining: renewalDate ? monthsBetween(monthEnd, renewalDate) : null,
       addOns,
-      domain: (domain?.domain_name as string | undefined) ?? null,
-      sslStatus: (domain?.ssl_status as string | undefined) ?? null,
+      domains: (domains ?? [])
+        .filter((d) => d.domain_name)
+        .map((d) => ({ domain: d.domain_name as string, sslStatus: (d.ssl_status as string | null) ?? null })),
     },
   }
 }
@@ -200,35 +210,62 @@ async function loadYearToDate(
   }
 }
 
-async function loadPreviousMonth(
+/** Hours and completed tasks for the six months ending with the recap month. */
+async function loadTrend(
   db: SupabaseClient,
   projectIds: string[],
   month: number,
   year: number
-): Promise<RecapStats['previous']> {
-  const prevMonth = month === 1 ? 12 : month - 1
-  const prevYear = month === 1 ? year - 1 : year
-  const { startDate, endDate, endDateTime } = monthDateRange(prevMonth, prevYear)
+): Promise<RecapTrendMonth[]> {
+  const months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(Date.UTC(year, month - 1 - (5 - i), 1))
+    return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 }
+  })
+  const first = months[0]
+  const startDate = `${first.year}-${String(first.month).padStart(2, '0')}-01`
+  const { endDate, endDateTime } = monthDateRange(month, year)
 
-  const [{ count }, { data: entries }] = await Promise.all([
+  const [{ data: tasks }, { data: entries }] = await Promise.all([
     db
       .from('tasks')
-      .select('id', { count: 'exact', head: true })
+      .select('closed_at, updated_at')
       .in('project_id', projectIds)
       .eq('status', 'closed')
       .or(closedInMonthFilter(startDate, endDateTime)),
     db
       .from('time_entries')
-      .select('hours')
+      .select('hours, date')
       .in('project_id', projectIds)
       .gte('date', startDate)
       .lte('date', endDate),
   ])
 
-  const tasksCompleted = count ?? 0
-  const hoursLogged = roundHours((entries ?? []).reduce((sum, e) => sum + Number(e.hours), 0))
+  const key = (ymd: string) => ymd.slice(0, 7)
+  const buckets = new Map(
+    months.map((m) => [`${m.year}-${String(m.month).padStart(2, '0')}`, { hours: 0, tasks: 0 }])
+  )
+  for (const t of tasks ?? []) {
+    const when = (t.closed_at as string | null) ?? (t.updated_at as string)
+    const bucket = buckets.get(key(when))
+    if (bucket) bucket.tasks += 1
+  }
+  for (const e of entries ?? []) {
+    const bucket = buckets.get(key(String(e.date)))
+    if (bucket) bucket.hours += Number(e.hours) || 0
+  }
+
+  return months.map((m) => {
+    const b = buckets.get(`${m.year}-${String(m.month).padStart(2, '0')}`)!
+    return { label: MONTH_SHORT[m.month - 1], hours: roundHours(b.hours), tasks: b.tasks }
+  })
+}
+
+/** Previous month from the trend; null when there is nothing meaningful to compare. */
+function previousFromTrend(trend: RecapTrendMonth[]): RecapStats['previous'] {
+  const prev = trend[trend.length - 2]
+  if (!prev) return null
   // Under 15 minutes with nothing closed is not a meaningful month to compare against.
-  return tasksCompleted === 0 && hoursLogged < 0.25 ? null : { tasksCompleted, hoursLogged }
+  return prev.tasks === 0 && prev.hours < 0.25 ? null : { tasksCompleted: prev.tasks, hoursLogged: prev.hours }
 }
 
 /** Loads everything a recap needs for one client-month and builds the stats snapshot. */
@@ -271,7 +308,7 @@ export async function collectRecapSource(
     }
   }
 
-  const [closed, worked, open, entries, phaseRows, previous, ytd] = await Promise.all([
+  const [closed, worked, open, entries, phaseRows, trend, ytd] = await Promise.all([
     db
       .from('tasks')
       .select(TASK_COLUMNS)
@@ -308,7 +345,7 @@ export async function collectRecapSource(
       .eq('status', 'completed')
       .gte('updated_at', startDate)
       .lte('updated_at', endDateTime),
-    loadPreviousMonth(db, projectIds, month, year),
+    loadTrend(db, projectIds, month, year),
     loadYearToDate(db, projectIds, month, year, plan),
   ])
 
@@ -358,9 +395,13 @@ export async function collectRecapSource(
       taskId: e.task_id ?? null,
       isBillable: Boolean(e.is_billable),
     })),
-    previous,
+    previous: previousFromTrend(trend),
     ytd,
     account,
+    turnaround: computeTurnaround(
+      closedTasks.map((t) => ({ title: t.title, createdAt: t.created_at ?? null, closedAt: t.closed_at ?? null }))
+    ),
+    trend,
   })
 
   return { projectIds, projectNames, closedTasks, workedTasks, timedTasks, openTasks, timeEntries, phases, stats }

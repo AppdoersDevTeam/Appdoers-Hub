@@ -37,13 +37,31 @@ export interface RecapYearToDate {
   savings: number | null
 }
 
+export interface RecapDomain {
+  domain: string
+  sslStatus: string | null
+}
+
 export interface RecapAccount {
   planName: string | null
   renewalDate: string | null
   monthsRemaining: number | null
   addOns: string[]
-  domain: string | null
-  sslStatus: string | null
+  domains: RecapDomain[]
+}
+
+export interface RecapTurnaround {
+  /** Average hours from task creation to completion, for tasks completed in the month. */
+  averageHours: number
+  fastestHours: number
+  fastestTitle: string
+  count: number
+}
+
+export interface RecapTrendMonth {
+  label: string
+  hours: number
+  tasks: number
 }
 
 export interface RecapSavings {
@@ -68,4 +86,7 @@ export interface RecapStats {
   /** 1 January to the end of the recap month. */
   ytd: RecapYearToDate | null
   account: RecapAccount | null
+  turnaround: RecapTurnaround | null
+  /** Last six months, oldest first, ending with the recap month. */
+  trend: RecapTrendMonth[]
 }

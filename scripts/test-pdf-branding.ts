@@ -131,12 +131,53 @@ async function main() {
         renewalDate: '2029-03-01',
         monthsRemaining: 32,
         addOns: ['Standard Email (x3)'],
-        domain: 'testclient.co.nz',
-        sslStatus: 'active',
+        domains: [
+          { domain: 'testclient.co.nz', sslStatus: 'active' },
+          { domain: 'testclient-shop.co.nz', sslStatus: 'active' },
+        ],
       },
+      turnaround: { averageHours: 30.5, fastestHours: 0.75, fastestTitle: 'Fix contact form not sending on mobile', count: 4 },
+      trend: [
+        { label: 'Jan', hours: 6, tasks: 3 },
+        { label: 'Feb', hours: 9.5, tasks: 5 },
+        { label: 'Mar', hours: 4, tasks: 2 },
+        { label: 'Apr', hours: 12, tasks: 7 },
+        { label: 'May', hours: 11.5, tasks: 2 },
+        { label: 'Jun', hours: 18.75, tasks: 4 },
+      ],
     }),
   })
   fs.writeFileSync(path.join(outDir, 'recap-full-test.pdf'), recapFull)
+
+  // Stress test: many tasks, to check page flow has no blank pages.
+  const manyTasks = Array.from({ length: 30 }, (_, i) => ({
+    id: `m${i}`,
+    title: `Website update number ${i + 1}`,
+    type: ['feature', 'bug', 'design', 'content', 'admin'][i % 5],
+    status: i % 4 === 0 ? 'in_progress' : 'closed',
+    isBillable: false,
+    projectName: 'Website',
+  }))
+  const recapMany = await renderRecapPdfToBuffer({
+    clientName: 'Busy Client',
+    month: 9,
+    year: 2026,
+    introText: 'Hi Jo,\n\nA busy month with plenty of improvements across your website.',
+    workCompleted: [],
+    performanceNotes: null,
+    comingNext: "Here's what we're focusing on next:\n\n• Launch the new gallery\n• Refresh the events page",
+    sentAt: null,
+    stats: buildRecapStats({
+      month: 9,
+      year: 2026,
+      plan: 'full',
+      tasksCompleted: 22,
+      phasesCompleted: [],
+      tasks: manyTasks,
+      entries: manyTasks.map((t, i) => ({ taskId: t.id, hours: 0.5 + (i % 3), date: `2026-09-${String((i % 28) + 1).padStart(2, '0')}`, isBillable: false })),
+    }),
+  })
+  fs.writeFileSync(path.join(outDir, 'recap-many-test.pdf'), recapMany)
 
   const recapBasic = await renderRecapPdfToBuffer({
     clientName: 'Basic Plan Client',
