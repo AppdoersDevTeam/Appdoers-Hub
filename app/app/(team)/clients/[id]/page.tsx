@@ -383,9 +383,17 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
                 )}
                 {client.subscription_start_date && (
                   <div>
-                    <p className="text-xs text-slate-500">Subscription Start</p>
+                    <p className="text-xs text-slate-500">Plan Start</p>
                     <p className="mt-0.5 text-slate-600">
                       {formatDate(client.subscription_start_date)}
+                    </p>
+                  </div>
+                )}
+                {client.subscription_end_date && (
+                  <div>
+                    <p className="text-xs text-slate-500">Plan End</p>
+                    <p className="mt-0.5 text-slate-600">
+                      {formatDate(client.subscription_end_date)}
                     </p>
                   </div>
                 )}

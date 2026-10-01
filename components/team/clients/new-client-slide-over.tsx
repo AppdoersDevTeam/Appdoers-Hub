@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useTransition } from 'react'
+import { planEndDate } from '@/lib/clients/plan-dates'
 import { useRouter } from 'next/navigation'
 import { SlideOver } from '@/components/ui/slide-over'
 import { Button } from '@/components/ui/button'
@@ -41,6 +42,7 @@ export function NewClientSlideOver({ open, onClose, catalogPlans = [] }: Props) 
     plan_service_id: '',
     subscription_plan: 'none' as string,
     contract_months: null as number | null,
+    subscription_start_date: '',
     billing_cycle: '' as ClientBillingCycle | '',
     monthly_fee: 0,
     setup_fee: 0,
@@ -100,6 +102,8 @@ export function NewClientSlideOver({ open, onClose, catalogPlans = [] }: Props) 
         location: form.location || undefined,
         subscription_plan: form.subscription_plan,
         contract_months: form.contract_months,
+        subscription_start_date: form.subscription_start_date || null,
+        subscription_end_date: planEndDate(form.subscription_start_date, form.contract_months),
         plan_service_id: form.plan_service_id || null,
         billing_cycle: billingCycle,
         monthly_fee: form.monthly_fee,
@@ -179,6 +183,17 @@ export function NewClientSlideOver({ open, onClose, catalogPlans = [] }: Props) 
             ))}
           </select>
         </div>
+        {form.plan_service_id && (
+          <div>
+            <label className={labelClass}>Plan start date</label>
+            <Input
+              type="date"
+              value={form.subscription_start_date}
+              onChange={(e) => set('subscription_start_date', e.target.value)}
+            />
+            <p className="mt-1 text-xs text-slate-500">The end date is worked out from the contract term.</p>
+          </div>
+        )}
 
         <div>
           <label className={labelClass} htmlFor="new-client-frequency">
