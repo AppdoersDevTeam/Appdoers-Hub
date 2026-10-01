@@ -317,8 +317,8 @@ export function RecapEditor({
 
           {/* Performance notes */}
           <div className="hub-card space-y-3">
-            <h2 className="text-sm font-semibold text-slate-900">Performance & Highlights</h2>
-            <p className="text-xs text-slate-500">Metrics, wins, site performance, SEO results, etc.</p>
+            <h2 className="text-sm font-semibold text-slate-900">Internal notes</h2>
+            <p className="text-xs text-slate-500">For the team only. Not included in the client PDF or email.</p>
             <textarea
               value={performanceNotes}
               onChange={(e) => setPerformanceNotes(e.target.value)}

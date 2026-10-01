@@ -125,6 +125,15 @@ async function main() {
       tasks: sampleTasks,
       entries: sampleEntries,
       previous: { tasksCompleted: 2, hoursLogged: 11.5 },
+      ytd: { tasksCompleted: 41, hoursLogged: 96.5, savings: 3601.5 },
+      account: {
+        planName: 'Full Website (48 months)',
+        renewalDate: '2029-03-01',
+        monthsRemaining: 32,
+        addOns: ['Standard Email (x3)'],
+        domain: 'testclient.co.nz',
+        sslStatus: 'active',
+      },
     }),
   })
   fs.writeFileSync(path.join(outDir, 'recap-full-test.pdf'), recapFull)

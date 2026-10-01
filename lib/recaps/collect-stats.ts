@@ -4,7 +4,8 @@ import {
   resolveRecapPlanKey,
   type RecapStatsTaskInput,
 } from '@/lib/recaps/stats'
-import type { RecapStats } from '@/lib/recaps/types'
+import { HOURLY_RATE } from '@/lib/pricing/appdoers-pricing'
+import type { RecapAccount, RecapPlanKey, RecapStats, RecapYearToDate } from '@/lib/recaps/types'
 import { roundHours } from '@/lib/utils/format'
 
 type ProjectRef = { name?: string } | null
@@ -69,20 +70,134 @@ function closedInMonthFilter(startDate: string, endDateTime: string): string {
 
 const TASK_COLUMNS = 'id, title, type, status, is_billable, time_spent, projects(name)'
 
-async function loadPlan(db: SupabaseClient, clientId: string) {
-  const { data: client } = await db
-    .from('clients')
-    .select('subscription_plan, service_catalog:plan_service_id(plan_key)')
-    .eq('id', clientId)
-    .maybeSingle()
+type CatalogRef = { plan_key?: string | null; name?: string | null }
 
-  const catalog = (
-    client as { service_catalog?: { plan_key?: string | null } | { plan_key?: string | null }[] | null } | null
-  )?.service_catalog
-  return resolveRecapPlanKey({
-    catalogPlanKey: (Array.isArray(catalog) ? catalog[0] : catalog)?.plan_key ?? null,
-    subscriptionPlan: (client as { subscription_plan?: string | null } | null)?.subscription_plan ?? null,
+function one<T>(value: T | T[] | null | undefined): T | null {
+  return (Array.isArray(value) ? value[0] : value) ?? null
+}
+
+const PLAN_FALLBACK_NAMES: Record<string, string> = { full: 'Full Website', basic: 'Basic Website' }
+
+function monthsBetween(fromYmd: string, toYmd: string): number {
+  const from = new Date(`${fromYmd}T00:00:00Z`)
+  const to = new Date(`${toYmd}T00:00:00Z`)
+  return Math.max(
+    0,
+    (to.getUTCFullYear() - from.getUTCFullYear()) * 12 + (to.getUTCMonth() - from.getUTCMonth())
+  )
+}
+
+function addMonths(ymd: string, months: number): string {
+  const d = new Date(`${ymd}T00:00:00Z`)
+  d.setUTCMonth(d.getUTCMonth() + months)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Plan key for savings, plus the client-facing plan, renewal, add-on and domain details. */
+async function loadAccount(
+  db: SupabaseClient,
+  clientId: string,
+  monthEnd: string
+): Promise<{ plan: RecapPlanKey; account: RecapAccount }> {
+  const [{ data: client }, { data: services }, { data: domains }] = await Promise.all([
+    db
+      .from('clients')
+      .select(
+        'subscription_plan, subscription_start_date, subscription_end_date, contract_months, service_catalog:plan_service_id(plan_key, name)'
+      )
+      .eq('id', clientId)
+      .maybeSingle(),
+    db.from('client_services').select('quantity, service_catalog:service_catalog_id(name)').eq('client_id', clientId),
+    db
+      .from('client_domains')
+      .select('domain_name, ssl_status')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: true })
+      .limit(1),
+  ])
+
+  const row = client as {
+    subscription_plan?: string | null
+    subscription_start_date?: string | null
+    subscription_end_date?: string | null
+    contract_months?: number | null
+    service_catalog?: CatalogRef | CatalogRef[] | null
+  } | null
+  const catalog = one(row?.service_catalog)
+  const plan = resolveRecapPlanKey({
+    catalogPlanKey: catalog?.plan_key ?? null,
+    subscriptionPlan: row?.subscription_plan ?? null,
   })
+
+  const renewalDate =
+    row?.subscription_end_date ??
+    (row?.subscription_start_date && row?.contract_months
+      ? addMonths(row.subscription_start_date, row.contract_months)
+      : null)
+
+  const addOns = (services ?? [])
+    .map((s) => {
+      const name = one((s as { service_catalog?: CatalogRef | CatalogRef[] | null }).service_catalog)?.name
+      const qty = Number((s as { quantity?: number | null }).quantity ?? 1)
+      return name ? (qty > 1 ? `${name} (x${qty})` : name) : null
+    })
+    .filter((name): name is string => !!name)
+
+  const domain = one(domains)
+
+  return {
+    plan,
+    account: {
+      planName: catalog?.name ?? PLAN_FALLBACK_NAMES[plan] ?? null,
+      renewalDate,
+      monthsRemaining: renewalDate ? monthsBetween(monthEnd, renewalDate) : null,
+      addOns,
+      domain: (domain?.domain_name as string | undefined) ?? null,
+      sslStatus: (domain?.ssl_status as string | undefined) ?? null,
+    },
+  }
+}
+
+async function loadYearToDate(
+  db: SupabaseClient,
+  projectIds: string[],
+  month: number,
+  year: number,
+  plan: RecapPlanKey
+): Promise<RecapYearToDate> {
+  const startDate = `${year}-01-01`
+  const { endDate, endDateTime } = monthDateRange(month, year)
+
+  const [{ count }, { data: entries }] = await Promise.all([
+    db
+      .from('tasks')
+      .select('id', { count: 'exact', head: true })
+      .in('project_id', projectIds)
+      .eq('status', 'closed')
+      .or(closedInMonthFilter(startDate, endDateTime)),
+    db
+      .from('time_entries')
+      .select('hours, is_billable, task_id, tasks(is_billable)')
+      .in('project_id', projectIds)
+      .gte('date', startDate)
+      .lte('date', endDate),
+  ])
+
+  let hours = 0
+  let nonBillable = 0
+  for (const entry of entries ?? []) {
+    const h = Number(entry.hours) || 0
+    hours += h
+    const task = one((entry as { tasks?: { is_billable?: boolean } | { is_billable?: boolean }[] | null }).tasks)
+    const billable = task ? Boolean(task.is_billable) : Boolean(entry.is_billable)
+    if (!billable) nonBillable += h
+  }
+
+  return {
+    tasksCompleted: count ?? 0,
+    hoursLogged: roundHours(hours),
+    savings: plan === 'full' ? Math.round(roundHours(nonBillable) * HOURLY_RATE * 100) / 100 : null,
+  }
 }
 
 async function loadPreviousMonth(
@@ -125,9 +240,9 @@ export async function collectRecapSource(
 ): Promise<RecapSource> {
   const { startDate, endDate, endDateTime } = monthDateRange(month, year)
 
-  const [{ data: projects }, plan] = await Promise.all([
+  const [{ data: projects }, { plan, account }] = await Promise.all([
     db.from('projects').select('id, name').eq('client_id', clientId),
-    loadPlan(db, clientId),
+    loadAccount(db, clientId, endDate),
   ])
 
   const projectIds = (projects ?? []).map((p) => p.id as string)
@@ -143,11 +258,20 @@ export async function collectRecapSource(
       openTasks: [],
       timeEntries: [],
       phases: [],
-      stats: buildRecapStats({ month, year, plan, tasksCompleted: 0, phasesCompleted: [], tasks: [], entries: [] }),
+      stats: buildRecapStats({
+        month,
+        year,
+        plan,
+        tasksCompleted: 0,
+        phasesCompleted: [],
+        tasks: [],
+        entries: [],
+        account,
+      }),
     }
   }
 
-  const [closed, worked, open, entries, phaseRows, previous] = await Promise.all([
+  const [closed, worked, open, entries, phaseRows, previous, ytd] = await Promise.all([
     db
       .from('tasks')
       .select(TASK_COLUMNS)
@@ -185,6 +309,7 @@ export async function collectRecapSource(
       .gte('updated_at', startDate)
       .lte('updated_at', endDateTime),
     loadPreviousMonth(db, projectIds, month, year),
+    loadYearToDate(db, projectIds, month, year, plan),
   ])
 
   const closedTasks = (closed.data ?? []) as unknown as RecapTaskRow[]
@@ -234,6 +359,8 @@ export async function collectRecapSource(
       isBillable: Boolean(e.is_billable),
     })),
     previous,
+    ytd,
+    account,
   })
 
   return { projectIds, projectNames, closedTasks, workedTasks, timedTasks, openTasks, timeEntries, phases, stats }

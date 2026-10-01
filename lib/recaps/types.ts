@@ -30,6 +30,22 @@ export interface RecapPreviousMonth {
   hoursLogged: number
 }
 
+export interface RecapYearToDate {
+  tasksCompleted: number
+  hoursLogged: number
+  /** Full plan only: non-billable hours this year x hourly rate. */
+  savings: number | null
+}
+
+export interface RecapAccount {
+  planName: string | null
+  renewalDate: string | null
+  monthsRemaining: number | null
+  addOns: string[]
+  domain: string | null
+  sslStatus: string | null
+}
+
 export interface RecapSavings {
   nonBillableHours: number
   hourlyRate: number
@@ -49,4 +65,7 @@ export interface RecapStats {
   savings: RecapSavings | null
   /** Previous calendar month totals; null when there was no activity to compare. */
   previous: RecapPreviousMonth | null
+  /** 1 January to the end of the recap month. */
+  ytd: RecapYearToDate | null
+  account: RecapAccount | null
 }

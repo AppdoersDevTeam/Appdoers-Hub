@@ -70,6 +70,21 @@ describe('previous month comparison', () => {
   })
 })
 
+describe('year to date and account details', () => {
+  it('stores and parses ytd and account snapshots', () => {
+    const stats = buildRecapStats({
+      month: 9, year: 2026, plan: 'full', tasksCompleted: 2, phasesCompleted: [], tasks, entries,
+      ytd: { tasksCompleted: 40, hoursLogged: 80, savings: 1960 },
+      account: { planName: 'Full Website', renewalDate: null, monthsRemaining: null, addOns: [], domain: 'a.co.nz', sslStatus: 'active' },
+    })
+    const parsed = parseRecapStats(JSON.parse(JSON.stringify(stats)))
+    expect(parsed?.ytd).toEqual({ tasksCompleted: 40, hoursLogged: 80, savings: 1960 })
+    expect(parsed?.account?.domain).toBe('a.co.nz')
+    expect(build('basic').ytd).toBeNull()
+    expect(build('basic').account).toBeNull()
+  })
+})
+
 describe('resolveRecapPlanKey', () => {
   it('prefers catalog plan key and falls back to subscription plan', () => {
     expect(resolveRecapPlanKey({ catalogPlanKey: 'full', subscriptionPlan: 'basic' })).toBe('full')
