@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { normalizeRecapWorkItems } from '@/lib/recaps/normalize'
 import { parseRecapStats } from '@/lib/recaps/stats'
+import { collectRecapSource } from '@/lib/recaps/collect-stats'
 import type { RecapPDFProps } from '@/lib/recaps/recap-pdf-document'
 
 const MONTHS = [
@@ -38,6 +39,11 @@ export async function loadRecapPdfData(db: SupabaseClient, id: string): Promise<
     .maybeSingle()
 
   const clientName = client?.company_name ?? 'Client'
+  const isSent = Boolean(recap.is_sent)
+  // Sent recaps use their frozen snapshot; drafts always reflect the latest data.
+  const stats = isSent
+    ? parseRecapStats(recap.stats)
+    : (await collectRecapSource(db, recap.client_id as string, Number(recap.month), Number(recap.year))).stats
   const safeMonth = Math.min(12, Math.max(1, Number(recap.month) || 1))
   const periodSlug = `${MONTHS[safeMonth - 1]}_${recap.year}`
 
@@ -45,7 +51,7 @@ export async function loadRecapPdfData(db: SupabaseClient, id: string): Promise<
     ok: true,
     data: {
       clientId: recap.client_id as string,
-      isSent: Boolean(recap.is_sent),
+      isSent,
       filename: `${clientName}_${periodSlug}_Recap.pdf`,
       props: {
         clientName,
@@ -56,7 +62,7 @@ export async function loadRecapPdfData(db: SupabaseClient, id: string): Promise<
         performanceNotes: recap.performance_notes,
         comingNext: recap.coming_next,
         sentAt: recap.sent_at,
-        stats: parseRecapStats(recap.stats),
+        stats,
       },
     },
   }

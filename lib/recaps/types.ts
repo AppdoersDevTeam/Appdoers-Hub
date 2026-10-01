@@ -25,6 +25,11 @@ export interface RecapStatsWeek {
   hours: number
 }
 
+export interface RecapPreviousMonth {
+  tasksCompleted: number
+  hoursLogged: number
+}
+
 export interface RecapSavings {
   nonBillableHours: number
   hourlyRate: number
@@ -42,4 +47,6 @@ export interface RecapStats {
   weeklyHours: RecapStatsWeek[]
   plan: RecapPlanKey
   savings: RecapSavings | null
+  /** Previous calendar month totals; null when there was no activity to compare. */
+  previous: RecapPreviousMonth | null
 }

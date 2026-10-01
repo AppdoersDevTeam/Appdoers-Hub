@@ -124,9 +124,31 @@ async function main() {
       phasesCompleted: ['launch (Website)'],
       tasks: sampleTasks,
       entries: sampleEntries,
+      previous: { tasksCompleted: 2, hoursLogged: 11.5 },
     }),
   })
   fs.writeFileSync(path.join(outDir, 'recap-full-test.pdf'), recapFull)
+
+  const recapBasic = await renderRecapPdfToBuffer({
+    clientName: 'Basic Plan Client',
+    month: 6,
+    year: 2026,
+    introText: 'Hi Alex,\n\nA quick update on the work completed on your website this month.',
+    workCompleted: [],
+    performanceNotes: null,
+    comingNext: null,
+    sentAt: null,
+    stats: buildRecapStats({
+      month: 6,
+      year: 2026,
+      plan: 'basic',
+      tasksCompleted: 2,
+      phasesCompleted: [],
+      tasks: sampleTasks.slice(0, 2),
+      entries: sampleEntries.slice(0, 2),
+    }),
+  })
+  fs.writeFileSync(path.join(outDir, 'recap-basic-test.pdf'), recapBasic)
 
   fs.writeFileSync(path.join(outDir, 'invoice-test.pdf'), invoice)
   fs.writeFileSync(path.join(outDir, 'proposal-test.pdf'), proposal)

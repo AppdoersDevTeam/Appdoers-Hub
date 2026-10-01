@@ -53,6 +53,23 @@ describe('buildRecapStats', () => {
   })
 })
 
+describe('previous month comparison', () => {
+  it('carries previous totals through and defaults to null', () => {
+    const withPrev = buildRecapStats({
+      month: 9, year: 2026, plan: 'basic', tasksCompleted: 2, phasesCompleted: [], tasks, entries,
+      previous: { tasksCompleted: 5, hoursLogged: 8.25 },
+    })
+    expect(withPrev.previous).toEqual({ tasksCompleted: 5, hoursLogged: 8.25 })
+    expect(build('basic').previous).toBeNull()
+  })
+
+  it('parses snapshots saved before previous existed as null', () => {
+    const legacy = JSON.parse(JSON.stringify(build('full')))
+    delete legacy.previous
+    expect(parseRecapStats(legacy)?.previous).toBeNull()
+  })
+})
+
 describe('resolveRecapPlanKey', () => {
   it('prefers catalog plan key and falls back to subscription plan', () => {
     expect(resolveRecapPlanKey({ catalogPlanKey: 'full', subscriptionPlan: 'basic' })).toBe('full')

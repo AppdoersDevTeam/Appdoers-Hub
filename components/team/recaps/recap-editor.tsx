@@ -31,6 +31,14 @@ interface Recap {
   sent_to_email?: string | null
 }
 
+interface DraftValues {
+  introText: string
+  comingNext: string
+  performanceNotes: string
+  workItems: RecapWorkItem[]
+  stats: RecapStats | undefined
+}
+
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 const selectClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
 const textareaClass = 'w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none resize-y'
@@ -75,21 +83,24 @@ export function RecapEditor({
       stats: RecapStats
     },
     options?: { refreshIntro?: boolean; refreshComingNext?: boolean; refreshPerformance?: boolean }
-  ) => {
-    setWorkItems(data.workCompleted)
-    setStats(data.stats)
+  ): DraftValues => {
+    const next: DraftValues = {
+      introText: options?.refreshIntro || !introText.trim() ? data.introText : introText,
+      comingNext: options?.refreshComingNext || !comingNext.trim() ? data.comingNext : comingNext,
+      performanceNotes:
+        options?.refreshPerformance || !performanceNotes.trim() ? data.performanceNotes : performanceNotes,
+      workItems: data.workCompleted,
+      stats: data.stats,
+    }
+    setWorkItems(next.workItems)
+    setStats(next.stats)
+    setIntroText(next.introText)
+    setComingNext(next.comingNext)
+    setPerformanceNotes(next.performanceNotes)
     setGenerateMsg(
-      `Auto-filled ${data.workCompleted.length} work items · ${data.tasksCompleted} tasks closed · ${data.hoursLogged}h logged this month`
+      `Auto-filled and saved: ${data.workCompleted.length} work items · ${data.tasksCompleted} tasks closed · ${data.hoursLogged}h logged this month`
     )
-    if (options?.refreshIntro || !introText.trim()) {
-      setIntroText(data.introText)
-    }
-    if (options?.refreshComingNext || !comingNext.trim()) {
-      setComingNext(data.comingNext)
-    }
-    if (options?.refreshPerformance || !performanceNotes.trim()) {
-      setPerformanceNotes(data.performanceNotes)
-    }
+    return next
   }
 
   const addWorkItem = () => setWorkItems(prev => [...prev, { description: '', category: 'Development' }])
@@ -98,16 +109,18 @@ export function RecapEditor({
     setWorkItems(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: value } : item))
   }
 
-  const saveDraft = async (): Promise<boolean> => {
+  /** Saves the draft; pass values when state may not have re-rendered yet. */
+  const saveDraft = async (values?: DraftValues): Promise<boolean> => {
+    const v: DraftValues = values ?? { introText, comingNext, performanceNotes, workItems, stats }
     const result = await saveRecapAction({
       client_id: recap.client_id,
       month: recap.month,
       year: recap.year,
-      intro_text: introText,
-      work_completed: workItems.filter(w => w.description.trim()),
-      performance_notes: performanceNotes,
-      coming_next: comingNext,
-      ...(stats !== undefined ? { stats } : {}),
+      intro_text: v.introText,
+      work_completed: v.workItems.filter(w => w.description.trim()),
+      performance_notes: v.performanceNotes,
+      coming_next: v.comingNext,
+      ...(v.stats !== undefined ? { stats: v.stats } : {}),
     }, recap.id)
     if (!result.success) {
       setError(result.error)
@@ -138,7 +151,20 @@ export function RecapEditor({
     startTransition(async () => {
       const result = await generateRecapDataAction(clientId, recap.month, recap.year, { contactName })
       if (!result.success) { setError(result.error); return }
-      applyGeneratedData(result.data, options)
+      const next = applyGeneratedData(result.data, options)
+      await saveDraft(next)
+    })
+  }
+
+  const handleExport = () => {
+    startTransition(async () => {
+      if (!isSent && !(await saveDraft())) return
+      const link = document.createElement('a')
+      link.href = `/api/recaps/${recap.id}/export-pdf`
+      link.rel = 'noopener'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
     })
   }
 
@@ -172,14 +198,14 @@ export function RecapEditor({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <a
-            href={`/api/recaps/${recap.id}/export-pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:border-blue-400 hover:bg-blue-100 transition-colors"
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={isPending}
+            className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:border-blue-400 hover:bg-blue-100 transition-colors disabled:opacity-60"
           >
             <Download className="h-3.5 w-3.5" /> Export PDF
-          </a>
+          </button>
           {!isSent && (
             <>
               <Button
@@ -210,7 +236,7 @@ export function RecapEditor({
         open={sendOpen}
         recapId={recap.id}
         defaultEmail={contactEmail ?? null}
-        onBeforeSend={saveDraft}
+        onBeforeSend={() => saveDraft()}
         onSent={handleSent}
         onClose={() => setSendOpen(false)}
       />
@@ -357,7 +383,7 @@ export function RecapEditor({
           <div className="hub-card space-y-2">
             <h3 className="text-sm font-semibold text-slate-900">Tips</h3>
             <ul className="space-y-1.5 text-xs text-slate-500">
-              <li>• Save your draft before exporting — the PDF uses saved content</li>
+              <li>• Export PDF saves your draft first, so the PDF always matches what you see</li>
               <li>• Use "Auto-fill from Data" to pull tasks + hours and refresh the PDF charts and plan savings</li>
               <li>• Keep the intro friendly and personal — mention the client by name</li>
               <li>• Be specific about what was done — avoid vague phrases like "worked on the site"</li>

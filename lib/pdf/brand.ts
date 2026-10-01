@@ -20,3 +20,9 @@ export const PDF_BORDER = '#e2e8f0'
 export const PDF_HEADER_ON_DARK = '#ffffff'
 export const PDF_HEADER_ON_DARK_MUTED = '#b8e8df'
 export const PDF_HEADER_ON_DARK_SUBTLE = '#8fd4c8'
+
+/** Library contract documents (Word templates): purple headings, Arial, grey rules. */
+export const PDF_CONTRACT_PURPLE = '#5F02DC'
+export const PDF_CONTRACT_PURPLE_TINT = '#F3ECFD'
+export const PDF_CONTRACT_RULE = '#BFBFBF'
+export const PDF_CONTRACT_MUTED = '#595959'

@@ -1,38 +1,15 @@
+import fs from 'fs'
 import React from 'react'
-import {
-  Circle,
-  Document,
-  Page,
-  Path,
-  Rect,
-  StyleSheet,
-  Svg,
-  Text,
-  View,
-} from '@react-pdf/renderer'
+import { Circle, Document, Image, Page, Path, Rect, StyleSheet, Svg, Text, View } from '@react-pdf/renderer'
 import type { RecapStats, RecapStatsCategory, RecapStatsTask, RecapWorkItem } from '@/lib/recaps/types'
 import {
-  PDF_BORDER,
-  PDF_BRAND_DEEP,
-  PDF_BRAND_HIGHLIGHT,
-  PDF_BRAND_LIGHT,
-  PDF_BRAND_MUTED,
-  PDF_BRAND_PRIMARY,
-  PDF_BRAND_SECONDARY,
-  PDF_SLATE_400,
-  PDF_SLATE_600,
-  PDF_SLATE_700,
-  PDF_SLATE_900,
+  PDF_CONTRACT_MUTED,
+  PDF_CONTRACT_PURPLE,
+  PDF_CONTRACT_PURPLE_TINT,
+  PDF_CONTRACT_RULE,
 } from '@/lib/pdf/brand'
+import { PDF_LOGO_PATH, PDF_LOGO_STYLE } from '@/lib/pdf/assets'
 import { APPDOERS_COMPANY_DEFAULTS } from '@/lib/pdf/company-defaults'
-import { pdfFontStyles } from '@/lib/pdf/fonts'
-import {
-  PdfLetterhead,
-  PdfPageFooter,
-  PdfPlainText,
-  PdfSectionTitle,
-  pdfHeaderTextStyles,
-} from '@/lib/pdf/primitives'
 import { formatCurrency, formatHours } from '@/lib/utils/format'
 
 const MONTHS = [
@@ -42,16 +19,26 @@ const MONTHS = [
 
 const company = APPDOERS_COMPANY_DEFAULTS
 
-/** Plain-language names and chart colours for each work category. */
-const CATEGORY_META: Record<string, { label: string; color: string; tint: string }> = {
-  Development: { label: 'Website development', color: PDF_BRAND_PRIMARY, tint: PDF_BRAND_LIGHT },
-  Design: { label: 'Design', color: '#8b5cf6', tint: '#f5f3ff' },
-  Content: { label: 'Content', color: '#f59e0b', tint: '#fffbeb' },
-  Maintenance: { label: 'Fixes and maintenance', color: PDF_BRAND_SECONDARY, tint: '#e0f2f1' },
-  Meetings: { label: 'Planning and meetings', color: '#6366f1', tint: '#eef2ff' },
-  SEO: { label: 'Search visibility (SEO)', color: '#22c55e', tint: '#f0fdf4' },
-  Strategy: { label: 'Strategy', color: '#e11d48', tint: '#fff1f2' },
-  Other: { label: 'General support', color: PDF_SLATE_400, tint: '#f1f5f9' },
+// Contract documents use Arial; Helvetica is the built-in PDF equivalent.
+const FONT = 'Helvetica'
+const FONT_BOLD = 'Helvetica-Bold'
+
+const PURPLE = PDF_CONTRACT_PURPLE
+const TINT = PDF_CONTRACT_PURPLE_TINT
+const RULE = PDF_CONTRACT_RULE
+const MUTED = PDF_CONTRACT_MUTED
+const BLACK = '#000000'
+const PURPLE_SOFT = '#C9B0F7'
+
+const CATEGORY_META: Record<string, { label: string; color: string }> = {
+  Development: { label: 'Website development', color: PURPLE },
+  Design: { label: 'Design', color: '#A855F7' },
+  Content: { label: 'Content', color: '#C026D3' },
+  Maintenance: { label: 'Fixes and maintenance', color: '#3B0A8C' },
+  Meetings: { label: 'Planning and meetings', color: '#8B8BF5' },
+  SEO: { label: 'Search visibility (SEO)', color: '#0D9488' },
+  Strategy: { label: 'Strategy', color: '#E11D74' },
+  Other: { label: 'General support', color: '#9CA3AF' },
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -67,202 +54,295 @@ function categoryMeta(name: string) {
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 0,
-    paddingBottom: 56,
-    paddingHorizontal: 0,
-    ...pdfFontStyles.regular,
-    fontSize: 10.5,
-    color: PDF_SLATE_700,
+    paddingTop: 96,
+    paddingBottom: 64,
+    paddingHorizontal: 48,
+    fontFamily: FONT,
+    fontSize: 10,
+    color: BLACK,
     backgroundColor: '#ffffff',
   },
-  body: { paddingHorizontal: 48, paddingTop: 4 },
-  section: { marginBottom: 22 },
-  headline: { fontSize: 20, ...pdfFontStyles.bold, color: PDF_BRAND_DEEP, marginBottom: 4 },
-  subhead: { fontSize: 11, color: PDF_SLATE_600, marginBottom: 18, lineHeight: 1.5 },
-  paragraph: { fontSize: 10.5, lineHeight: 1.7, color: PDF_SLATE_700, marginBottom: 6 },
-  muted: { fontSize: 9, color: PDF_SLATE_400 },
-  emptyState: { fontSize: 10.5, lineHeight: 1.6, color: PDF_SLATE_400, marginBottom: 20 },
+  header: {
+    position: 'absolute',
+    top: 28,
+    left: 48,
+    right: 48,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerSite: { fontFamily: FONT_BOLD, fontSize: 8.5, color: PURPLE, textAlign: 'right' },
+  headerAddress: { fontSize: 8, color: MUTED, textAlign: 'right', marginTop: 2 },
+  footer: {
+    position: 'absolute',
+    bottom: 28,
+    left: 48,
+    right: 48,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 0.75,
+    borderTopColor: RULE,
+    borderTopStyle: 'solid',
+    paddingTop: 8,
+  },
+  footerText: { fontSize: 7.5, color: BLACK },
+  footerLabel: { fontFamily: FONT_BOLD, color: PURPLE },
 
-  tilesRow: { flexDirection: 'row', marginBottom: 20 },
-  tile: { flex: 1, borderRadius: 10, padding: 12, marginRight: 10 },
-  tileLast: { marginRight: 0 },
-  tileValue: { fontSize: 24, ...pdfFontStyles.bold, marginTop: 8 },
-  tileLabel: { fontSize: 9, ...pdfFontStyles.semibold, marginTop: 2 },
+  eyebrow: { fontFamily: FONT_BOLD, fontSize: 9, color: PURPLE, letterSpacing: 1.5, marginBottom: 6 },
+  title: { fontFamily: FONT_BOLD, fontSize: 34, color: BLACK, lineHeight: 1.1 },
+  subtitle: { fontSize: 12, color: BLACK, marginTop: 8 },
+  meta: { fontSize: 9, color: MUTED, marginTop: 3 },
+  headline: { fontFamily: FONT_BOLD, fontSize: 16, color: PURPLE, marginTop: 22, marginBottom: 12 },
 
-  savingsCard: {
-    backgroundColor: PDF_BRAND_DEEP,
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 22,
+  section: { marginTop: 22 },
+  h2: { fontFamily: FONT_BOLD, fontSize: 15, color: PURPLE, marginBottom: 10 },
+  h3: { fontFamily: FONT_BOLD, fontSize: 11, color: PURPLE, marginBottom: 6 },
+  paragraph: { fontSize: 10, lineHeight: 1.6, color: BLACK, marginBottom: 7 },
+  muted: { fontSize: 9, color: MUTED },
+
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  numberTile: {
+    width: '48.5%',
+    backgroundColor: TINT,
+    borderRadius: 6,
+    padding: 16,
+    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  savingsEyebrow: {
-    fontSize: 8.5,
-    ...pdfFontStyles.bold,
-    color: PDF_BRAND_HIGHLIGHT,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  savingsAmount: { fontSize: 34, ...pdfFontStyles.bold, color: '#ffffff', marginTop: 4 },
-  savingsMath: { fontSize: 10, color: PDF_BRAND_MUTED, marginTop: 4 },
-  savingsNote: { fontSize: 10, color: '#ffffff', marginTop: 8, lineHeight: 1.5 },
+  numberValue: { fontFamily: FONT_BOLD, fontSize: 30, color: PURPLE },
+  numberLabel: { fontSize: 10, color: BLACK, marginTop: 2 },
 
-  noteCard: {
-    backgroundColor: '#f8fafc',
+  savings: {
+    backgroundColor: PURPLE,
+    borderRadius: 6,
+    padding: 20,
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  savingsEyebrow: { fontFamily: FONT_BOLD, fontSize: 9, color: '#E9DDFD', letterSpacing: 1 },
+  savingsAmount: { fontFamily: FONT_BOLD, fontSize: 34, color: '#ffffff', marginTop: 4 },
+  savingsNote: { fontSize: 10, color: '#ffffff', marginTop: 6, lineHeight: 1.5 },
+
+  compareCard: {
+    width: '48.5%',
+    borderWidth: 0.75,
+    borderColor: RULE,
+    borderStyle: 'solid',
+    borderRadius: 6,
+    padding: 14,
+  },
+  compareLabel: { fontFamily: FONT_BOLD, fontSize: 10, color: BLACK, marginBottom: 10 },
+  compareRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  compareRowLabel: { width: 62, fontSize: 8.5, color: MUTED },
+  compareTrack: { flex: 1, height: 10, backgroundColor: '#F5F5F5', borderRadius: 2 },
+  compareValue: { width: 44, fontSize: 9, fontFamily: FONT_BOLD, textAlign: 'right' },
+  compareDelta: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
+  compareDeltaText: { fontFamily: FONT_BOLD, fontSize: 10, marginLeft: 5 },
+
+  callout: {
+    backgroundColor: TINT,
     borderLeftWidth: 3,
-    borderLeftColor: PDF_BRAND_PRIMARY,
+    borderLeftColor: PURPLE,
     borderLeftStyle: 'solid',
     padding: 14,
-    borderRadius: 4,
   },
-
-  chartRow: { flexDirection: 'row', alignItems: 'center' },
-  legend: { flex: 1, marginLeft: 24 },
-  legendRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 7 },
-  legendSwatch: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
-  legendLabel: { flex: 1, fontSize: 10, color: PDF_SLATE_900, ...pdfFontStyles.medium },
-  legendValue: { width: 70, fontSize: 9.5, color: PDF_SLATE_600, textAlign: 'right' },
-  chartCaption: { fontSize: 9, color: PDF_SLATE_600, ...pdfFontStyles.semibold, marginTop: 16, marginBottom: 6 },
 
   highlightCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: PDF_BORDER,
-    borderStyle: 'solid',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
+    borderBottomWidth: 0.75,
+    borderBottomColor: RULE,
+    borderBottomStyle: 'solid',
+    paddingVertical: 9,
   },
-  highlightBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: PDF_BRAND_HIGHLIGHT,
+  badge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: PURPLE,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  highlightBadgeText: { fontSize: 11, ...pdfFontStyles.bold, color: PDF_BRAND_DEEP },
-  highlightTitle: { fontSize: 11, ...pdfFontStyles.semibold, color: PDF_SLATE_900 },
-  highlightMeta: { fontSize: 9, color: PDF_SLATE_600, marginTop: 2 },
+  badgeText: { fontFamily: FONT_BOLD, fontSize: 11, color: '#ffffff' },
+  highlightTitle: { fontFamily: FONT_BOLD, fontSize: 11, color: BLACK },
+  highlightMeta: { fontSize: 9, color: MUTED, marginTop: 2 },
 
-  categoryBlock: { marginBottom: 14 },
+  chartRow: { flexDirection: 'row', alignItems: 'center' },
+  legend: { flex: 1, marginLeft: 24 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 7 },
+  swatch: { width: 9, height: 9, borderRadius: 2, marginRight: 8 },
+  legendLabel: { flex: 1, fontSize: 10, color: BLACK },
+  legendValue: { width: 74, fontSize: 9.5, color: MUTED, textAlign: 'right' },
+
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    paddingBottom: 4,
+    marginBottom: 6,
+    marginTop: 8,
   },
-  categoryHeaderText: { flex: 1, fontSize: 10.5, ...pdfFontStyles.bold },
-  categoryHeaderMeta: { fontSize: 9, ...pdfFontStyles.semibold },
+  categoryTitle: { flex: 1, fontFamily: FONT_BOLD, fontSize: 11, color: BLACK },
+  categoryMeta: { fontSize: 9, color: MUTED },
   cardGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   taskCard: {
     width: '49%',
-    borderWidth: 1,
-    borderColor: PDF_BORDER,
-    borderStyle: 'solid',
-    borderRadius: 8,
-    padding: 9,
-    marginBottom: 6,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 5,
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
-  taskCardTitle: { fontSize: 9.5, color: PDF_SLATE_900, lineHeight: 1.4, ...pdfFontStyles.medium },
-  taskCardSub: { fontSize: 8, color: PDF_SLATE_400, marginTop: 2 },
-  hoursPill: {
-    marginLeft: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    backgroundColor: '#f1f5f9',
-  },
-  hoursPillText: { fontSize: 8, ...pdfFontStyles.semibold, color: PDF_SLATE_600 },
+  taskTitle: { fontSize: 9.5, color: BLACK, lineHeight: 1.35 },
+  taskSub: { fontSize: 8, color: MUTED, marginTop: 2 },
+  hoursPill: { marginLeft: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, backgroundColor: TINT },
+  hoursPillText: { fontFamily: FONT_BOLD, fontSize: 8, color: PURPLE },
 
   milestoneRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  milestoneText: { fontSize: 10.5, color: PDF_SLATE_900, ...pdfFontStyles.medium, marginLeft: 8 },
+  milestoneText: { fontSize: 10.5, color: BLACK, marginLeft: 8 },
 
-  nextBox: {
-    backgroundColor: PDF_BRAND_LIGHT,
-    borderWidth: 1,
-    borderColor: PDF_BRAND_PRIMARY,
-    borderStyle: 'solid',
-    borderRadius: 12,
-    padding: 16,
+  tableHeader: {
+    flexDirection: 'row',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: PURPLE,
+    borderBottomStyle: 'solid',
   },
-  nextTitle: { fontSize: 13, ...pdfFontStyles.bold, color: PDF_BRAND_DEEP, marginBottom: 8 },
-
-  table: { borderWidth: 1, borderColor: PDF_BORDER, borderStyle: 'solid', borderRadius: 6 },
-  tableHeader: { flexDirection: 'row', backgroundColor: '#f8fafc', paddingVertical: 6, paddingHorizontal: 8 },
   tableRow: {
     flexDirection: 'row',
     paddingVertical: 5,
-    paddingHorizontal: 8,
-    borderTopWidth: 1,
-    borderTopColor: PDF_BORDER,
-    borderTopStyle: 'solid',
+    borderBottomWidth: 0.5,
+    borderBottomColor: RULE,
+    borderBottomStyle: 'solid',
   },
-  th: { fontSize: 7.5, ...pdfFontStyles.bold, color: PDF_SLATE_600, textTransform: 'uppercase', letterSpacing: 0.4 },
-  td: { fontSize: 8.5, color: PDF_SLATE_700 },
+  th: { fontFamily: FONT_BOLD, fontSize: 8.5, color: PURPLE },
+  td: { fontSize: 8.5, color: BLACK },
   colTask: { flex: 1, paddingRight: 8 },
-  colArea: { width: 110 },
+  colArea: { width: 120 },
   colStatus: { width: 80 },
   colHours: { width: 44, textAlign: 'right' },
 })
 
-// ─── Icons (PDF fonts have no emoji, so icons are tiny SVGs) ─────────────────
+// ─── Header and footer (match the contract templates) ───────────────────────
 
-function IconCheck({ color }: { color: string }) {
+let logoData: { data: Buffer; format: 'png' } | null | undefined
+
+/** Embed the logo bytes directly; file paths are unreliable across platforms. */
+function loadLogo() {
+  if (logoData === undefined) {
+    try {
+      logoData = { data: fs.readFileSync(PDF_LOGO_PATH), format: 'png' }
+    } catch {
+      logoData = null
+    }
+  }
+  return logoData
+}
+
+function ContractHeader() {
+  const logo = loadLogo()
   return (
-    <Svg width={18} height={18} viewBox="0 0 24 24">
-      <Circle cx={12} cy={12} r={11} fill={color} />
-      <Path d="M7 12.5l3.2 3.2L17 9" stroke="#ffffff" strokeWidth={2.4} fill="none" />
+    <View style={styles.header} fixed>
+      {logo ? (
+        // eslint-disable-next-line jsx-a11y/alt-text
+        <Image src={logo} style={PDF_LOGO_STYLE} />
+      ) : (
+        <Text style={{ fontFamily: FONT_BOLD, fontSize: 16, color: PURPLE }}>Appdoers</Text>
+      )}
+      <View>
+        <Text style={styles.headerSite}>Appdoers.co.nz</Text>
+        <Text style={styles.headerAddress}>49 Braebrook Drive, Netherby, Ashburton 7700, New Zealand</Text>
+      </View>
+    </View>
+  )
+}
+
+function ContractFooter() {
+  return (
+    <View style={styles.footer} fixed>
+      <Text style={styles.footerText}>
+        <Text style={styles.footerLabel}>T: </Text>+64 22 5060 870{'    '}
+        <Text style={styles.footerLabel}>E: </Text>contact@appdoers.co.nz{'    '}
+        <Text style={styles.footerLabel}>W: </Text>www.appdoers.co.nz
+      </Text>
+      <Text style={styles.footerText} render={({ pageNumber }) => `Page | ${pageNumber}`} />
+    </View>
+  )
+}
+
+// ─── Icons ──────────────────────────────────────────────────────────────────
+
+function IconFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <Svg width={38} height={38} viewBox="0 0 38 38" style={{ marginRight: 14 }}>
+      <Circle cx={19} cy={19} r={19} fill={PURPLE} />
+      {children}
     </Svg>
   )
 }
 
-function IconClock({ color }: { color: string }) {
+function IconCheck() {
   return (
-    <Svg width={18} height={18} viewBox="0 0 24 24">
-      <Circle cx={12} cy={12} r={11} fill={color} />
-      <Path d="M12 6.5V12l3.5 2.5" stroke="#ffffff" strokeWidth={2.2} fill="none" />
+    <IconFrame>
+      <Path d="M11 19.5l5 5 11-11" stroke="#ffffff" strokeWidth={3} fill="none" />
+    </IconFrame>
+  )
+}
+
+function IconClock() {
+  return (
+    <IconFrame>
+      <Circle cx={19} cy={19} r={9.5} stroke="#ffffff" strokeWidth={2.4} fill="none" />
+      <Path d="M19 13.5V19l4 2.5" stroke="#ffffff" strokeWidth={2.4} fill="none" />
+    </IconFrame>
+  )
+}
+
+function IconFlag({ size = 38 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 38 38" style={size === 38 ? { marginRight: 14 } : {}}>
+      <Circle cx={19} cy={19} r={19} fill={PURPLE} />
+      <Path d="M13.5 28V10.5M13.5 11h11l-2.5 4 2.5 4h-11" stroke="#ffffff" strokeWidth={2.4} fill="none" />
     </Svg>
   )
 }
 
-function IconFlag({ color }: { color: string }) {
+function IconGrid() {
   return (
-    <Svg width={18} height={18} viewBox="0 0 24 24">
-      <Circle cx={12} cy={12} r={11} fill={color} />
-      <Path d="M8.5 18V6.5M8.5 7h7l-1.6 2.6L15.5 12h-7" stroke="#ffffff" strokeWidth={1.8} fill="none" />
-    </Svg>
-  )
-}
-
-function IconSpark({ color }: { color: string }) {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24">
-      <Circle cx={12} cy={12} r={11} fill={color} />
-      <Path d="M12 5.5l1.6 4.9 4.9 1.6-4.9 1.6L12 18.5l-1.6-4.9L5.5 12l4.9-1.6z" fill="#ffffff" />
-    </Svg>
+    <IconFrame>
+      <Rect x={11} y={11} width={7} height={7} rx={1} fill="#ffffff" />
+      <Rect x={20} y={11} width={7} height={7} rx={1} fill="#ffffff" />
+      <Rect x={11} y={20} width={7} height={7} rx={1} fill="#ffffff" />
+      <Rect x={20} y={20} width={7} height={7} rx={1} fill={PURPLE_SOFT} />
+    </IconFrame>
   )
 }
 
 function IconSavings() {
   return (
-    <Svg width={56} height={56} viewBox="0 0 56 56">
-      <Circle cx={28} cy={28} r={26} fill={PDF_BRAND_HIGHLIGHT} />
-      <Rect x={16} y={34} width={5} height={8} rx={1} fill={PDF_BRAND_DEEP} />
-      <Rect x={25.5} y={27} width={5} height={15} rx={1} fill={PDF_BRAND_DEEP} />
-      <Rect x={35} y={19} width={5} height={23} rx={1} fill={PDF_BRAND_DEEP} />
+    <Svg width={58} height={58} viewBox="0 0 58 58" style={{ marginRight: 18 }}>
+      <Circle cx={29} cy={29} r={29} fill="#ffffff" />
+      <Rect x={16} y={34} width={6} height={10} rx={1} fill={PURPLE} />
+      <Rect x={26} y={26} width={6} height={18} rx={1} fill={PURPLE} />
+      <Rect x={36} y={17} width={6} height={27} rx={1} fill={PURPLE} />
     </Svg>
   )
 }
 
-// ─── Charts ──────────────────────────────────────────────────────────────────
+function DeltaArrow({ up, color }: { up: boolean; color: string }) {
+  return (
+    <Svg width={12} height={12} viewBox="0 0 12 12">
+      <Path d={up ? 'M6 1.5L11 8H1z' : 'M6 10.5L11 4H1z'} fill={color} />
+    </Svg>
+  )
+}
+
+// ─── Charts ─────────────────────────────────────────────────────────────────
 
 function polar(cx: number, cy: number, r: number, angle: number) {
   const rad = ((angle - 90) * Math.PI) / 180
@@ -288,14 +368,14 @@ function DonutChart({ categories, totalHours }: { categories: RecapStatsCategory
   const size = 150
   const c = size / 2
   const outer = 70
-  const inner = 44
+  const inner = 46
   const slices = categories.filter((cat) => cat.hours > 0)
   let angle = 0
 
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <Circle cx={c} cy={c} r={(outer + inner) / 2} stroke="#f1f5f9" strokeWidth={outer - inner} fill="none" />
+        <Circle cx={c} cy={c} r={(outer + inner) / 2} stroke="#F5F5F5" strokeWidth={outer - inner} fill="none" />
         {slices.length === 1 ? (
           <Circle
             cx={c}
@@ -320,9 +400,19 @@ function DonutChart({ categories, totalHours }: { categories: RecapStatsCategory
           })
         )}
       </Svg>
-      <View style={{ position: 'absolute', top: 0, left: 0, width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: 18, ...pdfFontStyles.bold, color: PDF_BRAND_DEEP }}>{formatHours(totalHours, '0h')}</Text>
-        <Text style={{ fontSize: 8, color: PDF_SLATE_600 }}>of work</Text>
+      <View
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: size,
+          height: size,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={{ fontFamily: FONT_BOLD, fontSize: 18, color: PURPLE }}>{formatHours(totalHours, '0h')}</Text>
+        <Text style={{ fontSize: 8, color: MUTED }}>of work</Text>
       </View>
     </View>
   )
@@ -333,81 +423,113 @@ function WeeklyBars({ weeks }: { weeks: { label: string; hours: number }[] }) {
   const max = Math.max(...weeks.map((w) => w.hours), 1)
 
   return (
-    <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: PDF_BORDER, borderBottomStyle: 'solid' }}>
-      {weeks.map((w, i) => {
-        const h = w.hours > 0 ? Math.max(4, (barArea * w.hours) / max) : 0
-        return (
-          <View key={w.label} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: barArea + 16 }}>
-            <Text style={{ fontSize: 8, ...pdfFontStyles.semibold, color: PDF_SLATE_700, marginBottom: 3 }}>
-              {formatHours(w.hours, '0h')}
-            </Text>
-            <View
-              style={{
-                width: 40,
-                height: h,
-                borderTopLeftRadius: 4,
-                borderTopRightRadius: 4,
-                backgroundColor: i % 2 === 0 ? PDF_BRAND_PRIMARY : PDF_BRAND_SECONDARY,
-              }}
-            />
-          </View>
-        )
-      })}
+    <View>
+      <View style={{ flexDirection: 'row', borderBottomWidth: 0.75, borderBottomColor: RULE, borderBottomStyle: 'solid' }}>
+        {weeks.map((w) => {
+          const h = w.hours > 0 ? Math.max(4, (barArea * w.hours) / max) : 0
+          return (
+            <View key={w.label} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: barArea + 16 }}>
+              <Text style={{ fontFamily: FONT_BOLD, fontSize: 8, color: BLACK, marginBottom: 3 }}>
+                {formatHours(w.hours, '0h')}
+              </Text>
+              <View
+                style={{
+                  width: 40,
+                  height: h,
+                  borderTopLeftRadius: 3,
+                  borderTopRightRadius: 3,
+                  backgroundColor: w.hours === max ? PURPLE : PURPLE_SOFT,
+                }}
+              />
+            </View>
+          )
+        })}
+      </View>
+      <View style={{ flexDirection: 'row', marginTop: 4 }}>
+        {weeks.map((w) => (
+          <Text key={w.label} style={{ flex: 1, textAlign: 'center', fontSize: 7.5, color: MUTED }}>
+            {`Days ${w.label}`}
+          </Text>
+        ))}
+      </View>
     </View>
   )
 }
 
-function WeeklyLabels({ weeks }: { weeks: { label: string }[] }) {
-  return (
-    <View style={{ flexDirection: 'row', marginTop: 4 }}>
-      {weeks.map((w) => (
-        <Text key={w.label} style={{ flex: 1, textAlign: 'center', fontSize: 7.5, color: PDF_SLATE_400 }}>
-          {`Days ${w.label}`}
-        </Text>
-      ))}
-    </View>
-  )
-}
+// ─── Building blocks ────────────────────────────────────────────────────────
 
-// ─── Building blocks ─────────────────────────────────────────────────────────
-
-function StatTile({
-  icon,
-  value,
-  label,
-  bg,
-  fg,
-  last,
-}: {
-  icon: React.ReactNode
-  value: string
-  label: string
-  bg: string
-  fg: string
-  last?: boolean
-}) {
+function NumberTile({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
   return (
-    <View style={[styles.tile, { backgroundColor: bg }, last ? styles.tileLast : {}]}>
+    <View style={styles.numberTile} wrap={false}>
       {icon}
-      <Text style={[styles.tileValue, { color: fg }]}>{value}</Text>
-      <Text style={[styles.tileLabel, { color: fg }]}>{label}</Text>
+      <View>
+        <Text style={styles.numberValue}>{value}</Text>
+        <Text style={styles.numberLabel}>{label}</Text>
+      </View>
     </View>
   )
 }
 
-function SavingsHero({ savings }: { savings: NonNullable<RecapStats['savings']> }) {
+function SavingsPanel({ savings }: { savings: NonNullable<RecapStats['savings']> }) {
   return (
-    <View style={styles.savingsCard} wrap={false}>
+    <View style={styles.savings} wrap={false}>
       <IconSavings />
-      <View style={{ flex: 1, marginLeft: 18 }}>
-        <Text style={styles.savingsEyebrow}>How much your plan saved you this month</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.savingsEyebrow}>HOW MUCH YOUR PLAN SAVED YOU THIS MONTH</Text>
         <Text style={styles.savingsAmount}>{formatCurrency(savings.amount)}</Text>
-        <Text style={styles.savingsMath}>
-          {`${formatHours(savings.nonBillableHours, '0h')} of work at ${formatCurrency(savings.hourlyRate)} per hour`}
-        </Text>
         <Text style={styles.savingsNote}>
-          Included in your Full plan at no additional cost.
+          {`${formatHours(savings.nonBillableHours, '0h')} of work at ${formatCurrency(savings.hourlyRate)} per hour, included in your Full plan at no additional cost.`}
         </Text>
+      </View>
+    </View>
+  )
+}
+
+function CompareCard({
+  label,
+  current,
+  previous,
+  format,
+  unit,
+}: {
+  label: string
+  current: number
+  previous: number
+  format: (n: number) => string
+  unit: (diff: number) => string
+}) {
+  const max = Math.max(current, previous, 1)
+  const diff = Math.round((current - previous) * 100) / 100
+  const up = diff >= 0
+  const color = up ? PURPLE : MUTED
+  const unitLabel = unit(Math.abs(diff))
+  const deltaText =
+    diff === 0
+      ? 'Same as last month'
+      : `${up ? '+' : '-'}${format(Math.abs(diff))}${unitLabel ? ` ${unitLabel}` : ''} on last month`
+
+  const bar = (value: number, fill: string) => (
+    <View style={styles.compareTrack}>
+      <View style={{ width: `${(value / max) * 100}%`, height: 10, backgroundColor: fill, borderRadius: 2 }} />
+    </View>
+  )
+
+  return (
+    <View style={styles.compareCard} wrap={false}>
+      <Text style={styles.compareLabel}>{label}</Text>
+      <View style={styles.compareRow}>
+        <Text style={styles.compareRowLabel}>This month</Text>
+        {bar(current, PURPLE)}
+        <Text style={styles.compareValue}>{format(current)}</Text>
+      </View>
+      <View style={styles.compareRow}>
+        <Text style={styles.compareRowLabel}>Last month</Text>
+        {bar(previous, PURPLE_SOFT)}
+        <Text style={[styles.compareValue, { color: MUTED }]}>{format(previous)}</Text>
+      </View>
+      <View style={styles.compareDelta}>
+        {diff !== 0 ? <DeltaArrow up={up} color={color} /> : null}
+        <Text style={[styles.compareDeltaText, { color }]}>{deltaText}</Text>
       </View>
     </View>
   )
@@ -418,10 +540,8 @@ function TaskCard({ task }: { task: RecapStatsTask }) {
   return (
     <View style={styles.taskCard} wrap={false}>
       <View style={{ flex: 1 }}>
-        <Text style={styles.taskCardTitle}>{task.title}</Text>
-        <Text style={styles.taskCardSub}>
-          {[status, task.projectName].filter(Boolean).join(' · ')}
-        </Text>
+        <Text style={styles.taskTitle}>{task.title}</Text>
+        <Text style={styles.taskSub}>{[status, task.projectName].filter(Boolean).join(' · ')}</Text>
       </View>
       {task.hours > 0 ? (
         <View style={styles.hoursPill}>
@@ -436,7 +556,7 @@ function WorkItemCard({ item }: { item: RecapWorkItem }) {
   return (
     <View style={styles.taskCard} wrap={false}>
       <View style={{ flex: 1 }}>
-        <Text style={styles.taskCardTitle}>{item.description}</Text>
+        <Text style={styles.taskTitle}>{item.description}</Text>
       </View>
     </View>
   )
@@ -447,10 +567,26 @@ function CategoryHeader({ name, count, hours }: { name: string; count: number; h
   const parts = [`${count} ${count === 1 ? 'item' : 'items'}`]
   if (hours && hours > 0) parts.push(formatHours(hours))
   return (
-    <View style={[styles.categoryHeader, { backgroundColor: meta.tint }]} wrap={false}>
-      <View style={[styles.legendSwatch, { backgroundColor: meta.color }]} />
-      <Text style={[styles.categoryHeaderText, { color: PDF_SLATE_900 }]}>{meta.label}</Text>
-      <Text style={[styles.categoryHeaderMeta, { color: PDF_SLATE_600 }]}>{parts.join(' · ')}</Text>
+    <View style={[styles.categoryHeader, { borderBottomColor: meta.color }]} wrap={false} minPresenceAhead={48}>
+      <View style={[styles.swatch, { backgroundColor: meta.color }]} />
+      <Text style={styles.categoryTitle}>{meta.label}</Text>
+      <Text style={styles.categoryMeta}>{parts.join(' · ')}</Text>
+    </View>
+  )
+}
+
+function Paragraphs({ text }: { text: string }) {
+  return (
+    <View>
+      {text
+        .split(/\n\s*\n/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p, i) => (
+          <Text key={i} style={styles.paragraph}>
+            {p}
+          </Text>
+        ))}
     </View>
   )
 }
@@ -464,7 +600,14 @@ function groupBy<T>(items: T[], key: (item: T) => string): [string, T[]][] {
   return [...map.entries()]
 }
 
-// ─── Document ────────────────────────────────────────────────────────────────
+function monthHeadline(tasksDone: number, hours: number, milestones: number): string {
+  if (milestones > 0) return 'A milestone month for your website'
+  if (tasksDone >= 8 || hours >= 15) return 'A big month for your website'
+  if (tasksDone > 0 || hours > 0) return 'Steady progress on your website'
+  return 'Your monthly website update'
+}
+
+// ─── Document ───────────────────────────────────────────────────────────────
 
 export interface RecapPDFProps {
   clientName: string
@@ -478,9 +621,9 @@ export interface RecapPDFProps {
   stats: RecapStats | null
 }
 
-function formatSentDate(sentAt: string | null): string | null {
-  if (!sentAt) return null
-  return new Date(sentAt).toLocaleDateString('en-NZ', { year: 'numeric', month: 'long', day: 'numeric' })
+function formatDate(value: string | null): string {
+  const date = value ? new Date(value) : new Date()
+  return date.toLocaleDateString('en-NZ', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
 export function RecapPDFDocument({
@@ -497,7 +640,6 @@ export function RecapPDFDocument({
   const safeMonth = Math.min(12, Math.max(1, month))
   const monthName = MONTHS[safeMonth - 1]
   const periodLabel = `${monthName} ${year}`
-  const sentLabel = formatSentDate(sentAt)
 
   const tasks = stats?.tasks ?? []
   const tasksDone = stats ? stats.tasksCompleted : workCompleted.length
@@ -506,6 +648,7 @@ export function RecapPDFDocument({
   const categories = stats?.categories ?? []
   const areaCount = stats ? categories.length : new Set(workCompleted.map((w) => w.category || 'Other')).size
   const savings = stats?.savings && stats.savings.amount > 0 ? stats.savings : null
+  const previous = stats?.previous ?? null
   const topTasks = tasks.filter((t) => t.hours > 0).slice(0, 3)
   const showCharts = Boolean(stats) && hours > 0
 
@@ -513,220 +656,209 @@ export function RecapPDFDocument({
   const hasPerformance = Boolean(performanceNotes?.trim())
   const hasComingNext = Boolean(comingNext?.trim())
   const hasWork = tasks.length > 0 || workCompleted.length > 0
-  const hasBody = hasIntro || hasWork || hasPerformance || hasComingNext
 
   return (
     <Document
-      title={`${periodLabel} Recap — ${clientName}`}
+      title={`${periodLabel} Recap - ${clientName}`}
       author={company.legalName}
       subject={`Monthly recap for ${clientName}`}
       creator="Appdoers Hub"
     >
       <Page size="A4" style={styles.page}>
-        <PdfLetterhead
-          company={company}
-          showCompanyDetails={false}
-          right={<Text style={pdfHeaderTextStyles.eyebrow}>Monthly Recap</Text>}
-        >
-          <Text style={[pdfHeaderTextStyles.title, { fontSize: 26 }]}>{`Your ${monthName} recap`}</Text>
-          <Text style={pdfHeaderTextStyles.subtitle}>{clientName}</Text>
-          <Text style={pdfHeaderTextStyles.meta}>
-            {sentLabel ? `Sent ${sentLabel}` : 'Prepared by the Appdoers team'}
-          </Text>
-        </PdfLetterhead>
+        <ContractHeader />
+        <ContractFooter />
 
-        <View style={styles.body}>
-          {!hasBody ? (
-            <Text style={styles.emptyState}>
-              No report content has been saved yet. Use Auto-fill or add notes in the recap editor,
-              save, then export again.
-            </Text>
-          ) : null}
+        {/* ── Month in numbers ── */}
+        <Text style={styles.eyebrow}>MONTHLY RECAP</Text>
+        <Text style={styles.title}>{`Your ${periodLabel} Recap`}</Text>
+        <Text style={styles.subtitle}>{clientName}</Text>
+        <Text style={styles.meta}>{`Prepared by ${company.legalName} · ${formatDate(sentAt)}`}</Text>
 
-          <Text style={styles.headline}>{`Your ${monthName} at a glance`}</Text>
-          <Text style={styles.subhead}>
-            A summary of the work completed this month. A full breakdown follows.
-          </Text>
+        <Text style={styles.headline}>{monthHeadline(tasksDone, hours, milestones.length)}</Text>
 
-          <View style={styles.tilesRow}>
-            <StatTile
-              icon={<IconCheck color={PDF_BRAND_SECONDARY} />}
-              value={String(tasksDone)}
-              label={tasksDone === 1 ? 'task completed' : 'tasks completed'}
-              bg={PDF_BRAND_LIGHT}
-              fg={PDF_BRAND_SECONDARY}
-            />
-            <StatTile
-              icon={<IconClock color={PDF_BRAND_DEEP} />}
-              value={formatHours(hours, '0h')}
-              label="of work"
-              bg="#f5f3ff"
-              fg={PDF_BRAND_DEEP}
-            />
-            <StatTile
-              icon={<IconFlag color="#b45309" />}
-              value={String(milestones.length)}
-              label={milestones.length === 1 ? 'milestone reached' : 'milestones reached'}
-              bg="#fffbeb"
-              fg="#b45309"
-            />
-            <StatTile
-              icon={<IconSpark color={PDF_BRAND_DEEP} />}
-              value={String(areaCount)}
-              label={areaCount === 1 ? 'area of work' : 'areas of work'}
-              bg={PDF_BRAND_HIGHLIGHT}
-              fg={PDF_BRAND_DEEP}
-              last
-            />
-          </View>
-
-          {savings ? <SavingsHero savings={savings} /> : null}
-
-          {hasIntro ? (
-            <View style={styles.section}>
-              <PdfSectionTitle title="Overview" />
-              <View style={styles.noteCard}>
-                <PdfPlainText text={introText!.trim()} style={styles.paragraph} />
-              </View>
-            </View>
-          ) : null}
-
-          {topTasks.length > 0 ? (
-            <View style={styles.section} wrap={false}>
-              <PdfSectionTitle title="Highlights" />
-              {topTasks.map((task, i) => (
-                <View key={task.title + i} style={styles.highlightCard}>
-                  <View style={styles.highlightBadge}>
-                    <Text style={styles.highlightBadgeText}>{String(i + 1)}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.highlightTitle}>{task.title}</Text>
-                    <Text style={styles.highlightMeta}>
-                      {`${categoryMeta(task.category).label} · ${formatHours(task.hours)}`}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          ) : null}
-
-          {showCharts ? (
-            <View style={styles.section} wrap={false}>
-              <PdfSectionTitle title="Where the time went" />
-              <View style={styles.chartRow}>
-                <DonutChart categories={categories} totalHours={hours} />
-                <View style={styles.legend}>
-                  {categories
-                    .filter((cat) => cat.hours > 0)
-                    .map((cat) => (
-                      <View key={cat.name} style={styles.legendRow}>
-                        <View style={[styles.legendSwatch, { backgroundColor: categoryMeta(cat.name).color }]} />
-                        <Text style={styles.legendLabel}>{categoryMeta(cat.name).label}</Text>
-                        <Text style={styles.legendValue}>
-                          {`${formatHours(cat.hours)} · ${Math.round((cat.hours / hours) * 100)}%`}
-                        </Text>
-                      </View>
-                    ))}
-                </View>
-              </View>
-              {stats!.weeklyHours.length > 0 ? (
-                <>
-                  <Text style={styles.chartCaption}>Hours through the month</Text>
-                  <WeeklyBars weeks={stats!.weeklyHours} />
-                  <WeeklyLabels weeks={stats!.weeklyHours} />
-                </>
-              ) : null}
-            </View>
-          ) : null}
-
-          {milestones.length > 0 ? (
-            <View style={styles.section} wrap={false}>
-              <PdfSectionTitle title="Milestones reached" />
-              {milestones.map((m) => (
-                <View key={m} style={styles.milestoneRow}>
-                  <IconFlag color="#b45309" />
-                  <Text style={styles.milestoneText}>{`${m.charAt(0).toUpperCase()}${m.slice(1)} phase complete`}</Text>
-                </View>
-              ))}
-            </View>
-          ) : null}
-
-          {hasWork ? (
-            <View style={styles.section}>
-              <View minPresenceAhead={120}>
-                <PdfSectionTitle title="Work completed" />
-              </View>
-              {tasks.length > 0
-                ? groupBy(tasks, (t) => t.category).map(([category, items]) => (
-                    <View key={category} style={styles.categoryBlock}>
-                      <CategoryHeader
-                        name={category}
-                        count={items.length}
-                        hours={items.reduce((sum, t) => sum + t.hours, 0)}
-                      />
-                      <View style={styles.cardGrid}>
-                        {items.map((task, i) => (
-                          <TaskCard key={`${category}-${i}`} task={task} />
-                        ))}
-                      </View>
-                    </View>
-                  ))
-                : groupBy(workCompleted, (w) => w.category || 'Other').map(([category, items]) => (
-                    <View key={category} style={styles.categoryBlock}>
-                      <CategoryHeader name={category} count={items.length} />
-                      <View style={styles.cardGrid}>
-                        {items.map((item, i) => (
-                          <WorkItemCard key={`${category}-${i}`} item={item} />
-                        ))}
-                      </View>
-                    </View>
-                  ))}
-            </View>
-          ) : null}
-
-          {hasPerformance ? (
-            <View style={styles.section}>
-              <PdfSectionTitle title="Additional notes" />
-              <PdfPlainText text={performanceNotes!.trim()} style={styles.paragraph} />
-            </View>
-          ) : null}
-
-          {hasComingNext ? (
-            <View style={styles.section} wrap={false}>
-              <View style={styles.nextBox}>
-                <Text style={styles.nextTitle}>Coming up next month</Text>
-                <PdfPlainText text={comingNext!.trim()} style={styles.paragraph} />
-              </View>
-            </View>
-          ) : null}
-
-          {tasks.length > 0 ? (
-            <View style={styles.section} break>
-              <PdfSectionTitle title="Full task list" />
-              <Text style={[styles.muted, { marginBottom: 8 }]}>
-                All tasks worked on during the period, with hours logged.
-              </Text>
-              <View style={styles.table}>
-                <View style={styles.tableHeader}>
-                  <Text style={[styles.th, styles.colTask]}>Task</Text>
-                  <Text style={[styles.th, styles.colArea]}>Area</Text>
-                  <Text style={[styles.th, styles.colStatus]}>Status</Text>
-                  <Text style={[styles.th, styles.colHours]}>Hours</Text>
-                </View>
-                {tasks.map((task, i) => (
-                  <View key={`row-${i}`} style={styles.tableRow} wrap={false}>
-                    <Text style={[styles.td, styles.colTask]}>{task.title}</Text>
-                    <Text style={[styles.td, styles.colArea]}>{categoryMeta(task.category).label}</Text>
-                    <Text style={[styles.td, styles.colStatus]}>{STATUS_LABELS[task.status] ?? task.status}</Text>
-                    <Text style={[styles.td, styles.colHours]}>{formatHours(task.hours)}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          ) : null}
+        <View style={styles.grid}>
+          <NumberTile
+            icon={<IconCheck />}
+            value={String(tasksDone)}
+            label={tasksDone === 1 ? 'task completed' : 'tasks completed'}
+          />
+          <NumberTile icon={<IconClock />} value={formatHours(hours, '0h')} label="of work on your website" />
+          <NumberTile
+            icon={<IconFlag />}
+            value={String(milestones.length)}
+            label={milestones.length === 1 ? 'milestone reached' : 'milestones reached'}
+          />
+          <NumberTile
+            icon={<IconGrid />}
+            value={String(areaCount)}
+            label={areaCount === 1 ? 'area of work' : 'areas of work'}
+          />
         </View>
 
-        <PdfPageFooter label={`${periodLabel} Recap`} />
+        {savings ? <SavingsPanel savings={savings} /> : null}
+
+        {previous ? (
+          <View style={styles.section} wrap={false}>
+            <Text style={styles.h2}>Compared to last month</Text>
+            <View style={styles.grid}>
+              <CompareCard
+                label="Tasks completed"
+                current={tasksDone}
+                previous={previous.tasksCompleted}
+                format={(n) => String(n)}
+                unit={(d) => (d === 1 ? 'task' : 'tasks')}
+              />
+              <CompareCard
+                label="Hours of work"
+                current={hours}
+                previous={previous.hoursLogged}
+                format={(n) => formatHours(n, '0h')}
+                unit={() => ''}
+              />
+            </View>
+          </View>
+        ) : null}
+
+        {/* ── Story ── */}
+        {hasIntro ? (
+          <View style={styles.section}>
+            <View minPresenceAhead={80}>
+              <Text style={styles.h2}>Overview</Text>
+            </View>
+            <Paragraphs text={introText!.trim()} />
+          </View>
+        ) : null}
+
+        {topTasks.length > 0 ? (
+          <View style={styles.section} wrap={false}>
+            <Text style={styles.h2}>Highlights</Text>
+            {topTasks.map((task, i) => (
+              <View key={`${task.title}-${i}`} style={styles.highlightCard}>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{String(i + 1)}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.highlightTitle}>{task.title}</Text>
+                  <Text style={styles.highlightMeta}>
+                    {`${categoryMeta(task.category).label} · ${formatHours(task.hours)}`}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {showCharts ? (
+          <View style={styles.section} wrap={false}>
+            <Text style={styles.h2}>Where the time went</Text>
+            <View style={styles.chartRow}>
+              <DonutChart categories={categories} totalHours={hours} />
+              <View style={styles.legend}>
+                {categories
+                  .filter((cat) => cat.hours > 0)
+                  .map((cat) => (
+                    <View key={cat.name} style={styles.legendRow}>
+                      <View style={[styles.swatch, { backgroundColor: categoryMeta(cat.name).color }]} />
+                      <Text style={styles.legendLabel}>{categoryMeta(cat.name).label}</Text>
+                      <Text style={styles.legendValue}>
+                        {`${formatHours(cat.hours)} · ${Math.round((cat.hours / hours) * 100)}%`}
+                      </Text>
+                    </View>
+                  ))}
+              </View>
+            </View>
+            {stats!.weeklyHours.length > 0 ? (
+              <View style={{ marginTop: 16 }}>
+                <Text style={styles.h3}>Hours through the month</Text>
+                <WeeklyBars weeks={stats!.weeklyHours} />
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {milestones.length > 0 ? (
+          <View style={styles.section} wrap={false}>
+            <Text style={styles.h2}>Milestones reached</Text>
+            {milestones.map((m) => (
+              <View key={m} style={styles.milestoneRow}>
+                <IconFlag size={18} />
+                <Text style={styles.milestoneText}>{`${m.charAt(0).toUpperCase()}${m.slice(1)} phase complete`}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {hasWork ? (
+          <View style={styles.section}>
+            <View minPresenceAhead={120}>
+              <Text style={styles.h2}>Work completed</Text>
+            </View>
+            {tasks.length > 0
+              ? groupBy(tasks, (t) => t.category).map(([category, items]) => (
+                  <View key={category} style={{ marginBottom: 8 }}>
+                    <CategoryHeader
+                      name={category}
+                      count={items.length}
+                      hours={items.reduce((sum, t) => sum + t.hours, 0)}
+                    />
+                    <View style={styles.cardGrid}>
+                      {items.map((task, i) => (
+                        <TaskCard key={`${category}-${i}`} task={task} />
+                      ))}
+                    </View>
+                  </View>
+                ))
+              : groupBy(workCompleted, (w) => w.category || 'Other').map(([category, items]) => (
+                  <View key={category} style={{ marginBottom: 8 }}>
+                    <CategoryHeader name={category} count={items.length} />
+                    <View style={styles.cardGrid}>
+                      {items.map((item, i) => (
+                        <WorkItemCard key={`${category}-${i}`} item={item} />
+                      ))}
+                    </View>
+                  </View>
+                ))}
+          </View>
+        ) : null}
+
+        {hasPerformance ? (
+          <View style={styles.section}>
+            <Text style={styles.h2}>Additional notes</Text>
+            <Paragraphs text={performanceNotes!.trim()} />
+          </View>
+        ) : null}
+
+        {hasComingNext ? (
+          <View style={styles.section} wrap={false}>
+            <Text style={styles.h2}>Coming up next month</Text>
+            <View style={styles.callout}>
+              <Paragraphs text={comingNext!.trim()} />
+            </View>
+          </View>
+        ) : null}
+
+        {tasks.length > 0 ? (
+          <View style={styles.section} break>
+            <Text style={styles.h2}>Full task list</Text>
+            <Text style={[styles.muted, { marginBottom: 8 }]}>
+              All tasks worked on during the period, with hours logged.
+            </Text>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.th, styles.colTask]}>Task</Text>
+              <Text style={[styles.th, styles.colArea]}>Area</Text>
+              <Text style={[styles.th, styles.colStatus]}>Status</Text>
+              <Text style={[styles.th, styles.colHours]}>Hours</Text>
+            </View>
+            {tasks.map((task, i) => (
+              <View key={`row-${i}`} style={styles.tableRow} wrap={false}>
+                <Text style={[styles.td, styles.colTask]}>{task.title}</Text>
+                <Text style={[styles.td, styles.colArea]}>{categoryMeta(task.category).label}</Text>
+                <Text style={[styles.td, styles.colStatus]}>{STATUS_LABELS[task.status] ?? task.status}</Text>
+                <Text style={[styles.td, styles.colHours]}>{formatHours(task.hours)}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </Page>
     </Document>
   )

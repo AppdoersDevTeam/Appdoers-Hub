@@ -2,6 +2,7 @@ import { HOURLY_RATE } from '@/lib/pricing/appdoers-pricing'
 import { roundHours } from '@/lib/utils/format'
 import type {
   RecapPlanKey,
+  RecapPreviousMonth,
   RecapStats,
   RecapStatsCategory,
   RecapStatsTask,
@@ -59,6 +60,7 @@ export interface BuildRecapStatsInput {
   tasks: RecapStatsTaskInput[]
   /** Time entries dated within the month. */
   entries: RecapStatsEntryInput[]
+  previous?: RecapPreviousMonth | null
   hourlyRate?: number
 }
 
@@ -164,6 +166,7 @@ export function buildRecapStats(input: BuildRecapStatsInput): RecapStats {
     weeklyHours,
     plan: input.plan,
     savings,
+    previous: input.previous ?? null,
   }
 }
 
@@ -183,5 +186,12 @@ export function parseRecapStats(value: unknown): RecapStats | null {
     weeklyHours: Array.isArray(stats.weeklyHours) ? stats.weeklyHours : [],
     plan: resolveRecapPlanKey({ subscriptionPlan: stats.plan }),
     savings: stats.savings ?? null,
+    previous:
+      stats.previous && typeof stats.previous === 'object'
+        ? {
+            tasksCompleted: Number(stats.previous.tasksCompleted) || 0,
+            hoursLogged: Number(stats.previous.hoursLogged) || 0,
+          }
+        : null,
   }
 }
