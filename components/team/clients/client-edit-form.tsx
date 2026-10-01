@@ -52,6 +52,7 @@ const selectClass =
 interface AddonSelection {
   serviceId: string
   quantity: number
+  unit_fee: number
   monthly_fee: number
   setup_fee: number
 }
@@ -67,6 +68,7 @@ function buildAddonSelections(
       map[svc.id] = {
         serviceId: svc.id,
         quantity: row.quantity,
+        unit_fee: row.quantity > 0 ? row.monthly_fee / row.quantity : row.monthly_fee,
         monthly_fee: row.monthly_fee,
         setup_fee: row.setup_fee,
       }
@@ -144,6 +146,7 @@ export function ClientEditForm({
         next[svc.id] = {
           serviceId: svc.id,
           quantity: 1,
+          unit_fee: svc.monthly_fee,
           monthly_fee: svc.monthly_fee,
           setup_fee: svc.setup_fee,
         }
@@ -155,18 +158,57 @@ export function ClientEditForm({
   }
 
   const updateAddonQuantity = (serviceId: string, quantity: number) => {
-    const svc = catalogAddons.find((s) => s.id === serviceId)
-    if (!svc) return
     const qty = Math.max(1, quantity)
-    setAddons((prev) => ({
-      ...prev,
-      [serviceId]: {
-        ...prev[serviceId],
-        quantity: qty,
-        monthly_fee: svc.monthly_fee * qty,
-        setup_fee: svc.setup_fee,
-      },
-    }))
+    setAddons((prev) => {
+      const current = prev[serviceId]
+      if (!current) return prev
+      return {
+        ...prev,
+        [serviceId]: { ...current, quantity: qty, monthly_fee: current.unit_fee * qty },
+      }
+    })
+  }
+
+  const updateAddonFee = (serviceId: string, field: 'unit_fee' | 'setup_fee', value: number) => {
+    const fee = Math.max(0, value)
+    setAddons((prev) => {
+      const current = prev[serviceId]
+      if (!current) return prev
+      const next = { ...current, [field]: fee }
+      next.monthly_fee = next.unit_fee * next.quantity
+      return { ...prev, [serviceId]: next }
+    })
+  }
+
+  const renderAddonPricing = (serviceId: string, unitLabel: string) => {
+    const selected = addons[serviceId]
+    if (!selected) return null
+    return (
+      <div className="ml-6 grid grid-cols-2 gap-2">
+        <div>
+          <p className="text-xs text-slate-500">{unitLabel}</p>
+          <Input
+            type="number"
+            min={0}
+            step={0.01}
+            value={selected.unit_fee}
+            onChange={(e) => updateAddonFee(serviceId, 'unit_fee', parseFloat(e.target.value) || 0)}
+          />
+        </div>
+        <div>
+          <p className="text-xs text-slate-500">Setup fee</p>
+          <Input
+            type="number"
+            min={0}
+            step={0.01}
+            value={selected.setup_fee}
+            onChange={(e) =>
+              updateAddonFee(serviceId, 'setup_fee', parseFloat(e.target.value) || 0)
+            }
+          />
+        </div>
+      </div>
+    )
   }
 
   const addonMonthlyTotal = Object.values(addons).reduce((sum, a) => sum + a.monthly_fee, 0)
@@ -229,12 +271,12 @@ export function ClientEditForm({
       <h3 className="text-sm font-semibold text-slate-900">Edit plan & services</h3>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
             {error}
           </div>
         )}
         {success && (
-          <div className="rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-600">
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-600">
             Saved!
           </div>
         )}
@@ -304,7 +346,8 @@ export function ClientEditForm({
           )}
           {form.billing_cycle !== 'monthly' && form.monthly_fee > 0 && (
             <p className="col-span-2 text-xs text-slate-500">
-              Equivalent MRR {formatCurrency(recurringFeeToMonthly(form.monthly_fee, form.billing_cycle))}
+              Equivalent MRR{' '}
+              {formatCurrency(recurringFeeToMonthly(form.monthly_fee, form.billing_cycle))}
             </p>
           )}
         </div>
@@ -313,35 +356,40 @@ export function ClientEditForm({
           <div className="space-y-3 rounded-md border border-slate-200 p-3">
             {emailAddons.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Business Email</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Business Email
+                </p>
                 {matchingEmailAddons.map((svc) => {
                   const selected = addons[svc.id]
                   return (
-                    <div key={svc.id} className="flex flex-wrap items-center gap-2">
-                      <label className="flex flex-1 min-w-[200px] items-center gap-2 text-sm text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={!!selected}
-                          onChange={(e) => toggleAddon(svc, e.target.checked)}
-                          className="rounded border-slate-300"
-                        />
-                        <span>
-                          {svc.name} — {formatCurrency(svc.monthly_fee)}/mailbox/mo
-                        </span>
-                      </label>
-                      {selected && (
-                        <Input
-                          type="number"
-                          min={1}
-                          max={30}
-                          className="w-20"
-                          value={selected.quantity}
-                          onChange={(e) =>
-                            updateAddonQuantity(svc.id, parseInt(e.target.value, 10) || 1)
-                          }
-                          title="Mailboxes"
-                        />
-                      )}
+                    <div key={svc.id} className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="flex min-w-[200px] flex-1 items-center gap-2 text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={!!selected}
+                            onChange={(e) => toggleAddon(svc, e.target.checked)}
+                            className="rounded border-slate-300"
+                          />
+                          <span>
+                            {svc.name} — {formatCurrency(svc.monthly_fee)}/mailbox/mo
+                          </span>
+                        </label>
+                        {selected && (
+                          <Input
+                            type="number"
+                            min={1}
+                            max={30}
+                            className="w-20"
+                            value={selected.quantity}
+                            onChange={(e) =>
+                              updateAddonQuantity(svc.id, parseInt(e.target.value, 10) || 1)
+                            }
+                            title="Mailboxes"
+                          />
+                        )}
+                      </div>
+                      {renderAddonPricing(svc.id, 'Price per mailbox/mo')}
                     </div>
                   )
                 })}
@@ -349,21 +397,26 @@ export function ClientEditForm({
             )}
             {otherAddons.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Other Add-ons</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Other Add-ons
+                </p>
                 {otherAddons.map((svc) => (
-                  <label key={svc.id} className="flex items-center gap-2 text-sm text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={!!addons[svc.id]}
-                      onChange={(e) => toggleAddon(svc, e.target.checked)}
-                      className="rounded border-slate-300"
-                    />
-                    <span>
-                      {svc.name}
-                      {svc.setup_fee > 0 && ` — ${formatCurrency(svc.setup_fee)} setup`}
-                      {svc.monthly_fee > 0 && ` — ${formatCurrency(svc.monthly_fee)}/mo`}
-                    </span>
-                  </label>
+                  <div key={svc.id} className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={!!addons[svc.id]}
+                        onChange={(e) => toggleAddon(svc, e.target.checked)}
+                        className="rounded border-slate-300"
+                      />
+                      <span>
+                        {svc.name}
+                        {svc.setup_fee > 0 && ` — ${formatCurrency(svc.setup_fee)} setup`}
+                        {svc.monthly_fee > 0 && ` — ${formatCurrency(svc.monthly_fee)}/mo`}
+                      </span>
+                    </label>
+                    {renderAddonPricing(svc.id, 'Monthly fee')}
+                  </div>
                 ))}
               </div>
             )}
