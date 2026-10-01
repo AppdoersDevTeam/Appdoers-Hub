@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { DeleteRecordButton } from '@/components/ui/delete-record-button'
 import { IndustrySelect } from '@/components/team/industry-select'
 import { deleteClientAction, updateClientAction } from '@/lib/actions/clients'
+import { planEndDate } from '@/lib/clients/plan-dates'
 import { formatDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
 
@@ -26,6 +27,9 @@ interface ClientDetails {
   payment_terms: number
   status: string
   created_at: string
+  contract_months: number | null
+  subscription_start_date: string | null
+  subscription_end_date: string | null
 }
 
 function websiteUrl(value: string) {
@@ -71,27 +75,30 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
   const [editing, setEditing] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState({
+  const initialForm = () => ({
     company_name: client.company_name,
     industry: client.industry ?? '',
     website: client.website ?? '',
     location: client.location ?? '',
     payment_terms: client.payment_terms,
     status: client.status as ClientStatus,
+    subscription_start_date: client.subscription_start_date ?? '',
+    subscription_end_date: client.subscription_end_date ?? '',
   })
+  const [form, setForm] = useState(initialForm)
 
   const set = (field: string, value: string | number) =>
     setForm((prev) => ({ ...prev, [field]: value }))
 
+  const setStartDate = (start: string) =>
+    setForm((prev) => ({
+      ...prev,
+      subscription_start_date: start,
+      subscription_end_date: planEndDate(start, client.contract_months) ?? prev.subscription_end_date,
+    }))
+
   const startEdit = () => {
-    setForm({
-      company_name: client.company_name,
-      industry: client.industry ?? '',
-      website: client.website ?? '',
-      location: client.location ?? '',
-      payment_terms: client.payment_terms,
-      status: client.status as ClientStatus,
-    })
+    setForm(initialForm())
     setError(null)
     setEditing(true)
   }
@@ -111,6 +118,8 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
         location: form.location.trim() || null,
         payment_terms: form.payment_terms,
         status: form.status,
+        subscription_start_date: form.subscription_start_date || null,
+        subscription_end_date: form.subscription_end_date || null,
       })
       if (!result.success) {
         setError(result.error)
@@ -188,6 +197,29 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
               </select>
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Plan Start Date</label>
+              <Input
+                type="date"
+                value={form.subscription_start_date}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Plan End Date</label>
+              <Input
+                type="date"
+                value={form.subscription_end_date}
+                onChange={(e) => set('subscription_end_date', e.target.value)}
+              />
+            </div>
+          </div>
+          {client.contract_months ? (
+            <p className="text-xs text-slate-500">
+              The end date fills in from the start date and the {client.contract_months}-month contract. You can change it if needed.
+            </p>
+          ) : null}
           <div className="flex gap-2">
             <Button type="submit" disabled={isPending} className="flex-1">
               {isPending ? 'Saving…' : 'Save'}
@@ -238,6 +270,14 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
         <InfoRow label="Status" value={statusBadge(client.status)} />
         <InfoRow label="Client Since" value={formatDate(client.created_at)} />
         <InfoRow label="Payment Terms" value={`${client.payment_terms} days`} />
+        <InfoRow
+          label="Plan Start"
+          value={client.subscription_start_date ? formatDate(client.subscription_start_date) : '—'}
+        />
+        <InfoRow
+          label="Plan End"
+          value={client.subscription_end_date ? formatDate(client.subscription_end_date) : '—'}
+        />
       </div>
       <div className="border-t border-slate-200 pt-4">
         <p className="mb-2 text-xs font-medium text-slate-500">Danger zone</p>

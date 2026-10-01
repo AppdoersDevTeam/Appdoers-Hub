@@ -1,7 +1,6 @@
 ﻿'use client'
 
 import { useState, useTransition } from 'react'
-import { planEndDate } from '@/lib/clients/plan-dates'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,8 +36,6 @@ interface ClientRecord {
   location: string | null
   subscription_plan: string
   contract_months: number | null
-  subscription_start_date?: string | null
-  subscription_end_date?: string | null
   plan_service_id: string | null
   billing_cycle?: string
   monthly_fee: number
@@ -99,8 +96,6 @@ export function ClientEditForm({
     plan_service_id: client.plan_service_id ?? '',
     subscription_plan: client.subscription_plan,
     contract_months: client.contract_months,
-    subscription_start_date: client.subscription_start_date ?? '',
-    subscription_end_date: client.subscription_end_date ?? '',
     billing_cycle: normalizeBillingCycle(client.billing_cycle),
     monthly_fee: client.monthly_fee,
     setup_fee: client.setup_fee,
@@ -113,13 +108,6 @@ export function ClientEditForm({
 
   const set = (field: string, value: string | number | null) =>
     setForm((prev) => ({ ...prev, [field]: value }))
-
-  const setStartDate = (start: string) =>
-    setForm((prev) => ({
-      ...prev,
-      subscription_start_date: start,
-      subscription_end_date: planEndDate(start, prev.contract_months) ?? prev.subscription_end_date,
-    }))
 
   const handlePlanChange = (serviceId: string) => {
     if (!serviceId) {
@@ -142,8 +130,6 @@ export function ClientEditForm({
       plan_service_id: serviceId,
       subscription_plan: planKeyFromCatalog(plan.plan_key),
       contract_months: plan.contract_months,
-      subscription_end_date:
-        planEndDate(prev.subscription_start_date, plan.contract_months) ?? prev.subscription_end_date,
       billing_cycle: 'monthly' as ClientBillingCycle,
       monthly_fee: plan.monthly_fee,
       setup_fee: plan.setup_fee,
@@ -194,8 +180,6 @@ export function ClientEditForm({
       const result = await updateClientAction(client.id, {
         subscription_plan: form.subscription_plan,
         contract_months: form.contract_months,
-        subscription_start_date: form.subscription_start_date || null,
-        subscription_end_date: form.subscription_end_date || null,
         plan_service_id: form.plan_service_id || null,
         billing_cycle: form.billing_cycle,
         monthly_fee: form.monthly_fee,
@@ -316,25 +300,6 @@ export function ClientEditForm({
                   onChange={(e) => set('setup_fee', parseFloat(e.target.value) || 0)}
                 />
               </div>
-          <div>
-            <p className="text-xs text-slate-500">Plan start date</p>
-            <Input
-              type="date"
-              value={form.subscription_start_date}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Plan end date</p>
-            <Input
-              type="date"
-              value={form.subscription_end_date}
-              onChange={(e) => set('subscription_end_date', e.target.value)}
-            />
-          </div>
-          <p className="col-span-2 text-xs text-slate-500">
-            The end date fills in from the start date and contract term. You can change it if needed.
-          </p>
             </>
           )}
           {form.billing_cycle !== 'monthly' && form.monthly_fee > 0 && (
