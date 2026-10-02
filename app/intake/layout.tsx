@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function IntakeLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="theme-portal min-h-screen bg-[#F8FAFC] text-slate-900">
+    <div className="theme-portal min-h-dvh bg-[#F8FAFC] text-slate-900">
       <link rel="stylesheet" href={GOOGLE_FONTS_HREF} />
       {children}
     </div>

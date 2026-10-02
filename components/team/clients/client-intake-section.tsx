@@ -31,9 +31,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs text-slate-500">{label}</p>
-      <div className="mt-0.5 text-sm text-slate-700">{value || '—'}</div>
+      <div className="mt-0.5 break-words text-sm text-slate-700">{value || '—'}</div>
     </div>
   )
 }

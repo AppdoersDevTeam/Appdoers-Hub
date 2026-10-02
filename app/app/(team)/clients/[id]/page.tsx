@@ -214,7 +214,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
         title={client.company_name}
         subtitle={planDisplayName}
         action={
-          <div className="flex flex-wrap items-start justify-end gap-2">
+          <div className="flex flex-wrap items-start gap-2 sm:justify-end">
             <ClientIntakeActions
               clientId={id}
               intake={
@@ -239,7 +239,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
 
       {/* Tabs */}
       <div className="border-b border-slate-200">
-        <nav className="flex gap-0.5 overflow-x-auto">
+        <nav className="-mx-4 flex gap-0.5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           {TABS.map(({ key, label }) => (
             <Link
               key={key}

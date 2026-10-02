@@ -130,7 +130,7 @@ export function ResizableSortableTh({
           aria-orientation="vertical"
           aria-label={`Resize ${label} column`}
           onPointerDown={onPointerDown}
-          className="absolute right-0 top-0 z-10 h-full w-1.5 cursor-col-resize touch-none select-none hover:bg-blue-200/80"
+          className="absolute right-0 top-0 z-10 hidden h-full w-1.5 cursor-col-resize md:block touch-none select-none hover:bg-blue-200/80"
         />
       ) : null}
     </th>

@@ -40,7 +40,7 @@ export function ColumnVisibilityMenu({ columns, visible, onToggle, onReset, clas
   }, [open])
 
   return (
-    <div ref={wrapRef} className={cn('relative', className)}>
+    <div ref={wrapRef} className={cn('relative hidden md:block', className)}>
       <button
         type="button"
         aria-haspopup="listbox"

@@ -130,7 +130,7 @@ export function NotesSection({
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <p className="mt-2 text-sm text-slate-600 whitespace-pre-wrap">{note.content}</p>
+              <p className="mt-2 break-words text-sm text-slate-600 whitespace-pre-wrap">{note.content}</p>
             </div>
           ))}
         </div>

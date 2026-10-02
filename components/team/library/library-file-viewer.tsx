@@ -59,11 +59,24 @@ export function LibraryFileViewer({
         {kind === 'docx' ? (
           <LibraryDocxPreview src={fileHref} title={fileName} className={heightClass} />
         ) : (
-          <iframe
-            src={fileHref}
-            title={`${fileName} preview`}
-            className={`${heightClass} w-full bg-white`}
-          />
+          <>
+            {/* iOS/Android render PDFs in iframes as a single unscrollable page */}
+            <div className="flex flex-col items-center gap-3 px-4 py-10 text-center md:hidden">
+              <Paperclip className="h-6 w-6 text-slate-400" />
+              <p className="text-sm text-slate-500">Open the file to view it on this device.</p>
+              <Button variant="outline" asChild className="h-11">
+                <a href={openHref} target="_blank" rel="noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                  Open file
+                </a>
+              </Button>
+            </div>
+            <iframe
+              src={fileHref}
+              title={`${fileName} preview`}
+              className={`${heightClass} hidden w-full bg-white md:block`}
+            />
+          </>
         )}
       </div>
     </div>

@@ -164,17 +164,17 @@ export function ServiceCatalogTable({ services }: { services: Service[] }) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openEdit(s)} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600">
+                      <button onClick={() => openEdit(s)} className="rounded p-2.5 text-slate-500 hover:bg-slate-100 md:p-1 hover:text-slate-600">
                         <Edit2 className="h-3.5 w-3.5" />
                       </button>
-                      <button onClick={() => handleToggle(s)} disabled={isPending} title={s.is_active ? 'Deactivate' : 'Activate'} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600">
+                      <button onClick={() => handleToggle(s)} disabled={isPending} title={s.is_active ? 'Deactivate' : 'Activate'} className="rounded p-2.5 text-slate-500 hover:bg-slate-100 md:p-1 hover:text-slate-600">
                         <Power className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => { setError(null); setDeleteTarget(s) }}
                         disabled={isPending}
                         title="Delete"
-                        className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600"
+                        className="rounded p-2.5 text-slate-500 hover:bg-slate-100 md:p-1 hover:text-red-600"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -198,7 +198,7 @@ export function ServiceCatalogTable({ services }: { services: Service[] }) {
       />
 
       <SlideOver open={showForm} onClose={() => setShowForm(false)} title={editing ? 'Edit Service' : 'New Service'}>
-        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+        <form onSubmit={handleSubmit} className="space-y-4 px-4 py-5 sm:px-6">
           {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
           <div>
             <label className={labelClass}>Name *</label>
@@ -208,7 +208,7 @@ export function ServiceCatalogTable({ services }: { services: Service[] }) {
             <label className={labelClass}>Description</label>
             <Input value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Type</label>
               <select className={selectClass} value={form.type} onChange={(e) => setForm(f => ({ ...f, type: e.target.value as 'plan' | 'addon' }))}>

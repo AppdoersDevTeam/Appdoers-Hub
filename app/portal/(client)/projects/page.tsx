@@ -55,7 +55,7 @@ export default async function PortalProjectsPage() {
       </div>
 
       {(!projects || projects.length === 0) ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center sm:p-12">
           <div className="mx-auto h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center mb-4">
             <span className="text-2xl">🚀</span>
           </div>
@@ -75,12 +75,12 @@ export default async function PortalProjectsPage() {
             return (
               <div key={project.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-gray-100">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900">{project.name}</h2>
+                <div className="px-4 py-4 border-b border-gray-100 sm:px-6">
+                  <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                    <div className="min-w-0">
+                      <h2 className="break-words text-lg font-semibold text-gray-900">{project.name}</h2>
                       {project.description && (
-                        <p className="text-sm text-gray-500 mt-0.5">{project.description}</p>
+                        <p className="break-words text-sm text-gray-500 mt-0.5">{project.description}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -91,7 +91,7 @@ export default async function PortalProjectsPage() {
                   </div>
 
                   {/* Dates */}
-                  <div className="flex items-center gap-6 mt-3">
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-3">
                     {project.start_date && (
                       <div>
                         <p className="text-xs text-gray-400">Started</p>
@@ -112,7 +112,7 @@ export default async function PortalProjectsPage() {
                 </div>
 
                 {/* Phase progress */}
-                <div className="px-6 py-4">
+                <div className="px-4 py-4 sm:px-6">
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">Project Phases</p>
                   <div className="flex gap-1.5">
                     {sortedPhases.map((ph, i) => {
@@ -127,7 +127,7 @@ export default async function PortalProjectsPage() {
                             )}
                           />
                           <p className={cn(
-                            'text-xs text-center truncate',
+                            'hidden text-xs text-center truncate sm:block',
                             isDone ? 'text-green-600 font-medium' : isActive ? 'text-blue-600 font-medium' : 'text-gray-400'
                           )}>
                             {phaseLabels[ph.phase] ?? ph.phase}

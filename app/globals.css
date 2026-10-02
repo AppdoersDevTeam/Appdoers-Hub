@@ -69,12 +69,13 @@
 }
 
 @layer components {
+  /* text-base on mobile: iOS zooms the page when focusing inputs under 16px */
   .hub-input {
-    @apply w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors;
+    @apply w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors;
   }
 
   .portal-input {
-    @apply w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors;
+    @apply w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors;
   }
 
   .hub-card {
@@ -110,9 +111,28 @@
     gap: 1.5rem;
   }
 
+  /* Centering a page wider than the viewport hides its left edge; start-align on mobile */
+  @media (max-width: 767px) {
+    .library-docx-preview .docx-wrapper {
+      align-items: flex-start;
+    }
+  }
+
   .library-docx-preview .docx-wrapper > section.docx {
     background: #fff !important;
     box-shadow: 0 12px 32px rgba(15, 23, 42, 0.28) !important;
     margin: 0 !important;
+  }
+}
+
+/*
+ * iOS Safari zooms the page when focusing a field with font-size < 16px.
+ * Outside @layer so it beats per-component text-sm/text-xs utilities on phones only.
+ */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  select,
+  textarea {
+    font-size: 16px;
   }
 }

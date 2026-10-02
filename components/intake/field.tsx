@@ -1,14 +1,32 @@
 'use client'
 
 import { Info } from 'lucide-react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 
 export function FieldHelp({ text }: { text: string }) {
   const tooltipId = useId()
   const wrapRef = useRef<HTMLSpanElement>(null)
   const [hovered, setHovered] = useState(false)
   const [pinned, setPinned] = useState(false)
+  const [shiftX, setShiftX] = useState(0)
+  const tooltipRef = useRef<HTMLSpanElement>(null)
   const visible = hovered || pinned
+
+  // Tooltip is anchored to the icon, which can sit near the right edge on phones; nudge it back on-screen.
+  useLayoutEffect(() => {
+    if (!visible) {
+      setShiftX(0)
+      return
+    }
+    const el = tooltipRef.current
+    if (!el) return
+    const gutter = 16
+    const rect = el.getBoundingClientRect()
+    const baseLeft = rect.left - shiftX
+    const overflowRight = baseLeft + rect.width - (window.innerWidth - gutter)
+    const next = overflowRight > 0 ? -Math.min(overflowRight, baseLeft - gutter) : 0
+    if (next !== shiftX) setShiftX(next)
+  }, [visible, shiftX])
 
   useEffect(() => {
     if (!pinned) return
@@ -37,21 +55,24 @@ export function FieldHelp({ text }: { text: string }) {
     <span
       ref={wrapRef}
       className="group/help relative ml-1 inline-flex align-middle"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => {
-        if (!pinned) setHovered(false)
+      onPointerEnter={(event) => {
+        if (event.pointerType === 'mouse') setHovered(true)
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType === 'mouse' && !pinned) setHovered(false)
       }}
     >
       <button
         type="button"
-        className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className="relative inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full after:absolute after:-inset-3 after:content-[''] text-slate-400 transition-colors hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         aria-label="About this field"
         aria-expanded={visible}
         aria-controls={tooltipId}
         onClick={(event) => {
           event.preventDefault()
           event.stopPropagation()
-          setPinned((current) => !current)
+          if (pinned) setHovered(false)
+          setPinned(!pinned)
         }}
         onFocus={() => setHovered(true)}
         onBlur={() => {
@@ -61,8 +82,10 @@ export function FieldHelp({ text }: { text: string }) {
         <Info className="h-3.5 w-3.5" aria-hidden />
       </button>
       <span
+        ref={tooltipRef}
+        style={shiftX ? { transform: `translateX(${shiftX}px)` } : undefined}
         className={`pointer-events-none absolute left-0 top-full z-50 w-56 max-w-[min(14rem,calc(100vw-2rem))] pt-2 ${
-          visible ? 'block' : 'hidden group-hover/help:block group-focus-within/help:block'
+          visible ? 'block' : 'hidden'
         }`}
       >
         <span

@@ -53,7 +53,7 @@ export default async function PortalRecapsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Monthly Reports</h1>
           <p className="text-gray-500 mt-1">Monthly progress updates from Appdoers.</p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center sm:p-12">
           <div className="mx-auto h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center mb-4">
             <span className="text-2xl">📊</span>
           </div>
@@ -106,18 +106,18 @@ function RecapCard({ recap, expanded }: {
 
   if (!expanded) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white px-5 py-4">
+      <div className="rounded-xl border border-gray-200 bg-white px-4 py-4 sm:px-5">
         <div className="flex items-center justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="font-semibold text-gray-900">{periodLabel}</p>
             <p className="text-sm text-gray-500 mt-0.5">{workItems.length} work item{workItems.length !== 1 ? 's' : ''} completed</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 flex-col-reverse items-end gap-1 sm:flex-row sm:items-center sm:gap-3">
             <a
               href={`/api/recaps/${recap.id}/export-pdf`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+              className="-mx-2 inline-flex min-h-11 items-center gap-1 px-2 text-xs sm:min-h-0 font-medium text-blue-600 hover:text-blue-800 transition-colors"
             >
               <Download className="h-3.5 w-3.5" /> PDF
             </a>
@@ -143,9 +143,9 @@ function RecapCard({ recap, expanded }: {
   return (
     <div className="rounded-xl border border-blue-200 bg-white overflow-hidden shadow-sm">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+      <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-4 sm:px-6 sm:py-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0">
             <p className="text-xs text-blue-200 font-medium uppercase tracking-wide">Monthly Progress Report</p>
             <h2 className="text-2xl font-bold text-white mt-1">{periodLabel}</h2>
             {recap.sent_at && (
@@ -158,18 +158,18 @@ function RecapCard({ recap, expanded }: {
             href={`/api/recaps/${recap.id}/export-pdf`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-white/30 bg-white/10 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/20 transition-colors backdrop-blur-sm"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 self-start rounded-md border border-white/30 bg-white/10 px-3 py-1.5 text-sm sm:min-h-0 font-medium text-white hover:bg-white/20 transition-colors backdrop-blur-sm"
           >
             <Download className="h-3.5 w-3.5" /> Download PDF
           </a>
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 space-y-6 sm:p-6">
         {/* Intro */}
         {recap.intro_text && (
           <div>
-            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{recap.intro_text}</p>
+            <p className="break-words text-gray-700 leading-relaxed whitespace-pre-wrap">{recap.intro_text}</p>
           </div>
         )}
 
@@ -187,7 +187,7 @@ function RecapCard({ recap, expanded }: {
                     {items.map((item, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
                         <span className="text-blue-400 mt-0.5 shrink-0">•</span>
-                        {item.description}
+                        <span className="min-w-0 break-words">{item.description}</span>
                       </li>
                     ))}
                   </ul>
@@ -201,7 +201,7 @@ function RecapCard({ recap, expanded }: {
         {recap.performance_notes && (
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-2">📈 Performance & Highlights</h3>
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{recap.performance_notes}</p>
+            <p className="break-words text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{recap.performance_notes}</p>
           </div>
         )}
 
@@ -209,7 +209,7 @@ function RecapCard({ recap, expanded }: {
         {recap.coming_next && (
           <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
             <h3 className="text-sm font-semibold text-blue-900 mb-2">🔜 Coming Next Month</h3>
-            <p className="text-sm text-blue-800 leading-relaxed whitespace-pre-wrap">{recap.coming_next}</p>
+            <p className="break-words text-sm text-blue-800 leading-relaxed whitespace-pre-wrap">{recap.coming_next}</p>
           </div>
         )}
 

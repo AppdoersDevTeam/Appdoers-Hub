@@ -83,7 +83,7 @@ export default async function LeadDetailPage({ params }: Props) {
         title={lead.contact_name}
         subtitle={lead.company_name ?? 'Individual'}
         action={
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             <span
               className={cn(
                 'rounded-full px-3 py-1 text-sm font-medium',
@@ -107,7 +107,7 @@ export default async function LeadDetailPage({ params }: Props) {
             <h3 className="mb-4 text-sm font-semibold text-slate-900">
               Lead Details
             </h3>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
               <InfoRow label="Email" value={lead.email ?? '—'} />
               <InfoRow label="Phone" value={lead.phone ?? '—'} />
               <InfoRow label="Job Title" value={lead.contact_role ?? '—'} />
@@ -344,9 +344,9 @@ export default async function LeadDetailPage({ params }: Props) {
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-0.5 text-slate-600">{value}</p>
+      <div className="mt-0.5 break-words text-slate-600">{value}</div>
     </div>
   )
 }

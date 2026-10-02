@@ -96,7 +96,7 @@ export function MultiSelectFilter({
           role="listbox"
           aria-multiselectable="true"
           aria-label={label}
-          className="absolute left-0 top-full z-50 mt-1 min-w-full rounded-md border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute left-0 top-full z-50 mt-1 max-h-72 min-w-full max-w-[calc(100vw-2rem)] overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg"
         >
           <label className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm text-slate-900 hover:bg-slate-50">
             <input

@@ -180,8 +180,8 @@ export function DomainsSection({
   return (
     <>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">Track domains, expiry dates, hosting, and tech stack.</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="min-w-0 text-sm text-slate-500">Track domains, expiry dates, hosting, and tech stack.</p>
           <Button size="sm" onClick={openAdd}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Add Domain
           </Button>
@@ -194,9 +194,9 @@ export function DomainsSection({
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {domains.map((d) => (
-              <div key={d.id} className="hub-card space-y-3 group">
+              <div key={d.id} className="hub-card group min-w-0 space-y-3">
                 {/* Header */}
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <SslIcon status={d.ssl_status} />
                     <a
@@ -210,10 +210,10 @@ export function DomainsSection({
                     </a>
                   </div>
                   <div className="flex items-center gap-1 opacity-70 transition-opacity shrink-0 sm:opacity-0 sm:group-hover:opacity-100">
-                    <button onClick={() => openEdit(d)} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600">
+                    <button type="button" onClick={() => openEdit(d)} aria-label={`Edit ${d.domain_name}`} className="rounded p-2.5 text-slate-500 sm:p-1 hover:bg-slate-100 hover:text-slate-600">
                       <Edit2 className="h-3.5 w-3.5" />
                     </button>
-                    <button onClick={() => handleDelete(d.id)} disabled={isPending} className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600">
+                    <button type="button" onClick={() => handleDelete(d.id)} disabled={isPending} aria-label={`Delete ${d.domain_name}`} className="rounded p-2.5 text-slate-500 sm:p-1 hover:bg-slate-100 hover:text-red-600">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -232,23 +232,23 @@ export function DomainsSection({
                 )}
 
                 {/* Details grid */}
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
                   {d.registrar && (
                     <>
                       <span className="text-slate-500">Registrar</span>
-                      <span className="text-slate-600">{d.registrar}</span>
+                      <span className="break-words text-slate-600">{d.registrar}</span>
                     </>
                   )}
                   {d.hosting_provider && (
                     <>
                       <span className="text-slate-500">Hosting</span>
-                      <span className="text-slate-600">{d.hosting_provider}</span>
+                      <span className="break-words text-slate-600">{d.hosting_provider}</span>
                     </>
                   )}
                   {d.vercel_project_name && (
                     <>
                       <span className="text-slate-500">Vercel Project</span>
-                      <span className="text-slate-600 font-mono">{d.vercel_project_name}</span>
+                      <span className="break-all font-mono text-slate-600">{d.vercel_project_name}</span>
                     </>
                   )}
                 </div>
@@ -273,7 +273,7 @@ export function DomainsSection({
       </div>
 
       <SlideOver open={showForm} onClose={() => setShowForm(false)} title={editing ? 'Edit Domain' : 'Add Domain'}>
-        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+        <form onSubmit={handleSubmit} className="space-y-4 px-4 py-5 sm:px-6">
           {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
 
           <div>
@@ -281,7 +281,7 @@ export function DomainsSection({
             <Input value={form.domain_name} onChange={e => setForm(f => ({ ...f, domain_name: e.target.value }))} placeholder="example.co.nz" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Registrar</label>
               <select className={inputClass} value={form.registrar} onChange={e => setForm(f => ({ ...f, registrar: e.target.value }))}>
@@ -298,7 +298,7 @@ export function DomainsSection({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Expiry Date</label>
               <Input type="date" value={form.expiry_date ?? ''} onChange={e => setForm(f => ({ ...f, expiry_date: e.target.value }))} />

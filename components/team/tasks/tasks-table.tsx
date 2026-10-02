@@ -15,6 +15,8 @@ import { ColumnVisibilityMenu } from '@/components/ui/column-visibility-menu'
 import { ResizableSortableTh } from '@/components/ui/resizable-sortable-th'
 import { RowHoverPreview, RowHoverPreviewProvider } from '@/components/ui/row-hover-preview'
 import { DataTable, dataTableCellClass } from '@/components/ui/data-table'
+import { MobileCard, MobileCardList } from '@/components/ui/mobile-card-list'
+import { MobileSortSelect } from '@/components/ui/mobile-sort-select'
 import { useTablePrefs, type TableColumnDef } from '@/hooks/use-table-prefs'
 import { formatDate, formatHours, todayYmd } from '@/lib/utils/format'
 import { TASK_STATUS_CONFIG, TASK_STATUS_OPTIONS } from '@/lib/tasks/constants'
@@ -390,6 +392,12 @@ export function TasksTable({
               value={statusFilter}
               onChange={setStatusFilter}
             />
+            <MobileSortSelect
+              columns={columns}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+            />
             <ColumnVisibilityMenu
               columns={columns}
               visible={prefs.visible}
@@ -447,7 +455,82 @@ export function TasksTable({
       />
       {exportError ? <p className="text-sm text-red-600">{exportError}</p> : null}
 
-      <div className="hub-card min-w-0 overflow-hidden p-0">
+      <MobileCardList
+        isEmpty={sorted.length === 0}
+        empty={tasks.length === 0 ? 'No tasks yet.' : 'No tasks match your filters.'}
+      >
+        {sorted.map((t) => {
+          const ty = typeConfig[t.type] ?? typeConfig.admin
+          const pr = priorityConfig[t.priority] ?? priorityConfig.p3
+          const isOverdue = Boolean(t.due_date && t.due_date < today && t.status !== 'closed')
+          return (
+            <MobileCard
+              key={t.id}
+              href={`/app/tasks/${t.id}`}
+              title={<span className={isOverdue ? 'text-red-600' : undefined}>{t.title}</span>}
+              className={isOverdue ? 'border-l-2 border-l-[#EF4444]' : undefined}
+              badge={
+                <>
+                  <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', pr.cls)}>
+                    {pr.label}
+                  </span>
+                  <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', ty.cls)}>
+                    {ty.label}
+                  </span>
+                  {t.is_billable ? (
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                      Billable
+                    </span>
+                  ) : null}
+                  {isOverdue ? <span className="text-xs text-red-600">Overdue</span> : null}
+                </>
+              }
+              meta={[
+                ...(showProjectCol
+                  ? [
+                      {
+                        label: 'Project',
+                        value: (
+                          <Link
+                            href={`/app/projects/${t.project_id}`}
+                            className="hover:text-blue-600"
+                          >
+                            {t.project_name}
+                          </Link>
+                        ),
+                      },
+                      { label: 'Client', value: t.client_name },
+                    ]
+                  : []),
+                { label: 'Assignee', value: t.assigned_to_name ?? 'Unassigned' },
+                { label: 'Due', value: t.due_date ? formatDate(t.due_date) : null },
+                { label: 'Time', value: t.time_spent ? formatHours(t.time_spent) : null },
+              ]}
+              actions={
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(t)}
+                  disabled={isPending}
+                  className="inline-flex rounded p-2.5 text-slate-500 transition-colors hover:text-red-600"
+                  title="Delete task"
+                  aria-label={`Delete ${t.title}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              }
+              footer={
+                <TaskStatusSelect
+                  taskId={t.id}
+                  projectId={t.project_id}
+                  value={t.status as 'open' | 'in_progress' | 'awaiting_review' | 'closed'}
+                />
+              }
+            />
+          )
+        })}
+      </MobileCardList>
+
+      <div className="hub-card hidden min-w-0 overflow-hidden p-0 md:block">
         <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
           <RowHoverPreviewProvider>
             <DataTable columns={visibleColumns} widthFor={widthFor}>

@@ -67,7 +67,7 @@ export function NewProjectSlideOver({ open, onClose, clients, defaultClientId }:
 
   return (
     <SlideOver open={open} onClose={onClose} title="New Project" width="lg">
-      <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
+      <form onSubmit={handleSubmit} className="space-y-5 px-4 py-5 sm:px-6">
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             {error}
@@ -113,7 +113,7 @@ export function NewProjectSlideOver({ open, onClose, clients, defaultClientId }:
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Start Date</label>
             <Input type="date" value={form.start_date} onChange={(e) => set('start_date', e.target.value)} />

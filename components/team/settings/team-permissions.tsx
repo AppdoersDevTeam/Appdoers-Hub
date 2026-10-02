@@ -80,12 +80,12 @@ function MemberPermissions({ member }: { member: TeamMember }) {
   return (
     <div className="hub-card space-y-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">
           {member.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-medium text-slate-900">{member.full_name}</p>
-          <p className="text-xs text-slate-500">{member.email} · <span className="capitalize">{member.role}</span></p>
+          <p className="break-all text-xs text-slate-500">{member.email} · <span className="capitalize">{member.role}</span></p>
         </div>
       </div>
 

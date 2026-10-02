@@ -13,6 +13,8 @@ import { ColumnVisibilityMenu } from '@/components/ui/column-visibility-menu'
 import { ResizableSortableTh } from '@/components/ui/resizable-sortable-th'
 import { RowHoverPreview, RowHoverPreviewProvider } from '@/components/ui/row-hover-preview'
 import { DataTable, dataTableCellClass } from '@/components/ui/data-table'
+import { MobileCard, MobileCardList } from '@/components/ui/mobile-card-list'
+import { MobileSortSelect } from '@/components/ui/mobile-sort-select'
 import { useTablePrefs, type TableColumnDef } from '@/hooks/use-table-prefs'
 import { formatCurrency, formatDate, formatRelativeTime } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
@@ -146,6 +148,12 @@ export function LeadsTable({ leads, teamMembers }: Props) {
                 </option>
               ))}
             </select>
+            <MobileSortSelect
+              columns={LEAD_COLUMNS}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+            />
             <ColumnVisibilityMenu
               columns={LEAD_COLUMNS}
               visible={prefs.visible}
@@ -161,7 +169,67 @@ export function LeadsTable({ leads, teamMembers }: Props) {
         }
       />
 
-      <div className="hub-card min-w-0 overflow-hidden p-0">
+      <MobileCardList
+        isEmpty={sorted.length === 0}
+        empty={
+          leads.length === 0
+            ? 'No leads yet. Add your first lead to get started.'
+            : 'No leads match your filters.'
+        }
+      >
+        {sorted.map((l) => {
+          const status = l.status as LeadStatus
+          const stLabel = LEAD_STATUS_LABELS[status] ?? l.status
+          const stCls = LEAD_STATUS_STYLES[status] ?? LEAD_STATUS_STYLES.new
+          const displayTitle = l.company_name || l.contact_name
+          return (
+            <MobileCard
+              key={l.id}
+              href={`/app/leads/${l.id}`}
+              title={displayTitle}
+              badge={
+                <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', stCls)}>
+                  {stLabel}
+                </span>
+              }
+              subtitle={l.company_name ? l.contact_name : undefined}
+              meta={[
+                { label: 'Source', value: sourceLabels[l.source as LeadSource] ?? l.source },
+                {
+                  label: 'Est. value',
+                  value: l.estimated_value ? formatCurrency(l.estimated_value) : null,
+                },
+                { label: 'Assignee', value: l.assigned_to_name },
+                {
+                  label: 'Next action',
+                  value: l.next_action_date ? formatDate(l.next_action_date) : null,
+                },
+                { label: 'Activity', value: formatRelativeTime(l.updated_at) },
+              ]}
+              actions={
+                <>
+                  {!l.converted_client_id && status !== 'lost' ? (
+                    <ConvertLeadButton leadId={l.id} leadName={displayTitle} iconOnly />
+                  ) : null}
+                  <LeadDeleteButton leadId={l.id} leadName={displayTitle} iconOnly />
+                </>
+              }
+              footer={
+                l.converted_client_id ? (
+                  <Link
+                    href={`/app/clients/${l.converted_client_id}`}
+                    className="inline-flex min-h-11 items-center text-sm font-medium text-emerald-700 hover:underline"
+                  >
+                    View client →
+                  </Link>
+                ) : undefined
+              }
+            />
+          )
+        })}
+      </MobileCardList>
+
+      <div className="hub-card hidden min-w-0 overflow-hidden p-0 md:block">
         <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
           <RowHoverPreviewProvider>
             <DataTable columns={visibleColumns} widthFor={widthFor}>

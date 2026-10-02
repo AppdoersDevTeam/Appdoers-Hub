@@ -29,6 +29,15 @@ export function PortalTopNav({ clientName }: TopNavProps) {
     setMobileOpen(false)
   }, [pathname])
 
+  useEffect(() => {
+    if (!mobileOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [mobileOpen])
+
   async function handleSignOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -72,7 +81,7 @@ export function PortalTopNav({ clientName }: TopNavProps) {
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex h-11 w-11 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 touch-manipulation"
+            className="hidden h-11 w-11 items-center justify-center rounded-md md:flex text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 touch-manipulation"
             title="Sign out"
             aria-label="Sign out"
           >
@@ -91,7 +100,20 @@ export function PortalTopNav({ clientName }: TopNavProps) {
       </div>
 
       {mobileOpen && (
+        <button
+          type="button"
+          aria-label="Close menu"
+          className="fixed inset-0 top-[calc(3.5rem+env(safe-area-inset-top,0px))] -z-10 bg-slate-900/30 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+      {mobileOpen && (
         <div className="border-t border-slate-100 bg-white px-4 py-2 safe-bottom md:hidden">
+          {clientName && (
+            <p className="truncate px-3 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+              {clientName}
+            </p>
+          )}
           {navItems.map(({ href, label }) => (
             <Link
               key={href}
@@ -107,6 +129,14 @@ export function PortalTopNav({ clientName }: TopNavProps) {
               {label}
             </Link>
           ))}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="mt-1 flex min-h-11 w-full items-center gap-2 rounded-md border-t border-slate-100 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 touch-manipulation"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
         </div>
       )}
     </header>

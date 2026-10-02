@@ -267,10 +267,10 @@ export function IntakeForm({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
-      <div className="mb-8 flex items-center justify-between gap-4">
-        <AppdoersLogo variant="full" />
-        <p className="text-xs text-slate-500">
+    <div className="mx-auto max-w-3xl px-4 py-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:py-10">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <AppdoersLogo variant="full" className="h-9 w-auto sm:h-12" />
+        <p className="shrink-0 text-xs text-slate-500">
           Step {step + 1} of {steps.length}
         </p>
       </div>
@@ -432,7 +432,7 @@ export function IntakeForm({
                   </p>
                   <button
                     type="button"
-                    className="text-xs text-slate-500 hover:text-red-600"
+                    className="-mr-2 min-h-11 px-2 text-sm text-slate-500 hover:text-red-600 sm:min-h-0 sm:text-xs"
                     onClick={() =>
                       setAnswers({
                         ...answers,
@@ -925,9 +925,10 @@ export function IntakeForm({
               />
             </Field>
             <div>
-              <label className="mb-2 flex items-center gap-2 text-sm text-slate-700">
+              <label className="mb-2 flex min-h-11 items-center gap-2 text-sm text-slate-700 sm:min-h-0">
                 <input
                   type="checkbox"
+                  className="h-5 w-5 shrink-0 sm:h-4 sm:w-4"
                   checked={answers.features.no_deadline}
                   onChange={(e) =>
                     setAnswers({ ...answers, features: { ...answers.features, no_deadline: e.target.checked } })
@@ -943,6 +944,7 @@ export function IntakeForm({
                 >
                   <Input
                     type="date"
+                    className="min-h-11 appearance-none text-left sm:min-h-0"
                     value={answers.features.launch_date}
                     onChange={(e) =>
                       setAnswers({ ...answers, features: { ...answers.features, launch_date: e.target.value } })
@@ -1171,16 +1173,22 @@ export function IntakeForm({
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-      <div className="mt-6 flex items-center justify-between">
-        <Button type="button" variant="outline" disabled={step === 0} onClick={() => setStep(step - 1)}>
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 sm:h-9"
+          disabled={step === 0}
+          onClick={() => setStep(step - 1)}
+        >
           Back
         </Button>
         {step < steps.length - 1 ? (
-          <Button type="button" onClick={() => setStep(step + 1)}>
+          <Button type="button" className="h-11 sm:h-9" onClick={() => setStep(step + 1)}>
             Next
           </Button>
         ) : (
-          <Button type="button" loading={saving} onClick={() => void submit()}>
+          <Button type="button" className="h-11 sm:h-9" loading={saving} onClick={() => void submit()}>
             {alreadySubmitted ? 'Update intake' : 'Submit intake'}
           </Button>
         )}

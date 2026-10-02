@@ -105,8 +105,8 @@ export function PhasesTab({ projectId, currentPhase, phases, teamMembers }: Prop
 
       {/* Advance button */}
       {!isLastPhase && (
-        <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-3">
-          <div>
+        <div className="flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <p className="text-sm font-medium text-slate-900">
               Current phase: <span className="text-blue-600">{phaseLabel[currentPhase]}</span>
             </p>
@@ -197,7 +197,7 @@ export function PhasesTab({ projectId, currentPhase, phases, teamMembers }: Prop
 
               {/* Edit form */}
               {isEditing && phase && (
-                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-200 pt-4">
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-200 pt-4">
                   <div>
                     <label className={labelClass}>Status</label>
                     <select

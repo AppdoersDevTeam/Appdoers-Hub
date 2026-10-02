@@ -63,9 +63,9 @@ function InfoRow({
   value: ReactNode
 }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-0.5 text-slate-600">{value}</p>
+      <div className="mt-0.5 break-words text-slate-600">{value}</div>
     </div>
   )
 }
@@ -148,7 +148,7 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Industry</label>
               <IndustrySelect
@@ -174,7 +174,7 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
               placeholder="https://example.com"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Payment Terms (days)</label>
               <Input
@@ -197,7 +197,7 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Plan Start Date</label>
               <Input
@@ -247,7 +247,7 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
           Edit
         </Button>
       </div>
-      <div className="grid grid-cols-2 gap-4 text-sm">
+      <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
         <InfoRow label="Industry" value={client.industry ?? '—'} />
         <InfoRow label="Location" value={client.location ?? '—'} />
         <InfoRow

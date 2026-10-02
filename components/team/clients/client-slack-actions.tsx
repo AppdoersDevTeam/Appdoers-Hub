@@ -102,7 +102,7 @@ export function ClientSlackActions({
         <div
           id={menuId}
           role="menu"
-          className="absolute right-0 top-full z-50 mt-1 min-w-[14rem] overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute left-0 top-full z-50 mt-1 w-[min(16rem,calc(100vw-2rem))] overflow-hidden sm:left-auto sm:right-0 sm:w-auto sm:min-w-[14rem] rounded-md border border-slate-200 bg-white py-1 shadow-lg"
         >
           {slackUrl && channelName ? (
             <>

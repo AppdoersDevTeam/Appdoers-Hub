@@ -42,7 +42,7 @@ export function ChoiceChip({
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+        'min-h-11 max-w-full [overflow-wrap:anywhere] rounded-full border px-3.5 py-2 text-left text-sm font-medium transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs',
         selected
           ? 'border-blue-600 bg-blue-50 text-blue-700'
           : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
@@ -67,7 +67,7 @@ export function ToggleChip({
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-lg border px-3 py-2 text-sm transition-colors',
+        'min-h-11 rounded-lg border px-3 py-2 text-sm transition-colors sm:min-h-0',
         selected
           ? 'border-blue-600 bg-blue-50 text-blue-800'
           : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
@@ -123,7 +123,7 @@ export function PalettePicker({
         ))}
       </div>
       {brand.color_mode === 'custom' && (
-        <div className="grid grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
           {(
             [
               ['primary', 'Primary'],
@@ -158,7 +158,7 @@ export function PalettePicker({
                       },
                     })
                   }
-                  className="h-9 w-12 cursor-pointer rounded border border-slate-200 bg-white"
+                  className="h-11 w-12 shrink-0 cursor-pointer rounded border border-slate-200 bg-white sm:h-9"
                 />
                 <input
                   value={brand.custom_colors[key]}

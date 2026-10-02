@@ -25,6 +25,7 @@ import {
 } from '@/lib/documents'
 import { formatDate } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
+import { MobileCard, MobileCardList } from '@/components/ui/mobile-card-list'
 
 const statusStyles: Record<string, { label: string; cls: string }> = {
   draft: { label: 'Draft', cls: 'bg-slate-100 text-slate-500' },
@@ -356,7 +357,7 @@ export function DocumentTracker({
   return (
     <>
       <div className="flex justify-end">
-        <Button onClick={openCreate}>
+        <Button onClick={openCreate} className="w-full sm:w-auto">
           <Plus className="mr-1.5 h-4 w-4" /> Upload {nounTitle}
         </Button>
       </div>
@@ -367,7 +368,117 @@ export function DocumentTracker({
         </div>
       )}
 
-      <div className="hub-card overflow-hidden p-0">
+      <MobileCardList
+        isEmpty={documents.length === 0}
+        empty={`No ${noun}s yet. Upload a PDF or Word document to keep track of them.`}
+      >
+        {documents.map((doc) => {
+          const st = statusStyles[doc.status] ?? statusStyles.draft
+          return (
+            <MobileCard
+              key={doc.id}
+              title={
+                <button
+                  type="button"
+                  onClick={() => openEdit(doc)}
+                  className="text-left hover:text-blue-600"
+                  title={`Edit ${noun}`}
+                >
+                  {doc.title}
+                </button>
+              }
+              subtitle={
+                showOwnerCol
+                  ? `${kind === 'proposal' ? (doc.owner_kind === 'lead' ? 'Lead · ' : 'Client · ') : ''}${doc.owner_name}`
+                  : undefined
+              }
+              meta={[
+                {
+                  label: 'File',
+                  value: doc.file_name ? (
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(doc)}
+                      disabled={isPending}
+                      className="inline-flex max-w-full items-center gap-1.5 text-left text-blue-600 hover:underline"
+                    >
+                      <Download className="h-3.5 w-3.5 shrink-0" />
+                      <span className="min-w-0 break-all">{doc.file_name}</span>
+                      <span className="shrink-0 text-xs text-slate-400">
+                        {formatFileSize(doc.file_size)}
+                      </span>
+                    </button>
+                  ) : (
+                    <span className="text-slate-400">No file</span>
+                  ),
+                },
+                { label: 'Uploaded', value: formatDate(doc.created_at) },
+              ]}
+              actions={
+                <>
+                  <button
+                    type="button"
+                    onClick={() => openEdit(doc)}
+                    disabled={isPending}
+                    className="rounded p-2.5 text-slate-500 transition-colors hover:text-blue-600"
+                    title={`Edit ${noun}`}
+                    aria-label={`Edit ${doc.title}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(doc)}
+                    disabled={isPending}
+                    className="rounded p-2.5 text-slate-500 transition-colors hover:text-red-600"
+                    title={`Delete ${noun}`}
+                    aria-label={`Delete ${doc.title}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </>
+              }
+              footer={
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    aria-label="Status"
+                    className={cn(
+                      'min-h-11 rounded-full border-0 px-3 py-1 text-base font-medium',
+                      st.cls
+                    )}
+                    value={doc.status}
+                    disabled={isPending}
+                    onChange={(e) => handleStatus(doc, e.target.value)}
+                  >
+                    {statuses.map((value) => (
+                      <option key={value} value={value}>
+                        {statusStyles[value]?.label ?? value}
+                      </option>
+                    ))}
+                  </select>
+                  {doc.owner_kind === 'client' && doc.client_id ? (
+                    <button
+                      type="button"
+                      onClick={() => handleVisibility(doc)}
+                      disabled={isPending}
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm text-slate-600 hover:bg-slate-50"
+                    >
+                      {doc.is_client_visible ? (
+                        <Eye className="h-4 w-4" />
+                      ) : (
+                        <EyeOff className="h-4 w-4" />
+                      )}
+                      {doc.is_client_visible ? 'Visible in portal' : 'Hidden from portal'}
+                    </button>
+                  ) : null}
+                </div>
+              }
+            />
+          )
+        })}
+      </MobileCardList>
+
+      <div className="hub-card hidden overflow-hidden p-0 md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -511,7 +622,7 @@ export function DocumentTracker({
               : 'Attach a PDF or Word document to keep on the client record'
         }
       >
-        <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
+        <form onSubmit={handleSubmit} className="space-y-5 px-4 py-5 sm:px-6">
           {error && showUpload && (
             <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>
           )}

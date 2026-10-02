@@ -184,7 +184,7 @@ export function ClientEditForm({
     const selected = addons[serviceId]
     if (!selected) return null
     return (
-      <div className="ml-6 grid grid-cols-2 gap-2">
+      <div className="ml-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <p className="text-xs text-slate-500">{unitLabel}</p>
           <Input
@@ -295,7 +295,7 @@ export function ClientEditForm({
             ))}
           </select>
         </div>
-        <div className="grid grid-cols-2 gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
           <div>
             <p className="text-xs text-slate-500">Frequency</p>
             <select

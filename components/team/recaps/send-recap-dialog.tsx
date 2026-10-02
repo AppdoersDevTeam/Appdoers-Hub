@@ -87,7 +87,7 @@ export function SendRecapDialog({ open, recapId, defaultEmail, onBeforeSend, onS
         aria-labelledby="send-recap-title"
         className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-xl border border-slate-200 bg-white shadow-2xl sm:rounded-xl"
       >
-        <div className="border-b border-slate-100 px-6 py-4">
+        <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
           <h3 id="send-recap-title" className="text-base font-semibold text-slate-900">
             Send recap to client
           </h3>
@@ -96,7 +96,7 @@ export function SendRecapDialog({ open, recapId, defaultEmail, onBeforeSend, onS
           </p>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
           <div>
             <label htmlFor="recap-recipient" className="mb-1 block text-xs font-medium text-slate-500">
               Send to
@@ -137,7 +137,7 @@ export function SendRecapDialog({ open, recapId, defaultEmail, onBeforeSend, onS
           )}
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 px-6 py-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 px-4 py-4 sm:px-6 sm:flex-row sm:items-center">
           <Button variant="outline" size="sm" onClick={handleMarkSent} disabled={isPending} className="sm:mr-auto">
             Mark as sent (no email)
           </Button>

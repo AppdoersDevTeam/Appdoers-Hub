@@ -10,6 +10,7 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { saveRecapAction, deleteRecapAction } from '@/lib/actions/recaps'
 import { cn } from '@/lib/utils/cn'
 import { formatDate } from '@/lib/utils/format'
+import { MobileCard, MobileCardList } from '@/components/ui/mobile-card-list'
 
 const MONTHS = [
   'January','February','March','April','May','June',
@@ -91,12 +92,52 @@ export function RecapsList({
       )}
 
       <div className="flex justify-end">
-        <Button onClick={() => setShowNew(true)}>
+        <Button onClick={() => setShowNew(true)} className="w-full sm:w-auto">
           <Plus className="mr-1.5 h-4 w-4" /> New Recap
         </Button>
       </div>
 
-      <div className="hub-card overflow-hidden p-0">
+      <MobileCardList
+        isEmpty={recaps.length === 0}
+        empty="No recaps yet. Create your first monthly recap above."
+      >
+        {recaps.map((r) => (
+          <MobileCard
+            key={r.id}
+            href={`/app/recaps/${r.id}`}
+            title={`${MONTHS[r.month - 1]} ${r.year}`}
+            subtitle={r.client_name}
+            badge={
+              <span
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 text-xs font-medium',
+                  r.is_sent ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                )}
+              >
+                {r.is_sent ? 'Sent' : 'Draft'}
+              </span>
+            }
+            meta={[
+              { label: 'Created', value: formatDate(r.created_at) },
+              { label: 'Sent', value: r.sent_at ? formatDate(r.sent_at) : null },
+            ]}
+            actions={
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(r)}
+                disabled={isPending}
+                className="rounded p-2.5 text-slate-500 transition-colors hover:text-red-600"
+                title="Delete recap"
+                aria-label={`Delete ${MONTHS[r.month - 1]} ${r.year} recap`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            }
+          />
+        ))}
+      </MobileCardList>
+
+      <div className="hub-card hidden overflow-hidden p-0 md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -170,7 +211,7 @@ export function RecapsList({
       />
 
       <SlideOver open={showNew} onClose={() => setShowNew(false)} title="New Monthly Recap" subtitle="Select a client and period to begin">
-        <form onSubmit={handleCreate} className="space-y-5 px-6 py-5">
+        <form onSubmit={handleCreate} className="space-y-5 px-4 py-5 sm:px-6">
           {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
           <div>
             <label className={labelClass}>Client *</label>

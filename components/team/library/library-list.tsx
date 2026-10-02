@@ -218,11 +218,11 @@ export function LibraryList({
           }
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((item) => {
             const Icon = KIND_ICONS[item.kind]
             return (
-              <div key={item.id} className="hub-card flex flex-col p-5">
+              <div key={item.id} className="hub-card flex min-w-0 flex-col p-5">
                 <div className="flex items-start justify-between gap-2">
                   <Badge variant={LIBRARY_KIND_BADGE[item.kind]}>{LIBRARY_KIND_LABELS[item.kind]}</Badge>
                   {canEdit && (
@@ -230,7 +230,7 @@ export function LibraryList({
                       type="button"
                       onClick={() => setDeleteTarget(item)}
                       disabled={busy}
-                      className="rounded p-1 text-slate-400 hover:text-red-600"
+                      className="rounded p-2.5 text-slate-400 hover:text-red-600 md:p-1"
                       title="Delete"
                       aria-label={`Delete ${item.title}`}
                     >
@@ -241,7 +241,7 @@ export function LibraryList({
                 <Link href={`/app/library/${item.id}`} className="mt-3 group">
                   <div className="flex items-start gap-2">
                     <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-                    <h2 className="text-sm font-semibold text-slate-900 group-hover:text-blue-600">
+                    <h2 className="break-words text-sm font-semibold text-slate-900 group-hover:text-blue-600">
                       {item.title}
                     </h2>
                   </div>
@@ -281,7 +281,7 @@ export function LibraryList({
         title="New library item"
         subtitle="Write it in Hub, or upload a PDF or Word file"
       >
-        <form onSubmit={handleCreate} className="space-y-5 px-6 py-5">
+        <form onSubmit={handleCreate} className="space-y-5 px-4 py-5 sm:px-6">
           {error && (
             <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>
           )}

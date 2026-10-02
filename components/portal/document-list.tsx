@@ -104,7 +104,7 @@ export function PortalDocumentList({
       )}
 
       {documents.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center sm:p-12">
           <FileText className="mx-auto h-10 w-10 text-gray-300 mb-3" />
           <p className="text-gray-500">No {noun} to display yet.</p>
         </div>
@@ -113,15 +113,15 @@ export function PortalDocumentList({
           {documents.map((doc) => {
             const st = statusConfig[doc.status] ?? { label: doc.status, cls: 'bg-gray-100 text-gray-600' }
             return (
-              <div key={doc.id} className="rounded-xl border border-gray-200 bg-white px-5 py-4 space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-50">
+              <div key={doc.id} className="rounded-xl border border-gray-200 bg-white px-4 py-4 space-y-4 sm:px-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <div className="flex min-w-0 flex-1 items-center gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50">
                     <FileText className="h-5 w-5 text-gray-400" />
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{doc.title}</p>
-                    <p className="text-sm text-gray-500">
+                  <div className="min-w-0">
+                    <p className="break-words font-medium text-gray-900">{doc.title}</p>
+                    <p className="break-all text-sm text-gray-500">
                       {doc.signed_at
                         ? `Signed ${formatDate(doc.signed_at)}`
                         : doc.sent_at
@@ -131,12 +131,12 @@ export function PortalDocumentList({
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:flex-nowrap sm:gap-3">
                   <button
                     type="button"
                     onClick={() => handleDownload(doc)}
                     disabled={isPending || !doc.file_name}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-lg sm:min-h-0 border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
                   >
                     <Download className="h-4 w-4" />
                     Download
@@ -145,7 +145,7 @@ export function PortalDocumentList({
                     <button
                       type="button"
                       onClick={() => setSigningId(signingId === doc.id ? null : doc.id)}
-                      className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+                      className="inline-flex min-h-11 items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 sm:min-h-0 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
                     >
                       Sign
                     </button>
@@ -162,14 +162,14 @@ export function PortalDocumentList({
                       value={signerName}
                       onChange={(e) => setSignerName(e.target.value)}
                       placeholder="Full legal name"
-                      className="w-full max-w-sm rounded-md border border-emerald-200 bg-white px-3 py-2 text-sm"
+                      className="w-full max-w-sm rounded-md border border-emerald-200 bg-white px-3 py-2 text-base sm:text-sm"
                     />
-                    <label className="flex items-start gap-2 text-sm text-emerald-900">
+                    <label className="flex items-start gap-3 py-1 text-sm text-emerald-900">
                       <input
                         type="checkbox"
                         checked={agreed}
                         onChange={(e) => setAgreed(e.target.checked)}
-                        className="mt-1"
+                        className="mt-0.5 h-5 w-5 shrink-0"
                       />
                       I have read this contract and agree to be bound by its terms.
                     </label>
@@ -177,7 +177,7 @@ export function PortalDocumentList({
                       type="button"
                       onClick={() => handleSign(doc)}
                       disabled={isPending || !agreed || !signerName.trim()}
-                      className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                      className="min-h-11 w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-50 sm:min-h-0 sm:w-auto"
                     >
                       {isPending ? 'Signing…' : 'Sign contract'}
                     </button>

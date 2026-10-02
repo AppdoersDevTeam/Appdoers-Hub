@@ -356,12 +356,12 @@ export function SettingsEditor({ settings }: Props) {
         <div className="space-y-4">
           {ALL_CHANNELS.map((ch) => (
             <div key={ch} className="rounded-md border border-slate-200 bg-slate-50 p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <div>
+              <div className="mb-2 flex items-start justify-between gap-3 sm:items-center">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-900">{SLACK_CHANNEL_LABELS[ch]}</p>
                   <p className="text-xs text-slate-500">{SLACK_CHANNEL_DESCRIPTIONS[ch]}</p>
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2 sm:min-h-0">
                   <input
                     type="checkbox"
                     checked={channels[ch].enabled}

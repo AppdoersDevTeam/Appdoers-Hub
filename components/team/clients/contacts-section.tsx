@@ -134,16 +134,19 @@ export function ContactsSection({ clientId, contacts }: Props) {
       ) : (
         <div className="divide-y divide-slate-200 rounded-lg border border-slate-200">
           {contacts.map((c) => (
-            <div key={c.id} className="flex items-center gap-4 px-4 py-3">
+            <div
+              key={c.id}
+              className="flex flex-wrap items-start gap-x-4 gap-y-1 px-4 py-3 sm:flex-nowrap sm:items-center"
+            >
               {/* Avatar */}
               <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-medium text-slate-500">
                 {c.full_name.charAt(0).toUpperCase()}
               </div>
 
               {/* Info */}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-slate-900">
+              <div className="min-w-0 flex-1 basis-[calc(100%-3.25rem)] sm:basis-auto">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="break-words text-sm font-medium text-slate-900">
                     {c.full_name}
                   </span>
                   {c.is_primary && (
@@ -160,10 +163,10 @@ export function ContactsSection({ clientId, contacts }: Props) {
                 {c.role && (
                   <p className="text-xs text-slate-500">{c.role}</p>
                 )}
-                <div className="mt-1 flex items-center gap-4">
+                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
                   {c.email && (
-                    <span className="flex items-center gap-1 text-xs text-slate-500">
-                      <Mail className="h-3 w-3" /> {c.email}
+                    <span className="flex min-w-0 items-center gap-1 break-all text-xs text-slate-500">
+                      <Mail className="h-3 w-3 shrink-0" /> {c.email}
                     </span>
                   )}
                   {c.phone && (
@@ -175,7 +178,7 @@ export function ContactsSection({ clientId, contacts }: Props) {
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2">
+              <div className="ml-[3.25rem] flex items-center gap-2 sm:ml-0">
                 <button
                   onClick={() => handlePortalToggle(c)}
                   disabled={isPending}
@@ -185,7 +188,7 @@ export function ContactsSection({ clientId, contacts }: Props) {
                       : 'Grant portal access'
                   }
                   className={cn(
-                    'rounded-md p-1.5 text-xs transition-colors',
+                    'rounded-md p-2.5 text-xs transition-colors sm:p-1.5',
                     c.has_portal_access
                       ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                       : 'text-slate-500 hover:bg-slate-50 hover:text-slate-600'
@@ -195,14 +198,14 @@ export function ContactsSection({ clientId, contacts }: Props) {
                 </button>
                 <button
                   onClick={() => openEdit(c)}
-                  className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-600"
+                  className="rounded-md p-2.5 text-slate-500 transition-colors sm:p-1.5 hover:bg-slate-50 hover:text-slate-600"
                 >
                   <Edit2 className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => handleDelete(c.id)}
                   disabled={isPending}
-                  className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600"
+                  className="rounded-md p-2.5 text-slate-500 transition-colors sm:p-1.5 hover:bg-red-50 hover:text-red-600"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -218,7 +221,7 @@ export function ContactsSection({ clientId, contacts }: Props) {
         onClose={() => setShowForm(false)}
         title={editing ? 'Edit Contact' : 'Add Contact'}
       >
-        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+        <form onSubmit={handleSubmit} className="space-y-4 px-4 py-5 sm:px-6">
           {error && (
             <div className="rounded-md bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-600">
               {error}
@@ -241,7 +244,7 @@ export function ContactsSection({ clientId, contacts }: Props) {
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Phone</label>
               <Input

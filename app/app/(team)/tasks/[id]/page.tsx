@@ -74,7 +74,7 @@ export default async function TaskDetailPage({ params }: Props) {
         <ArrowLeft className="h-4 w-4" /> All Tasks
       </Link>
 
-      <div className="grid gap-6 xl:grid-cols-12">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
         <div className="space-y-6 xl:col-span-4">
           <TaskDetailsEditor
             taskId={id}
@@ -131,7 +131,7 @@ export default async function TaskDetailPage({ params }: Props) {
                   const when = `${formatRelativeTime(item.created_at)} • ${formatNzDateTime(item.created_at)}`
                   return (
                     <div key={item.id} className="rounded-lg border border-slate-200 p-3">
-                      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{item.description}</p>
+                      <p className="break-words text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{item.description}</p>
                       <div className="mt-2 flex items-center justify-between gap-3">
                         <p className="text-xs text-slate-500">
                           {formatActionLabel(item.action)} by {actorName}

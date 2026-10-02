@@ -67,7 +67,7 @@ export function DeleteRecordButton({
           disabled={isPending}
           title={label}
           aria-label={label}
-          className="rounded p-1 text-slate-500 hover:text-red-600 transition-colors disabled:opacity-50"
+          className="rounded p-2.5 text-slate-500 md:p-1 hover:text-red-600 transition-colors disabled:opacity-50"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>

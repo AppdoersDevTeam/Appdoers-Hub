@@ -185,19 +185,25 @@ export function RecapEditor({
   return (
     <div className="space-y-6">
       {/* Top bar */}
-      <div className="flex items-center gap-4">
-        <Link href="/app/recaps" className="text-slate-500 hover:text-slate-600 transition-colors">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+        <div className="flex min-w-0 flex-1 items-start gap-3 lg:items-center">
+        <Link
+          href="/app/recaps"
+          aria-label="Back to recaps"
+          className="-m-2 shrink-0 p-2 text-slate-500 transition-colors hover:text-slate-600"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <div className="flex flex-1 items-center gap-3">
-          <h1 className="text-xl font-bold text-slate-900">{periodLabel} Recap</h1>
-          <span className="text-sm text-slate-500">—</span>
-          <span className="text-sm text-slate-500">{clientName}</span>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+          <h1 className="break-words text-xl font-bold text-slate-900">{periodLabel} Recap</h1>
+          <span className="hidden text-sm text-slate-500 sm:inline">—</span>
+          <span className="min-w-0 break-words text-sm text-slate-500">{clientName}</span>
           <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', isSent ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500')}>
             {isSent ? 'Sent' : 'Draft'}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={handleExport}
@@ -271,8 +277,8 @@ export function RecapEditor({
 
           {/* Work completed */}
           <div className="hub-card space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
                 <h2 className="text-sm font-semibold text-slate-900">Work Completed</h2>
                 <p className="text-xs text-slate-500 mt-0.5">List of tasks, features, and deliverables this month.</p>
               </div>
@@ -288,9 +294,12 @@ export function RecapEditor({
             ) : (
               <div className="space-y-2">
                 {workItems.map((item, i) => (
-                  <div key={i} className="flex items-center gap-2">
+                  <div
+                    key={i}
+                    className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-2 last:border-0 last:pb-0 sm:flex-nowrap sm:border-0 sm:pb-0"
+                  >
                     <select
-                      className={cn(selectClass, 'w-36 shrink-0')}
+                      className={cn(selectClass, 'w-full sm:w-36 sm:shrink-0')}
                       value={item.category}
                       onChange={(e) => updateWorkItem(i, 'category', e.target.value)}
                       disabled={isSent}
@@ -302,10 +311,15 @@ export function RecapEditor({
                       onChange={(e) => updateWorkItem(i, 'description', e.target.value)}
                       placeholder="Describe what was done…"
                       disabled={isSent}
-                      className="flex-1"
+                      className="min-w-0 flex-1"
                     />
                     {!isSent && (
-                      <button onClick={() => removeWorkItem(i)} className="text-slate-500 hover:text-red-600 transition-colors p-1">
+                      <button
+                        type="button"
+                        onClick={() => removeWorkItem(i)}
+                        aria-label="Remove item"
+                        className="p-2.5 text-slate-500 transition-colors hover:text-red-600 sm:p-1"
+                      >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}

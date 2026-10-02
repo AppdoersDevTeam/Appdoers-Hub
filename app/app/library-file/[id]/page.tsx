@@ -41,7 +41,7 @@ export default async function LibraryFilePage({ params }: Props) {
   if (error || !row?.file_name) notFound()
 
   return (
-    <div className="theme-team min-h-screen bg-[#64748b] p-4 md:p-6">
+    <div className="theme-team min-h-dvh bg-[#64748b] p-4 md:p-6">
       <div className="mx-auto max-w-5xl space-y-3">
         <div className="flex items-center justify-between gap-3 text-sm text-white">
           <Link href={`/app/library/${id}`} className="hover:underline">

@@ -82,7 +82,7 @@ export function NewTaskSlideOver({ open, onClose, projects, teamMembers, default
 
   return (
     <SlideOver open={open} onClose={onClose} title="New Task" width="lg">
-      <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
+      <form onSubmit={handleSubmit} className="space-y-5 px-4 py-5 sm:px-6">
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             {error}
@@ -113,7 +113,7 @@ export function NewTaskSlideOver({ open, onClose, projects, teamMembers, default
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Type</label>
             <select className={selectClass} value={form.type} onChange={(e) => set('type', e.target.value)}>

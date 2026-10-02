@@ -156,5 +156,5 @@ export function LibraryBody({
     )
   }
 
-  return <div className="space-y-3 text-sm leading-relaxed text-slate-700">{blocks}</div>
+  return <div className="space-y-3 break-words text-sm leading-relaxed text-slate-700">{blocks}</div>
 }

@@ -102,7 +102,7 @@ export function LeadFormFields({ form, onChange, onToggleInterest, teamMembers }
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={leadFieldLabelClass}>Contact Name *</label>
           <Input
@@ -122,7 +122,7 @@ export function LeadFormFields({ form, onChange, onToggleInterest, teamMembers }
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={leadFieldLabelClass}>Company</label>
           <Input
@@ -141,7 +141,7 @@ export function LeadFormFields({ form, onChange, onToggleInterest, teamMembers }
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={leadFieldLabelClass}>Email</label>
           <Input
@@ -161,7 +161,7 @@ export function LeadFormFields({ form, onChange, onToggleInterest, teamMembers }
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={leadFieldLabelClass}>Website</label>
           <Input
@@ -180,7 +180,7 @@ export function LeadFormFields({ form, onChange, onToggleInterest, teamMembers }
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={leadFieldLabelClass}>Company Size</label>
           <select
@@ -225,9 +225,9 @@ export function LeadFormFields({ form, onChange, onToggleInterest, teamMembers }
 
       <div>
         <p className={leadFieldLabelClass}>Service Interest</p>
-        <div className="grid grid-cols-2 gap-2 rounded-md border border-slate-200 p-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md border border-slate-200 p-3">
           {SERVICE_INTEREST_OPTIONS.map((opt) => (
-            <label key={opt.value} className="flex items-center gap-2 text-sm text-slate-700">
+            <label key={opt.value} className="flex min-h-11 items-center gap-2 text-sm text-slate-700 sm:min-h-0">
               <input
                 type="checkbox"
                 className="rounded border-slate-300"
@@ -240,7 +240,7 @@ export function LeadFormFields({ form, onChange, onToggleInterest, teamMembers }
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={leadFieldLabelClass}>Est. Setup Fee (NZD)</label>
           <Input
@@ -281,7 +281,7 @@ export function LeadFormFields({ form, onChange, onToggleInterest, teamMembers }
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={leadFieldLabelClass}>Needed by</label>
           <Input
@@ -318,7 +318,7 @@ export function LeadFormFields({ form, onChange, onToggleInterest, teamMembers }
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={leadFieldLabelClass}>Next Action Date</label>
           <Input

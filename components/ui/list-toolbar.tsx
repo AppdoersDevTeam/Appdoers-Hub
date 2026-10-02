@@ -5,7 +5,7 @@ import { ChevronDown, ListFilter } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 
 export const LIST_SELECT_CLASS =
-  'h-9 max-w-[12rem] shrink-0 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none'
+  'h-9 max-w-[12rem] shrink-0 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-base text-slate-900 sm:text-sm focus:border-blue-500 focus:outline-none'
 
 interface ListToolbarProps {
   search: ReactNode

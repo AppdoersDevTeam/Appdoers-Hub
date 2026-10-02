@@ -47,7 +47,7 @@ export default function TeamLoginPage() {
   }
 
   return (
-    <div className="theme-team flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4">
+    <div className="theme-team flex min-h-dvh items-center justify-center bg-[#F8FAFC] px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center">
           <AppdoersLogo variant="full" />
@@ -91,7 +91,7 @@ export default function TeamLoginPage() {
               </p>
             )}
 
-            <Button type="submit" className="w-full" loading={loading}>
+            <Button type="submit" className="h-11 w-full sm:h-9" loading={loading}>
               Sign in
             </Button>
           </form>

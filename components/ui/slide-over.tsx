@@ -56,22 +56,24 @@ export function SlideOver({
       {/* Panel */}
       <div
         className={cn(
-          'fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-white shadow-2xl transition-transform duration-200',
+          'fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-white shadow-2xl transition-transform duration-200 safe-top safe-bottom',
           widthClass,
           open ? 'translate-x-0' : 'translate-x-full'
         )}
       >
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+        <div className="flex items-start justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="min-w-0">
+            <h2 className="break-words text-base font-semibold text-slate-900">{title}</h2>
             {subtitle && (
-              <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>
+              <p className="mt-0.5 break-words text-xs text-slate-500">{subtitle}</p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="ml-4 rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            type="button"
+            aria-label="Close"
+            className="-mr-2 -mt-1 ml-4 flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-slate-500 md:m-0 md:ml-4 md:h-auto md:w-auto md:p-1 transition-colors hover:bg-slate-100 hover:text-slate-700"
           >
             <X className="h-5 w-5" />
           </button>

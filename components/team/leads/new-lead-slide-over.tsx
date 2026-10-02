@@ -58,7 +58,7 @@ export function NewLeadSlideOver({ open, onClose, teamMembers }: Props) {
 
   return (
     <SlideOver open={open} onClose={onClose} title="New Lead" width="lg">
-      <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
+      <form onSubmit={handleSubmit} className="space-y-5 px-4 py-5 sm:px-6">
         {error && (
           <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
             {error}

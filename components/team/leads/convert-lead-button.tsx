@@ -58,7 +58,7 @@ export function ConvertLeadButton({
           title={label}
           aria-label={label}
           className={cn(
-            'rounded p-1 text-slate-500 hover:text-emerald-600 transition-colors disabled:opacity-50',
+            'rounded p-2.5 text-slate-500 hover:text-emerald-600 md:p-1 transition-colors disabled:opacity-50',
             className
           )}
         >

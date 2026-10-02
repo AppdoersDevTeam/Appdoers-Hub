@@ -72,10 +72,10 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <PageHeader title={project.name} subtitle={clientName} />
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className={cn('rounded-full px-3 py-1 text-sm font-medium', cs.cls)}>{cs.label}</span>
           <ClientStatusSelector projectId={id} currentStatus={project.client_status} />
         </div>
@@ -83,13 +83,13 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
 
       {/* Tabs */}
       <div className="border-b border-slate-200">
-        <nav className="flex gap-0.5">
+        <nav className="-mx-4 flex gap-0.5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           {TABS.map(({ key, label }) => (
             <Link
               key={key}
               href={`/app/projects/${id}?tab=${key}`}
               className={cn(
-                'px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+                'px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap',
                 tab === key ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-900'
               )}
             >
@@ -103,7 +103,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 hub-card space-y-4">
             <h3 className="text-sm font-semibold text-slate-900">Project Details</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
               <InfoRow label="Client" value={<Link href={`/app/clients/${project.client_id}`} className="text-blue-600 hover:underline">{clientName}</Link>} />
               <InfoRow label="Type" value={<span className="capitalize">{project.type}</span>} />
               <InfoRow label="Current Phase" value={phaseLabel[project.current_phase] ?? project.current_phase} />
@@ -118,7 +118,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
             {project.description && (
               <div className="border-t border-slate-200 pt-4">
                 <p className="text-xs text-slate-500">Description</p>
-                <p className="mt-1 text-sm text-slate-600">{project.description}</p>
+                <p className="mt-1 break-words text-sm text-slate-600">{project.description}</p>
               </div>
             )}
           </div>
@@ -197,9 +197,9 @@ export default async function ProjectDetailPage({ params, searchParams }: Props)
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-0.5 text-slate-600">{value}</p>
+      <div className="mt-0.5 break-words text-slate-600">{value}</div>
     </div>
   )
 }

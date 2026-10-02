@@ -15,6 +15,7 @@ import type { HubClientOption, SupabaseAccountWithProjects } from '@/lib/actions
 import { isSupabaseSubscription } from '@/lib/types/database'
 import { cn } from '@/lib/utils/cn'
 import { formatDate } from '@/lib/utils/format'
+import { MobileCard, MobileCardList } from '@/components/ui/mobile-card-list'
 import { SupabaseLoginsCard, supabaseLoginSummary } from '@/components/team/subscriptions/supabase-logins-card'
 import {
   formatSubscriptionCost,
@@ -238,7 +239,7 @@ export function SubscriptionsTable({
   return (
     <>
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <div className="hub-card text-center">
           <p className="text-xs text-slate-500 mb-1">Company-wide /mo</p>
           <p className="text-xl font-semibold text-red-600">{fmt(companyMonthly)}</p>
@@ -260,32 +261,95 @@ export function SubscriptionsTable({
 
       {/* Filters + Add */}
       <div className="flex flex-wrap items-center gap-3">
-        <select className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-500 focus:outline-none" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+        <select className="min-w-0 max-w-full flex-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-base text-slate-500 focus:outline-none sm:flex-none sm:text-sm" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
           <option value="all">All Categories</option>
           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-500 focus:outline-none" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+        <select className="min-w-0 max-w-full flex-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-base text-slate-500 focus:outline-none sm:flex-none sm:text-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="all">All Statuses</option>
           {STATUS_OPTIONS.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
         </select>
-        <select className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-500 focus:outline-none" value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)}>
+        <select className="min-w-0 max-w-full flex-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-base text-slate-500 focus:outline-none sm:flex-none sm:text-sm" value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)}>
           <option value="all">All assignees</option>
           <option value="company">Company-wide</option>
           {clients.map(client => (
             <option key={client.id} value={client.id}>{client.company_name}</option>
           ))}
         </select>
-        <div className="ml-auto">
+        <div className="w-full sm:ml-auto sm:w-auto">
           {canEdit && (
-            <Button size="sm" onClick={openAdd}>
+            <Button size="sm" onClick={openAdd} className="h-11 w-full sm:h-8 sm:w-auto">
               <Plus className="mr-1 h-3.5 w-3.5" /> Add Subscription
             </Button>
           )}
         </div>
       </div>
 
+      <MobileCardList isEmpty={filtered.length === 0} empty="No subscriptions found.">
+        {filtered.map(s => (
+          <MobileCard
+            key={s.id}
+            title={s.name}
+            badge={
+              <>
+                {s.url && (
+                  <a
+                    href={s.url.startsWith('http') ? s.url : `https://${s.url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="-m-2 p-2 text-slate-500 hover:text-blue-600"
+                    aria-label={`Open ${s.name}`}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+                <StatusBadge status={s.status} />
+              </>
+            }
+            subtitle={
+              <>
+                {isSupabaseSubscription(s.name) && (
+                  <LoginSummaryLine accounts={accounts.filter(a => a.subscription_id === s.id)} />
+                )}
+                {s.notes && <p className="mt-0.5">{s.notes}</p>}
+              </>
+            }
+            meta={[
+              { label: 'Category', value: s.category },
+              { label: 'For', value: <AssigneeBadge clientName={s.client_name} /> },
+              { label: 'Plan', value: s.plan_name || null },
+              { label: 'Cost', value: <span className="font-mono">{formatCost(s.cost, s.billing_cycle)}</span> },
+              { label: 'Renewal', value: s.renewal_date ? <RenewalBadge dateStr={s.renewal_date} /> : null },
+            ]}
+            actions={
+              canEdit ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => openEdit(s)}
+                    className="rounded p-2.5 text-slate-500 hover:bg-slate-100 hover:text-slate-600"
+                    aria-label={`Edit ${s.name}`}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(s.id)}
+                    disabled={isPending}
+                    className="rounded p-2.5 text-slate-500 hover:bg-slate-100 hover:text-red-600"
+                    aria-label={`Delete ${s.name}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </>
+              ) : undefined
+            }
+          />
+        ))}
+      </MobileCardList>
+
       {/* Table */}
-      <div className="hub-card overflow-hidden p-0">
+      <div className="hub-card hidden overflow-hidden p-0 md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -363,7 +427,7 @@ export function SubscriptionsTable({
 
       {/* Slide-over */}
       <SlideOver open={showForm} onClose={() => setShowForm(false)} title={editing ? 'Edit Subscription' : 'Add Subscription'}>
-        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+        <form onSubmit={handleSubmit} className="space-y-4 px-4 py-5 sm:px-6">
           {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>}
 
           <div>
@@ -388,7 +452,7 @@ export function SubscriptionsTable({
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Category</label>
               <select className={selectClass} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
@@ -401,7 +465,7 @@ export function SubscriptionsTable({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Billing Cycle</label>
               <select
@@ -423,7 +487,7 @@ export function SubscriptionsTable({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>
                 {subscriptionDateFieldLabel(form.billing_cycle)}

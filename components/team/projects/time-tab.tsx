@@ -119,7 +119,7 @@ export function TimeTab({ projectId, entries, estimatedHours, teamMembers, curre
       {showForm && (
         <form onSubmit={handleLog} className="hub-card space-y-4">
           <h3 className="text-sm font-semibold text-slate-900">Log Time</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Team Member</label>
               <select className={selectClass} value={form.team_user_id} onChange={(e) => set('team_user_id', e.target.value)}>

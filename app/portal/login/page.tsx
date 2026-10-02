@@ -48,7 +48,7 @@ export default function PortalLoginPage() {
   }
 
   return (
-    <div className="theme-portal flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4">
+    <div className="theme-portal flex min-h-dvh items-center justify-center bg-[#F8FAFC] px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center">
           <AppdoersLogo variant="full" />
@@ -94,7 +94,7 @@ export default function PortalLoginPage() {
               </p>
             )}
 
-            <Button variant="portal-default" type="submit" className="w-full" loading={loading}>
+            <Button variant="portal-default" type="submit" className="h-11 w-full sm:h-9" loading={loading}>
               Sign in to portal
             </Button>
           </form>
@@ -102,7 +102,7 @@ export default function PortalLoginPage() {
 
         <p className="mt-6 text-center text-xs text-slate-400">
           Are you from the Appdoers team?{' '}
-          <a href="/app/login" className="text-blue-600 hover:underline">
+          <a href="/app/login" className="inline-block py-2 text-blue-600 hover:underline">
             Team login →
           </a>
         </p>

@@ -216,9 +216,9 @@ export default async function DashboardPage({
               const isUrgent = days <= 7
               const isWarning = days <= 14
               return (
-                <div key={sub.id} className="flex items-center justify-between py-2">
-                  <div>
-                    <div className="flex items-center gap-2">
+                <div key={sub.id} className="flex items-center justify-between gap-3 py-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-medium text-slate-900">
                         {sub.name}
                       </span>
@@ -236,7 +236,7 @@ export default async function DashboardPage({
                       {formatMonthDay(sub.renewalDate)}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="shrink-0 text-right">
                     <span className="text-sm font-semibold text-slate-900">
                       {formatSubscriptionCost(sub.cost, sub.billingCycle)}
                     </span>

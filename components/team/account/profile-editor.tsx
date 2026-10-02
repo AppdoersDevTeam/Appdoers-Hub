@@ -117,10 +117,10 @@ export function ProfileEditor({ user }: Props) {
           <img
             src={user.avatar_url}
             alt={user.full_name}
-            className="h-16 w-16 rounded-full object-cover border-2 border-slate-200"
+            className="h-16 w-16 shrink-0 rounded-full object-cover border-2 border-slate-200"
           />
         ) : (
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-xl font-bold text-slate-500">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xl font-bold text-slate-500">
             {user.full_name
               .split(' ')
               .map((n) => n[0])
@@ -129,9 +129,9 @@ export function ProfileEditor({ user }: Props) {
               .slice(0, 2)}
           </div>
         )}
-        <div>
-          <p className="text-lg font-semibold text-slate-900">{user.full_name}</p>
-          <p className="text-sm text-slate-500">{user.email}</p>
+        <div className="min-w-0">
+          <p className="break-words text-lg font-semibold text-slate-900">{user.full_name}</p>
+          <p className="break-all text-sm text-slate-500">{user.email}</p>
           <span className="mt-1 inline-block rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-600">
             {roleLabels[user.role] ?? user.role}
           </span>

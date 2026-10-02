@@ -68,8 +68,8 @@ export function ClientIntakeActions({
   const canReuse = status && status !== 'locked'
 
   return (
-    <div className="flex flex-col items-end gap-2">
-      <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex min-w-0 flex-col items-start gap-2 sm:items-end">
+      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
         {status && (
           <Badge variant={STATUS_VARIANT[status]}>{INTAKE_STATUS_LABELS[status]}</Badge>
         )}
@@ -88,12 +88,12 @@ export function ClientIntakeActions({
         </Button>
       </div>
       {showLink && link && (
-        <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-3 text-left">
+        <div className="w-full rounded-lg border sm:max-w-sm border-slate-200 bg-white p-3 text-left">
           <p className="text-xs font-medium text-slate-500">Send this link to the client</p>
           <p className="mt-1 break-all font-mono text-xs text-slate-700">{link}</p>
           <button
             type="button"
-            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-600"
+            className="mt-2 inline-flex min-h-11 items-center gap-1 text-xs font-medium text-blue-600 sm:min-h-0"
             onClick={() => void copy(link)}
           >
             {copied ? <Check className="h-3 w-3" /> : <Clipboard className="h-3 w-3" />}
@@ -101,7 +101,7 @@ export function ClientIntakeActions({
           </button>
         </div>
       )}
-      {error && <p className="text-right text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-600 sm:text-right">{error}</p>}
     </div>
   )
 }

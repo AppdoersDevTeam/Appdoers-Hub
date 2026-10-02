@@ -14,6 +14,8 @@ import { ColumnVisibilityMenu } from '@/components/ui/column-visibility-menu'
 import { ResizableSortableTh } from '@/components/ui/resizable-sortable-th'
 import { RowHoverPreview, RowHoverPreviewProvider } from '@/components/ui/row-hover-preview'
 import { DataTable, dataTableCellClass } from '@/components/ui/data-table'
+import { MobileCard, MobileCardList } from '@/components/ui/mobile-card-list'
+import { MobileSortSelect } from '@/components/ui/mobile-sort-select'
 import { useTablePrefs, type TableColumnDef } from '@/hooks/use-table-prefs'
 import { formatDate, formatHours } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
@@ -188,6 +190,12 @@ export function ProjectsTable({ projects, clients }: Props) {
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
             </select>
+            <MobileSortSelect
+              columns={PROJECT_COLUMNS}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+            />
             <ColumnVisibilityMenu
               columns={PROJECT_COLUMNS}
               visible={prefs.visible}
@@ -203,7 +211,68 @@ export function ProjectsTable({ projects, clients }: Props) {
         }
       />
 
-      <div className="hub-card min-w-0 overflow-hidden p-0">
+      <MobileCardList
+        isEmpty={sorted.length === 0}
+        empty={
+          projects.length === 0
+            ? 'No projects yet. Create your first project.'
+            : 'No projects match your filters.'
+        }
+      >
+        {sorted.map((p) => {
+          const cs = clientStatusConfig[p.client_status] ?? clientStatusConfig.new
+          const ps = projectStatusConfig[p.status] ?? projectStatusConfig.active
+          return (
+            <MobileCard
+              key={p.id}
+              href={`/app/projects/${p.id}`}
+              title={p.name}
+              subtitle={p.client_name}
+              badge={
+                <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', ps.cls)}>
+                  {ps.label}
+                </span>
+              }
+              meta={[
+                { label: 'Phase', value: phaseLabels[p.current_phase] ?? p.current_phase },
+                {
+                  label: 'Client status',
+                  value: (
+                    <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', cs.cls)}>
+                      {cs.label}
+                    </span>
+                  ),
+                },
+                { label: 'Type', value: <span className="capitalize">{p.type}</span> },
+                {
+                  label: 'Launch',
+                  value: p.target_launch_date ? formatDate(p.target_launch_date) : null,
+                },
+                {
+                  label: 'Hours',
+                  value: p.estimated_hours
+                    ? `${formatHours(p.logged_hours, '0h')} / ${p.estimated_hours}h`
+                    : formatHours(p.logged_hours),
+                },
+              ]}
+              actions={
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(p)}
+                  disabled={isPending}
+                  className="rounded p-2.5 text-slate-500 transition-colors hover:text-red-600"
+                  title="Delete project"
+                  aria-label={`Delete ${p.name}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              }
+            />
+          )
+        })}
+      </MobileCardList>
+
+      <div className="hub-card hidden min-w-0 overflow-hidden p-0 md:block">
         <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
           <RowHoverPreviewProvider>
             <DataTable columns={visibleColumns} widthFor={widthFor}>

@@ -123,7 +123,7 @@ export function NewClientSlideOver({ open, onClose, catalogPlans = [] }: Props) 
 
   return (
     <SlideOver open={open} onClose={onClose} title="New Client" width="lg">
-      <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
+      <form onSubmit={handleSubmit} className="space-y-5 px-4 py-5 sm:px-6">
         {error && (
           <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
             {error}
@@ -140,7 +140,7 @@ export function NewClientSlideOver({ open, onClose, catalogPlans = [] }: Props) 
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Industry</label>
             <IndustrySelect
@@ -217,7 +217,7 @@ export function NewClientSlideOver({ open, onClose, catalogPlans = [] }: Props) 
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass} htmlFor="new-client-fee">
               {billingCycleFeeLabel(form.billing_cycle)}
@@ -246,7 +246,7 @@ export function NewClientSlideOver({ open, onClose, catalogPlans = [] }: Props) 
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Payment Terms (days)</label>
             <Input

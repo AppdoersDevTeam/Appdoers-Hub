@@ -9,7 +9,7 @@ import { defaultFeatureIds } from '@/lib/intake/profiles'
 
 function Message({ title, body }: { title: string; body: string }) {
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-4 text-center">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-4 text-center">
       <AppdoersLogo variant="full" />
       <h1 className="mt-6 text-2xl font-semibold text-slate-900">{title}</h1>
       <p className="mt-2 text-sm text-slate-600">{body}</p>

@@ -14,6 +14,7 @@ import {
   resetMemberPasswordAction,
 } from '@/lib/actions/team'
 import { cn } from '@/lib/utils/cn'
+import { MobileCard, MobileCardList } from '@/components/ui/mobile-card-list'
 
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
 const selectClass =
@@ -171,10 +172,58 @@ export function TeamManagement({ members, currentUserId }: Props) {
     })
   }
 
+  const renderActions = (m: Member) => (
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => openEdit(m)}
+          className="rounded p-2.5 md:p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+          title="Edit member"
+        >
+          <Edit2 className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => { setResetMember(m); setNewPassword(''); setError(null) }}
+          className="rounded p-2.5 md:p-1.5 text-slate-500 hover:bg-slate-100 hover:text-amber-600 transition-colors"
+          title="Reset password"
+        >
+          <KeyRound className="h-3.5 w-3.5" />
+        </button>
+        {m.id !== currentUserId && (
+          <button
+          type="button"
+            onClick={() => handleToggleActive(m)}
+            disabled={isPending}
+            className={cn(
+              'rounded p-2.5 md:p-1.5 transition-colors',
+              m.is_active
+                ? 'text-slate-500 hover:bg-slate-100 hover:text-red-600'
+                : 'text-slate-500 hover:bg-slate-100 hover:text-emerald-600'
+            )}
+            title={m.is_active ? 'Deactivate member' : 'Reactivate member'}
+          >
+            {m.is_active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+          </button>
+        )}
+        {m.id !== currentUserId && !m.is_active && (
+          <button
+          type="button"
+            onClick={() => handleDelete(m)}
+            disabled={isPending}
+            className="rounded p-2.5 md:p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+            title="Delete member"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+  )
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-base font-semibold text-slate-900">Team Members</h2>
           <p className="text-sm text-slate-500">
             Manage who has access to Appdoers Hub.
@@ -196,8 +245,52 @@ export function TeamManagement({ members, currentUserId }: Props) {
         </div>
       )}
 
+      <MobileCardList isEmpty={members.length === 0} empty="No team members yet.">
+        {members.map((m) => (
+          <MobileCard
+            key={m.id}
+            className={cn(!m.is_active && 'opacity-50')}
+            title={
+              <>
+                {m.full_name}
+                {m.id === currentUserId && <span className="ml-2 text-xs text-slate-500">(you)</span>}
+              </>
+            }
+            subtitle={<span className="break-all">{m.email}</span>}
+            badge={
+              <span
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 text-xs font-medium',
+                  m.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                )}
+              >
+                {m.is_active ? 'Active' : 'Inactive'}
+              </span>
+            }
+            meta={[
+              {
+                label: 'Role',
+                value: (
+                  <span
+                    className={cn(
+                      'rounded-full px-2.5 py-0.5 text-xs font-medium',
+                      roleColors[m.role] ?? 'bg-slate-100 text-slate-500'
+                    )}
+                  >
+                    {roleLabels[m.role] ?? m.role}
+                  </span>
+                ),
+              },
+              { label: 'Phone', value: m.phone },
+              { label: 'Title', value: m.title },
+            ]}
+            footer={renderActions(m)}
+          />
+        ))}
+      </MobileCardList>
+
       {/* Members table */}
-      <div className="hub-card overflow-hidden p-0">
+      <div className="hub-card hidden overflow-x-auto p-0 md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200">
@@ -240,47 +333,7 @@ export function TeamManagement({ members, currentUserId }: Props) {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => openEdit(m)}
-                      className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-                      title="Edit member"
-                    >
-                      <Edit2 className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => { setResetMember(m); setNewPassword(''); setError(null) }}
-                      className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-amber-600 transition-colors"
-                      title="Reset password"
-                    >
-                      <KeyRound className="h-3.5 w-3.5" />
-                    </button>
-                    {m.id !== currentUserId && (
-                      <button
-                        onClick={() => handleToggleActive(m)}
-                        disabled={isPending}
-                        className={cn(
-                          'rounded p-1.5 transition-colors',
-                          m.is_active
-                            ? 'text-slate-500 hover:bg-slate-100 hover:text-red-600'
-                            : 'text-slate-500 hover:bg-slate-100 hover:text-emerald-600'
-                        )}
-                        title={m.is_active ? 'Deactivate member' : 'Reactivate member'}
-                      >
-                        {m.is_active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
-                      </button>
-                    )}
-                    {m.id !== currentUserId && !m.is_active && (
-                      <button
-                        onClick={() => handleDelete(m)}
-                        disabled={isPending}
-                        className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
-                        title="Delete member"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
+                  {renderActions(m)}
                 </td>
               </tr>
             ))}
@@ -290,7 +343,7 @@ export function TeamManagement({ members, currentUserId }: Props) {
 
       {/* Create slide-over */}
       <SlideOver open={showCreate} onClose={() => setShowCreate(false)} title="Add Team Member">
-        <div className="space-y-4 px-6 py-5">
+        <div className="space-y-4 px-4 py-5 sm:px-6">
           {error && (
             <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
               {error}
@@ -334,7 +387,7 @@ export function TeamManagement({ members, currentUserId }: Props) {
 
       {/* Edit slide-over */}
       <SlideOver open={!!editMember} onClose={() => setEditMember(null)} title="Edit Team Member">
-        <div className="space-y-4 px-6 py-5">
+        <div className="space-y-4 px-4 py-5 sm:px-6">
           {error && (
             <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
               {error}
@@ -369,7 +422,7 @@ export function TeamManagement({ members, currentUserId }: Props) {
 
       {/* Reset password modal */}
       <SlideOver open={!!resetMember} onClose={() => setResetMember(null)} title={`Reset Password — ${resetMember?.full_name}`}>
-        <div className="space-y-4 px-6 py-5">
+        <div className="space-y-4 px-4 py-5 sm:px-6">
           {error && (
             <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
               {error}

@@ -15,6 +15,8 @@ import { ColumnVisibilityMenu } from '@/components/ui/column-visibility-menu'
 import { ResizableSortableTh } from '@/components/ui/resizable-sortable-th'
 import { RowHoverPreview, RowHoverPreviewProvider } from '@/components/ui/row-hover-preview'
 import { DataTable, dataTableCellClass } from '@/components/ui/data-table'
+import { MobileCard, MobileCardList } from '@/components/ui/mobile-card-list'
+import { MobileSortSelect } from '@/components/ui/mobile-sort-select'
 import { useTablePrefs, type TableColumnDef } from '@/hooks/use-table-prefs'
 import { formatRelativeTime } from '@/lib/utils/format'
 import { cn } from '@/lib/utils/cn'
@@ -143,6 +145,12 @@ export function ClientsTable({
               <option value="inactive">Inactive</option>
               <option value="churned">Churned</option>
             </select>
+            <MobileSortSelect
+              columns={CLIENT_COLUMNS}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onSort={handleSort}
+            />
             <ColumnVisibilityMenu
               columns={CLIENT_COLUMNS}
               visible={prefs.visible}
@@ -158,7 +166,48 @@ export function ClientsTable({
         }
       />
 
-      <div className="hub-card min-w-0 overflow-hidden p-0">
+      <MobileCardList
+        isEmpty={sorted.length === 0}
+        empty={
+          clients.length === 0
+            ? 'No clients yet. Add your first client to get started.'
+            : 'No clients match your filters.'
+        }
+      >
+        {sorted.map((c) => {
+          const st = statusConfig[c.status] ?? statusConfig.inactive
+          return (
+            <MobileCard
+              key={c.id}
+              href={`/app/clients/${c.id}`}
+              title={c.company_name}
+              badge={
+                <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', st.cls)}>
+                  {st.label}
+                </span>
+              }
+              meta={[
+                { label: 'Contact', value: c.primary_contact },
+                { label: 'Plan', value: c.plan_name },
+                { label: 'Fee', value: formatRecurringFee(c.monthly_fee, c.billing_cycle) },
+                { label: 'Activity', value: formatRelativeTime(c.updated_at) },
+              ]}
+              actions={
+                <DeleteRecordButton
+                  iconOnly
+                  title="Delete client"
+                  message={`Delete "${c.company_name}"? Projects, invoices, documents, and contacts for this client will also be deleted. Converted leads will be unlinked. This cannot be undone.`}
+                  confirmLabel="Delete Client"
+                  buttonLabel={`Delete ${c.company_name}`}
+                  onDelete={() => deleteClientAction(c.id)}
+                />
+              }
+            />
+          )
+        })}
+      </MobileCardList>
+
+      <div className="hub-card hidden min-w-0 overflow-hidden p-0 md:block">
         <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
           <RowHoverPreviewProvider>
             <DataTable columns={visibleColumns} widthFor={widthFor}>
