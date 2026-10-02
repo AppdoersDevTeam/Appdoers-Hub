@@ -660,7 +660,7 @@ function CompareCard({
   )
 
   return (
-    <View style={styles.compareCard} wrap={false}>
+    <View style={styles.compareCard}>
       <Text style={styles.compareLabel}>{label}</Text>
       <View style={styles.compareRow}>
         <Text style={styles.compareRowLabel}>This month</Text>
@@ -683,7 +683,7 @@ function CompareCard({
 function TaskCard({ task }: { task: RecapStatsTask }) {
   const status = STATUS_LABELS[task.status] ?? task.status
   return (
-    <View style={styles.taskCard} wrap={false}>
+    <View style={styles.taskCard}>
       <View style={{ flex: 1 }}>
         <Text style={styles.taskTitle}>{task.title}</Text>
         <Text style={styles.taskSub}>{[status, task.projectName].filter(Boolean).join(' · ')}</Text>
@@ -699,7 +699,7 @@ function TaskCard({ task }: { task: RecapStatsTask }) {
 
 function WorkItemCard({ item }: { item: RecapWorkItem }) {
   return (
-    <View style={styles.taskCard} wrap={false}>
+    <View style={styles.taskCard}>
       <View style={{ flex: 1 }}>
         <Text style={styles.taskTitle}>{item.description}</Text>
       </View>
@@ -712,10 +712,21 @@ function CategoryHeader({ name, count, hours }: { name: string; count: number; h
   const parts = [`${count} ${count === 1 ? 'item' : 'items'}`]
   if (hours && hours > 0) parts.push(formatHours(hours))
   return (
-    <View style={[styles.categoryHeader, { borderBottomColor: meta.color }]} wrap={false}>
+    <View style={[styles.categoryHeader, { borderBottomColor: meta.color }]}>
       <CategoryIconBadge name={name} />
       <Text style={styles.categoryTitle}>{meta.label}</Text>
       <Text style={styles.categoryMeta}>{parts.join(' · ')}</Text>
+    </View>
+  )
+}
+
+function TaskTableRow({ task }: { task: RecapStatsTask }) {
+  return (
+    <View style={styles.tableRow}>
+      <Text style={[styles.td, styles.colTask]}>{task.title}</Text>
+      <Text style={[styles.td, styles.colArea]}>{categoryMeta(task.category).label}</Text>
+      <Text style={[styles.td, styles.colStatus]}>{STATUS_LABELS[task.status] ?? task.status}</Text>
+      <Text style={[styles.td, styles.colHours]}>{formatHours(task.hours)}</Text>
     </View>
   )
 }
@@ -727,9 +738,10 @@ function pairs<T>(items: T[]): T[][] {
 }
 
 /** One row of two cards. Explicit rows page cleanly; wrapped flex grids do not. */
+/** One row of two cards, placed inside an unbreakable block (never itself unbreakable). */
 function CardRow({ cards }: { cards: React.ReactNode[] }) {
   return (
-    <View style={styles.cardRow} wrap={false}>
+    <View style={styles.cardRow}>
       {cards}
       {cards.length === 1 ? <View style={{ width: '49%' }} /> : null}
     </View>
@@ -800,7 +812,7 @@ function StatusRing({ tasks }: { tasks: RecapStatsTask[] }) {
   let angle = 0
 
   return (
-    <View style={styles.statusCard} wrap={false}>
+    <View style={styles.statusCard}>
       <View style={{ width: size, height: size }}>
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <Circle cx={c} cy={c} r={(outer + inner) / 2} stroke="#F5F5F5" strokeWidth={outer - inner} fill="none" />
@@ -857,7 +869,7 @@ function StatusRing({ tasks }: { tasks: RecapStatsTask[] }) {
 
 function ResponseCard({ turnaround }: { turnaround: NonNullable<RecapStats['turnaround']> }) {
   return (
-    <View style={[styles.statusCard, { flexDirection: 'column', alignItems: 'flex-start' }]} wrap={false}>
+    <View style={[styles.statusCard, { flexDirection: 'column', alignItems: 'flex-start' }]}>
       <View style={styles.infoTitleRow}>
         <IconClock color={TEAL_DARK} size={20} />
         <Text style={styles.infoTitle}>Response time</Text>
@@ -1308,9 +1320,10 @@ export function RecapPDFDocument({
           </View>
         ) : null}
 
-        {hasWork ? (
-          <View style={styles.section}>
-            {(tasks.length > 0
+        {/* Work completed is emitted as flat page-level blocks: react-pdf only moves an
+            unbreakable block to the next page reliably when it is a direct child of the page. */}
+        {hasWork
+          ? (tasks.length > 0
               ? groupBy(tasks, (t) => t.category).map(([category, items]) => ({
                   category,
                   header: (
@@ -1327,24 +1340,27 @@ export function RecapPDFDocument({
                   header: <CategoryHeader name={category} count={items.length} />,
                   cards: items.map((item, i) => <WorkItemCard key={`${category}-${i}`} item={item} />),
                 }))
-            ).map((group, groupIndex) => {
+            ).flatMap((group, groupIndex) => {
               const rows = pairs(group.cards)
-              return (
-                <View key={group.category} style={{ marginBottom: 8 }}>
-                  {/* Heading, category header and first row stay together; later rows page individually. */}
-                  <View wrap={false}>
-                    {groupIndex === 0 ? <Text style={styles.h2}>Work completed</Text> : null}
-                    {group.header}
-                    {rows[0] ? <CardRow cards={rows[0]} /> : null}
+              return [
+                <View
+                  key={`${group.category}-head`}
+                  style={{ marginTop: groupIndex === 0 ? 22 : 8 }}
+                  wrap={false}
+                >
+                  {groupIndex === 0 ? <Text style={styles.h2}>Work completed</Text> : null}
+                  {group.header}
+                  {rows[0] ? <CardRow cards={rows[0]} /> : null}
+                </View>,
+                ...rows.slice(1).map((row, i) => (
+                  <View key={`${group.category}-row-${i}`} style={styles.cardRow} wrap={false}>
+                    {row}
+                    {row.length === 1 ? <View style={{ width: '49%' }} /> : null}
                   </View>
-                  {rows.slice(1).map((row, i) => (
-                    <CardRow key={`${group.category}-row-${i}`} cards={row} />
-                  ))}
-                </View>
-              )
-            })}
-          </View>
-        ) : null}
+                )),
+              ]
+            })
+          : null}
 
         {hasComingNext ? (
           <View style={styles.section} wrap={false}>
@@ -1355,30 +1371,32 @@ export function RecapPDFDocument({
           </View>
         ) : null}
 
-        {tasks.length > 0 ? (
-          <View style={styles.section}>
-            <View wrap={false}>
-              <Text style={styles.h2}>Full task list</Text>
-              <Text style={[styles.muted, { marginBottom: 8 }]}>
-                All tasks worked on during the period, with hours logged.
-              </Text>
-              <View style={styles.tableHeader}>
-                <Text style={[styles.th, styles.colTask]}>Task</Text>
-                <Text style={[styles.th, styles.colArea]}>Area</Text>
-                <Text style={[styles.th, styles.colStatus]}>Status</Text>
-                <Text style={[styles.th, styles.colHours]}>Hours</Text>
-              </View>
-            </View>
-            {tasks.map((task, i) => (
-              <View key={`row-${i}`} style={styles.tableRow} wrap={false}>
-                <Text style={[styles.td, styles.colTask]}>{task.title}</Text>
-                <Text style={[styles.td, styles.colArea]}>{categoryMeta(task.category).label}</Text>
-                <Text style={[styles.td, styles.colStatus]}>{STATUS_LABELS[task.status] ?? task.status}</Text>
-                <Text style={[styles.td, styles.colHours]}>{formatHours(task.hours)}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
+        {/* Flat page-level blocks so react-pdf paginates the table reliably. */}
+        {tasks.length > 0
+          ? [
+              <View key="task-list-head" style={styles.section} wrap={false}>
+                <Text style={styles.h2}>Full task list</Text>
+                <Text style={[styles.muted, { marginBottom: 8 }]}>
+                  All tasks worked on during the period, with hours logged.
+                </Text>
+                <View style={styles.tableHeader}>
+                  <Text style={[styles.th, styles.colTask]}>Task</Text>
+                  <Text style={[styles.th, styles.colArea]}>Area</Text>
+                  <Text style={[styles.th, styles.colStatus]}>Status</Text>
+                  <Text style={[styles.th, styles.colHours]}>Hours</Text>
+                </View>
+                <TaskTableRow task={tasks[0]} />
+              </View>,
+              ...tasks.slice(1).map((task, i) => (
+                <View key={`row-${i}`} style={styles.tableRow} wrap={false}>
+                  <Text style={[styles.td, styles.colTask]}>{task.title}</Text>
+                  <Text style={[styles.td, styles.colArea]}>{categoryMeta(task.category).label}</Text>
+                  <Text style={[styles.td, styles.colStatus]}>{STATUS_LABELS[task.status] ?? task.status}</Text>
+                  <Text style={[styles.td, styles.colHours]}>{formatHours(task.hours)}</Text>
+                </View>
+              )),
+            ]
+          : null}
 
         <View style={styles.section} wrap={false}>
           <View style={styles.thanks}>
