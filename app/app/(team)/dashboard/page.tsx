@@ -17,6 +17,8 @@ import { TeamHoursChart } from '@/components/team/dashboard/team-hours-chart'
 import { OverdueTasksPanel } from '@/components/team/dashboard/overdue-tasks-panel'
 import { FollowUpsPanel } from '@/components/team/dashboard/follow-ups-panel'
 import { ProjectHealthPanel } from '@/components/team/dashboard/project-health-panel'
+import { FeedbackRoundsPanel } from '@/components/team/dashboard/feedback-rounds-panel'
+import { getFeedbackRoundItems } from '@/lib/website-review/dashboard'
 import {
   formatCurrency,
   formatMonthDay,
@@ -50,9 +52,10 @@ export default async function DashboardPage({
 }) {
   const { period: periodParam } = await searchParams
   const supabase = await createClient()
-  const [{ data: settingRows }, metrics] = await Promise.all([
+  const [{ data: settingRows }, metrics, feedbackRounds] = await Promise.all([
     supabase.from('settings').select('key, value').in('key', ['outbound_links', 'company']),
     getDashboardAnalytics(periodParam),
+    getFeedbackRoundItems(supabase),
   ])
 
   const outboundSettings = settingRows?.find((row) => row.key === 'outbound_links')?.value as
@@ -194,6 +197,7 @@ export default async function DashboardPage({
         />
         <FollowUpsPanel items={metrics.followUpItems} />
         <ProjectHealthPanel items={metrics.projectHealthItems} />
+        <FeedbackRoundsPanel items={feedbackRounds} />
       </div>
       </DashboardSection>
 

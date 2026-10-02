@@ -79,6 +79,7 @@ export type FileFolder =
   | 'deliverables'
   | 'invoices'
   | 'misc'
+  | 'website_reviews'
 
 export type NoteType = 'general' | 'call' | 'meeting' | 'email' | 'decision' | 'internal'
 

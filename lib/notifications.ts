@@ -6,6 +6,7 @@ export type NotificationType =
   | 'contract_signed'
   | 'overdue'
   | 'note'
+  | 'review'
 
 export async function createNotifications(
   entries: {

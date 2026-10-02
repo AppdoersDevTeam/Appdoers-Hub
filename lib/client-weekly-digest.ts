@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { APP_TIMEZONE, formatHours, formatMonthDay } from '@/lib/utils/format'
 import { hubClientUrl, type SlackBlock } from '@/lib/slack'
+import { normalizePins, roundLabel } from '@/lib/website-review/types'
 
 const WEEKDAY_INDEX: Record<string, number> = {
   Mon: 0,
@@ -85,6 +86,35 @@ function relationTask(
 ): { id?: string; title?: string; status?: string } | null {
   if (Array.isArray(value)) return value[0] ?? null
   return value
+}
+
+/** One-line status of the client's latest website review round, or null when there is none. */
+async function websiteFeedbackLine(supabase: SupabaseClient, clientId: string): Promise<string | null> {
+  const { data: review } = await supabase
+    .from('website_reviews')
+    .select('id, round_number, status, sent_at, submitted_at')
+    .eq('client_id', clientId)
+    .order('round_number', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!review || review.status === 'draft') return null
+
+  const label = roundLabel(review.round_number)
+  if (review.status === 'sent' || review.status === 'in_progress' || review.status === 'reopened') {
+    const days = review.sent_at ? Math.floor((Date.now() - new Date(review.sent_at).getTime()) / 86_400_000) : 0
+    return `• ${label} sent ${days} day${days === 1 ? '' : 's'} ago — waiting on client feedback`
+  }
+
+  const { data: items } = await supabase.from('website_review_items').select('task_id, pins').eq('review_id', review.id)
+  const taskIds = (items ?? []).flatMap((item) => [
+    item.task_id as string | null,
+    ...normalizePins(item.pins).map((pin) => pin.task_id ?? null),
+  ]).filter((id): id is string => Boolean(id))
+  if (taskIds.length === 0) {
+    return `• ${label} feedback received${review.status === 'closed' ? ' (closed)' : ' — tasks not created yet'}`
+  }
+  const { count } = await supabase.from('tasks').select('id', { count: 'exact', head: true }).in('id', taskIds).eq('status', 'closed')
+  return `• ${label} feedback received — ${count ?? 0} of ${taskIds.length} changes done`
 }
 
 export interface ClientWeeklyDigest {
@@ -210,6 +240,14 @@ export async function buildClientWeeklyDigest(
     blocks.push({
       type: 'section',
       text: { type: 'mrkdwn', text: `*Also worked*\n${truncateList(alsoLines)}` },
+    })
+  }
+
+  const feedbackLine = await websiteFeedbackLine(supabase, client.id)
+  if (feedbackLine) {
+    blocks.push({
+      type: 'section',
+      text: { type: 'mrkdwn', text: `*Website feedback*\n${feedbackLine}` },
     })
   }
 

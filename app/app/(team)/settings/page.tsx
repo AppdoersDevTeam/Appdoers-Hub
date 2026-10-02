@@ -5,6 +5,7 @@ import { SettingsEditor } from '@/components/team/settings/settings-editor'
 import { TeamPermissions } from '@/components/team/settings/team-permissions'
 import { TeamManagement } from '@/components/team/settings/team-management'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -62,6 +63,17 @@ export default async function SettingsPage() {
           permissions: (m.permissions ?? {}) as Record<string, string>,
         }))}
       />
+
+      {/* Website review templates (editable by the whole team) */}
+      <div className="hub-card flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Website review templates</h2>
+          <p className="text-sm text-slate-500">Pages and sections new client feedback rounds start with, plus the client walkthrough video.</p>
+        </div>
+        <Link href="/app/review-templates" className="text-sm font-medium text-blue-600 hover:text-blue-700">
+          Manage templates →
+        </Link>
+      </div>
 
       {/* Service Catalog */}
       <div className="space-y-4">

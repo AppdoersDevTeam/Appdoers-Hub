@@ -24,10 +24,13 @@ import { cn } from '@/lib/utils/cn'
 import { resolveClientPlanDisplayName } from '@/lib/clients/plan-display'
 import { intakePublicUrl } from '@/lib/intake/token'
 import { mergeIntakeAnswers, type IntakeStatus } from '@/lib/intake/types'
+import { ClientReviewsTab } from '@/components/team/website-reviews/client-reviews-tab'
+import { loadClientReviews } from '@/lib/website-review/team'
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'intake', label: 'Intake' },
+  { key: 'reviews', label: 'Website review' },
   { key: 'projects', label: 'Projects' },
   { key: 'tasks', label: 'Tasks' },
   { key: 'proposals', label: 'Proposals' },
@@ -38,12 +41,12 @@ const TABS = [
 
 interface Props {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; review?: string; view?: string }>
 }
 
 export default async function ClientDetailPage({ params, searchParams }: Props) {
   const { id } = await params
-  const { tab: requestedTab = 'overview' } = await searchParams
+  const { tab: requestedTab = 'overview', review: requestedReview, view: requestedView } = await searchParams
   const tab = TABS.some((item) => item.key === requestedTab) ? requestedTab : 'overview'
   const supabase = await createClient()
 
@@ -128,6 +131,24 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
         .eq('client_id', id)
         .order('created_at', { ascending: false })
     : { data: null }
+
+  const reviewsTab = tab === 'reviews'
+    ? await (async () => {
+        const service = await createServiceClient()
+        const [data, { data: projects }, { data: templates }, { data: extraRound }] = await Promise.all([
+          loadClientReviews(service, id, requestedReview ?? null),
+          supabase.from('projects').select('id, name').eq('client_id', id).order('created_at', { ascending: false }),
+          supabase.from('review_templates').select('id, name, is_default').order('is_default', { ascending: false }).order('name'),
+          supabase.from('service_catalog').select('setup_fee').eq('plan_key', 'extra_feedback_round').maybeSingle(),
+        ])
+        return {
+          data,
+          projects: (projects ?? []) as { id: string; name: string }[],
+          templates: (templates ?? []) as { id: string; name: string; is_default: boolean }[],
+          extraRoundPrice: Number(extraRound?.setup_fee ?? 0),
+        }
+      })()
+    : null
 
   // Fetch projects only when on projects tab
   const { data: clientProjects } = tab === 'projects'
@@ -275,6 +296,18 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
           }
           answers={intakeAnswers}
           logoUrl={intakeLogoUrl}
+        />
+      )}
+      {tab === 'reviews' && reviewsTab && (
+        <ClientReviewsTab
+          key={reviewsTab.data.selected?.id ?? 'none'}
+          clientId={id}
+          data={reviewsTab.data}
+          projects={reviewsTab.projects}
+          team={(teamMembers ?? []) as { id: string; full_name: string }[]}
+          templates={reviewsTab.templates}
+          extraRoundPrice={reviewsTab.extraRoundPrice}
+          initialView={requestedView === 'feedback' || requestedView === 'sections' ? requestedView : null}
         />
       )}
       {tab === 'overview' && overviewStats && (
