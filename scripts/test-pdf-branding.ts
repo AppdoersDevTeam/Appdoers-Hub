@@ -152,7 +152,7 @@ async function main() {
   // Stress test: many tasks, to check page flow has no blank pages.
   const manyTasks = Array.from({ length: 30 }, (_, i) => ({
     id: `m${i}`,
-    title: `Website update number ${i + 1}`,
+    title: i % 3 === 0 ? `Courses follow-ups: perf, webhook resilience, first live purchase check ${i + 1}` : `Website update number ${i + 1}`,
     type: ['feature', 'bug', 'design', 'content', 'admin'][i % 5],
     status: i % 4 === 0 ? 'in_progress' : 'closed',
     isBillable: false,
@@ -174,6 +174,26 @@ async function main() {
       tasksCompleted: 22,
       phasesCompleted: [],
       tasks: manyTasks,
+      ytd: { tasksCompleted: 120, hoursLogged: 210, savings: 9800 },
+      account: {
+        planName: 'Full Website (48 months)',
+        renewalDate: '2029-05-01',
+        monthsRemaining: 32,
+        addOns: ['Online Stripe Setup', 'Standard Email (48 months) (x4)'],
+        domains: [
+          { domain: 'jornadadeinsights.com', sslStatus: 'active' },
+          { domain: 'journeyofinsights.com', sslStatus: 'active' },
+        ],
+      },
+      turnaround: { averageHours: 6.2, fastestHours: 0.2, fastestTitle: 'Website update number 2', count: 22 },
+      trend: [
+        { label: 'Apr', hours: 10, tasks: 8 },
+        { label: 'May', hours: 22, tasks: 15 },
+        { label: 'Jun', hours: 14, tasks: 9 },
+        { label: 'Jul', hours: 30, tasks: 20 },
+        { label: 'Aug', hours: 18, tasks: 11 },
+        { label: 'Sep', hours: 45, tasks: 22 },
+      ],
       entries: manyTasks.map((t, i) => ({ taskId: t.id, hours: 0.5 + (i % 3), date: `2026-09-${String((i % 28) + 1).padStart(2, '0')}`, isBillable: false })),
     }),
   })

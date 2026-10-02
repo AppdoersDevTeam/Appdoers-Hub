@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   },
   categoryTitle: { flex: 1, fontFamily: FONT_BOLD, fontSize: 11, color: BLACK, marginLeft: 8 },
   categoryMeta: { fontSize: 9, color: MUTED },
-  cardGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch' },
   taskCard: {
     width: '49%',
     backgroundColor: '#FAFAFA',
@@ -716,6 +716,22 @@ function CategoryHeader({ name, count, hours }: { name: string; count: number; h
       <CategoryIconBadge name={name} />
       <Text style={styles.categoryTitle}>{meta.label}</Text>
       <Text style={styles.categoryMeta}>{parts.join(' · ')}</Text>
+    </View>
+  )
+}
+
+function pairs<T>(items: T[]): T[][] {
+  const rows: T[][] = []
+  for (let i = 0; i < items.length; i += 2) rows.push(items.slice(i, i + 2))
+  return rows
+}
+
+/** One row of two cards. Explicit rows page cleanly; wrapped flex grids do not. */
+function CardRow({ cards }: { cards: React.ReactNode[] }) {
+  return (
+    <View style={styles.cardRow} wrap={false}>
+      {cards}
+      {cards.length === 1 ? <View style={{ width: '49%' }} /> : null}
     </View>
   )
 }
@@ -1294,42 +1310,39 @@ export function RecapPDFDocument({
 
         {hasWork ? (
           <View style={styles.section}>
-            {tasks.length > 0
-              ? groupBy(tasks, (t) => t.category).map(([category, items], index) => (
-                  <View key={category} style={{ marginBottom: 8 }}>
-                    <View wrap={false}>
-                      {index === 0 ? <Text style={styles.h2}>Work completed</Text> : null}
-                      <CategoryHeader
-                        name={category}
-                        count={items.length}
-                        hours={items.reduce((sum, t) => sum + t.hours, 0)}
-                      />
-                      <View style={styles.cardGrid}>
-                        {items.slice(0, 2).map((task, i) => (
-                          <TaskCard key={`${category}-first-${i}`} task={task} />
-                        ))}
-                      </View>
-                    </View>
-                    <View style={styles.cardGrid}>
-                      {items.slice(2).map((task, i) => (
-                        <TaskCard key={`${category}-${i}`} task={task} />
-                      ))}
-                    </View>
+            {(tasks.length > 0
+              ? groupBy(tasks, (t) => t.category).map(([category, items]) => ({
+                  category,
+                  header: (
+                    <CategoryHeader
+                      name={category}
+                      count={items.length}
+                      hours={items.reduce((sum, t) => sum + t.hours, 0)}
+                    />
+                  ),
+                  cards: items.map((task, i) => <TaskCard key={`${category}-${i}`} task={task} />),
+                }))
+              : groupBy(workCompleted, (w) => w.category || 'Other').map(([category, items]) => ({
+                  category,
+                  header: <CategoryHeader name={category} count={items.length} />,
+                  cards: items.map((item, i) => <WorkItemCard key={`${category}-${i}`} item={item} />),
+                }))
+            ).map((group, groupIndex) => {
+              const rows = pairs(group.cards)
+              return (
+                <View key={group.category} style={{ marginBottom: 8 }}>
+                  {/* Heading, category header and first row stay together; later rows page individually. */}
+                  <View wrap={false}>
+                    {groupIndex === 0 ? <Text style={styles.h2}>Work completed</Text> : null}
+                    {group.header}
+                    {rows[0] ? <CardRow cards={rows[0]} /> : null}
                   </View>
-                ))
-              : groupBy(workCompleted, (w) => w.category || 'Other').map(([category, items], index) => (
-                  <View key={category} style={{ marginBottom: 8 }}>
-                    <View wrap={false}>
-                      {index === 0 ? <Text style={styles.h2}>Work completed</Text> : null}
-                      <CategoryHeader name={category} count={items.length} />
-                    </View>
-                    <View style={styles.cardGrid}>
-                      {items.map((item, i) => (
-                        <WorkItemCard key={`${category}-${i}`} item={item} />
-                      ))}
-                    </View>
-                  </View>
-                ))}
+                  {rows.slice(1).map((row, i) => (
+                    <CardRow key={`${group.category}-row-${i}`} cards={row} />
+                  ))}
+                </View>
+              )
+            })}
           </View>
         ) : null}
 
