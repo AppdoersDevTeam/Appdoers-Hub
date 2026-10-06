@@ -333,6 +333,7 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
                 contract_months: client.contract_months ?? null,
                 subscription_start_date: client.subscription_start_date ?? null,
                 subscription_end_date: client.subscription_end_date ?? null,
+                is_partnership: client.is_partnership !== false,
               }}
             />
 
@@ -431,7 +432,6 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
                 billing_cycle: client.billing_cycle,
                 monthly_fee: Number(client.monthly_fee),
                 setup_fee: Number(client.setup_fee),
-                is_partnership: client.is_partnership !== false,
               }}
               catalogPlans={(catalogPlans ?? []).map((p) => ({
                 id: p.id,

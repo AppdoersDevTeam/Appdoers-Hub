@@ -17,6 +17,7 @@ export interface PartnershipClientInput {
 export interface PartnershipAddonInput {
   client_id: string
   monthly_fee: number
+  setup_fee?: number
 }
 
 export interface PartnershipSubInput {
@@ -85,10 +86,15 @@ export function computePartnershipProfit(input: {
   const year = (input.now ?? new Date()).getFullYear()
 
   const addonByClient = new Map<string, number>()
+  const addonSetupByClient = new Map<string, number>()
   for (const addon of input.addons) {
     addonByClient.set(
       addon.client_id,
       (addonByClient.get(addon.client_id) ?? 0) + (Number(addon.monthly_fee) || 0)
+    )
+    addonSetupByClient.set(
+      addon.client_id,
+      (addonSetupByClient.get(addon.client_id) ?? 0) + (Number(addon.setup_fee) || 0)
     )
   }
 
@@ -102,7 +108,9 @@ export function computePartnershipProfit(input: {
     )
     if (client.is_partnership) {
       const setupFeeThisYear =
-        startYear(client.subscription_start_date) === year ? Number(client.setup_fee) || 0 : 0
+        startYear(client.subscription_start_date) === year
+          ? (Number(client.setup_fee) || 0) + (addonSetupByClient.get(client.id) ?? 0)
+          : 0
       if (monthly > 0 || setupFeeThisYear > 0) {
         clients.push({ id: client.id, name: client.company_name, monthly, setupFeeThisYear })
       }

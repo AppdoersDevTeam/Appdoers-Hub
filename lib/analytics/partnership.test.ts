@@ -79,6 +79,16 @@ describe('computePartnershipProfit', () => {
     expect(result.yearlyShare).toBe((600 * 12 + 1000) / 2)
   })
 
+  it('includes add-on setup fees for clients that started this year', () => {
+    const result = computePartnershipProfit({
+      clients: [client({ setup_fee: 1000, subscription_start_date: '2026-02-01' })],
+      addons: [{ client_id: 'c1', monthly_fee: 0, setup_fee: 250 }],
+      subscriptions: [],
+      now: NOW,
+    })
+    expect(result.setupFeesThisYear).toBe(1250)
+  })
+
   it('keeps a setup-fee-only client in the list even with no recurring fee', () => {
     const result = computePartnershipProfit({
       clients: [client({ monthly_fee: 0, setup_fee: 900, subscription_start_date: '2026-08-01' })],

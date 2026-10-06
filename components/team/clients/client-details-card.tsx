@@ -30,6 +30,7 @@ interface ClientDetails {
   contract_months: number | null
   subscription_start_date: string | null
   subscription_end_date: string | null
+  is_partnership: boolean
 }
 
 function websiteUrl(value: string) {
@@ -84,6 +85,7 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
     status: client.status as ClientStatus,
     subscription_start_date: client.subscription_start_date ?? '',
     subscription_end_date: client.subscription_end_date ?? '',
+    is_partnership: client.is_partnership,
   })
   const [form, setForm] = useState(initialForm)
 
@@ -120,6 +122,7 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
         status: form.status,
         subscription_start_date: form.subscription_start_date || null,
         subscription_end_date: form.subscription_end_date || null,
+        is_partnership: form.is_partnership,
       })
       if (!result.success) {
         setError(result.error)
@@ -197,6 +200,20 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
               </select>
             </div>
           </div>
+          <label className="flex items-start gap-2 rounded-md border border-slate-200 px-3 py-2">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              checked={form.is_partnership}
+              onChange={(e) => setForm((prev) => ({ ...prev, is_partnership: e.target.checked }))}
+            />
+            <span>
+              <span className="block text-sm font-medium text-slate-900">Applies to Sara &amp; Fabiano</span>
+              <span className="block text-xs text-slate-500">
+                Untick if this is a Fabiano-only client. Shared billing is split 50/50 in Analytics.
+              </span>
+            </span>
+          </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Plan Start Date</label>
@@ -268,6 +285,20 @@ export function ClientDetailsCard({ client }: { client: ClientDetails }) {
           }
         />
         <InfoRow label="Status" value={statusBadge(client.status)} />
+        <InfoRow
+          label="Billing split"
+          value={
+            client.is_partnership ? (
+              <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+                Sara &amp; Fabiano
+              </span>
+            ) : (
+              <span className="rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700">
+                Fabiano only
+              </span>
+            )
+          }
+        />
         <InfoRow label="Client Since" value={formatDate(client.created_at)} />
         <InfoRow label="Payment Terms" value={`${client.payment_terms} days`} />
         <InfoRow

@@ -93,7 +93,7 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
           .eq('status', 'active')
     ),
 
-    supabase.from('client_services').select('client_id, monthly_fee'),
+    supabase.from('client_services').select('client_id, monthly_fee, setup_fee'),
   ])
 
   const allSubs: SubscriptionRow[] = (subsRes.data ?? []).map((row) => {
@@ -192,6 +192,7 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
     .map((row) => ({
       client_id: row.client_id as string,
       monthly_fee: Number(row.monthly_fee),
+      setup_fee: Number(row.setup_fee) || 0,
     }))
   const { mrr, payingClientCount } = aggregateClientMrr(activeClients, addons)
   const projectedArr = mrr * 12
