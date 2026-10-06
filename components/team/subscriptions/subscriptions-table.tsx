@@ -41,6 +41,7 @@ interface Subscription {
   notes: string | null
   client_id: string | null
   client_name: string | null
+  is_partnership: boolean
 }
 
 const CATEGORIES = ['Hosting', 'AI', 'Design', 'Dev Tools', 'Communication', 'CRM', 'Marketing', 'Finance', 'Other']
@@ -96,6 +97,7 @@ function formatCost(cost: number, cycle: string) {
 const emptyForm: SubscriptionInput = {
   name: '', category: 'Other', plan_name: '', billing_cycle: 'monthly',
   cost: 0, renewal_date: '', status: 'active', url: '', notes: '', client_id: null,
+  is_partnership: true,
 }
 
 function assigneeFromForm(clientId: string | null | undefined, clients: HubClientOption[]) {
@@ -104,6 +106,10 @@ function assigneeFromForm(clientId: string | null | undefined, clients: HubClien
     client_id: clientId,
     client_name: clients.find(client => client.id === clientId)?.company_name ?? null,
   }
+}
+
+function FabianoOnlyBadge() {
+  return <span className="rounded px-1.5 py-0.5 text-xs bg-violet-50 text-violet-700">Fabiano only</span>
 }
 
 function AssigneeBadge({ clientName }: { clientName: string | null }) {
@@ -145,6 +151,7 @@ export function SubscriptionsTable({
       billing_cycle: normalizeSubscriptionBillingCycle(s.billing_cycle),
       cost: s.cost, renewal_date: s.renewal_date ?? '', status: s.status as 'active' | 'paused' | 'cancelled',
       url: s.url ?? '', notes: s.notes ?? '', client_id: s.client_id,
+      is_partnership: s.is_partnership,
     })
     setShowForm(true)
   }
@@ -179,6 +186,7 @@ export function SubscriptionsTable({
           ...form,
           cost: Number(form.cost),
           renewal_date: form.renewal_date || null,
+          is_partnership: form.is_partnership ?? true,
           ...assignee,
         } : s))
       } else {
@@ -191,6 +199,7 @@ export function SubscriptionsTable({
           renewal_date: form.renewal_date || null,
           url: form.url || null,
           notes: form.notes || null,
+          is_partnership: form.is_partnership ?? true,
           ...assignee,
         }, ...prev])
       }
@@ -316,7 +325,15 @@ export function SubscriptionsTable({
             }
             meta={[
               { label: 'Category', value: s.category },
-              { label: 'For', value: <AssigneeBadge clientName={s.client_name} /> },
+              {
+                label: 'For',
+                value: (
+                  <span className="inline-flex flex-wrap gap-1">
+                    <AssigneeBadge clientName={s.client_name} />
+                    {!s.is_partnership && <FabianoOnlyBadge />}
+                  </span>
+                ),
+              },
               { label: 'Plan', value: s.plan_name || null },
               { label: 'Cost', value: <span className="font-mono">{formatCost(s.cost, s.billing_cycle)}</span> },
               { label: 'Renewal', value: s.renewal_date ? <RenewalBadge dateStr={s.renewal_date} /> : null },
@@ -384,7 +401,10 @@ export function SubscriptionsTable({
                     <span className="rounded px-1.5 py-0.5 text-xs bg-slate-100 text-slate-500">{s.category}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <AssigneeBadge clientName={s.client_name} />
+                    <div className="flex flex-wrap gap-1">
+                      <AssigneeBadge clientName={s.client_name} />
+                      {!s.is_partnership && <FabianoOnlyBadge />}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-slate-600">{s.plan_name || '—'}</td>
                   <td className="px-4 py-3 font-mono text-slate-900">{formatCost(s.cost, s.billing_cycle)}</td>
@@ -451,6 +471,19 @@ export function SubscriptionsTable({
               Use company-wide for shared tools. Pick a client when this subscription is for them only.
             </p>
           </div>
+
+          <label className="flex items-start gap-2 rounded-md border border-slate-200 px-3 py-2">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              checked={form.is_partnership ?? true}
+              onChange={e => setForm(f => ({ ...f, is_partnership: e.target.checked }))}
+            />
+            <span>
+              <span className="block text-sm font-medium text-slate-900">Applies to Sara &amp; Fabiano</span>
+              <span className="block text-xs text-slate-500">Untick if this is a Fabiano-only cost. Shared costs are split 50/50 in Analytics.</span>
+            </span>
+          </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>

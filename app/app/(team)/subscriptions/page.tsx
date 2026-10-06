@@ -37,7 +37,7 @@ export default async function SubscriptionsPage() {
   ] = await Promise.all([
     supabase
       .from('agency_subscriptions')
-      .select('id, name, category, plan_name, billing_cycle, cost, renewal_date, status, url, notes, client_id, clients(company_name)')
+      .select('id, name, category, plan_name, billing_cycle, cost, renewal_date, status, url, notes, client_id, is_partnership, clients(company_name)')
       .order('status')
       .order('name'),
     supabase
@@ -113,6 +113,7 @@ export default async function SubscriptionsPage() {
             notes: s.notes as string | null,
             client_id,
             client_name: client?.company_name ?? (client_id ? clientNameById.get(client_id) ?? null : null),
+            is_partnership: s.is_partnership !== false,
           }
         })}
         canEdit={can(effective, 'subscriptions', 'edit')}

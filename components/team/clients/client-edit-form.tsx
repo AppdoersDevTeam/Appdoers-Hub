@@ -43,6 +43,7 @@ interface ClientRecord {
   setup_upfront: number
   payment_terms: number
   status: string
+  is_partnership: boolean
 }
 
 const labelClass = 'block text-xs font-medium text-slate-500 mb-1'
@@ -102,6 +103,7 @@ export function ClientEditForm({
     monthly_fee: client.monthly_fee,
     setup_fee: client.setup_fee,
     setup_upfront: client.setup_upfront ?? 0,
+    is_partnership: client.is_partnership,
   })
 
   const [addons, setAddons] = useState<Record<string, AddonSelection>>(() =>
@@ -227,6 +229,7 @@ export function ClientEditForm({
         monthly_fee: form.monthly_fee,
         setup_fee: form.setup_fee,
         setup_upfront: form.setup_upfront,
+        is_partnership: form.is_partnership,
       })
       if (!result.success) {
         setError(result.error)
@@ -351,6 +354,20 @@ export function ClientEditForm({
             </p>
           )}
         </div>
+        <label className="flex items-start gap-2 rounded-md border border-slate-200 px-3 py-2">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            checked={form.is_partnership}
+            onChange={(e) => setForm((prev) => ({ ...prev, is_partnership: e.target.checked }))}
+          />
+          <span>
+            <span className="block text-sm font-medium text-slate-900">Applies to Sara &amp; Fabiano</span>
+            <span className="block text-xs text-slate-500">
+              Untick if this is a Fabiano-only client. Shared billing is split 50/50 in Analytics.
+            </span>
+          </span>
+        </label>
         <div>
           <label className={labelClass}>Additional Services</label>
           <div className="space-y-3 rounded-md border border-slate-200 p-3">

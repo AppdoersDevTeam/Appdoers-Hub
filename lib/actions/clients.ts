@@ -44,6 +44,7 @@ export interface CreateClientInput {
   setup_upfront?: number
   payment_terms: number
   status: 'active' | 'inactive' | 'churned'
+  is_partnership?: boolean
 }
 
 export async function createClientAction(
@@ -85,6 +86,7 @@ export async function updateClientAction(
 
     revalidatePath(`/app/clients/${id}`)
     revalidatePath('/app/clients')
+    revalidatePath('/app/analytics')
     return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: String(err) }

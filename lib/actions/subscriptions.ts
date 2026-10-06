@@ -23,6 +23,7 @@ export interface SubscriptionInput {
   url?: string
   notes?: string
   client_id?: string | null
+  is_partnership?: boolean
 }
 
 function validateSubscriptionInput(input: SubscriptionInput): string | null {
@@ -55,6 +56,7 @@ export async function createSubscriptionAction(
         url: input.url || null,
         notes: input.notes || null,
         client_id: input.client_id || null,
+        is_partnership: input.is_partnership ?? true,
       })
       .select('id')
       .single()
@@ -90,6 +92,7 @@ export async function updateSubscriptionAction(
         url: input.url || null,
         notes: input.notes || null,
         client_id: input.client_id || null,
+        is_partnership: input.is_partnership ?? true,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

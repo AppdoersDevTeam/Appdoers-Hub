@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { aggregateClientMrr } from '@/lib/analytics/mrr'
+import { computePartnershipProfit } from '@/lib/analytics/partnership'
 import { isInternalClient } from '@/lib/clients/internal'
 import { selectWithInternalClientFallback } from '@/lib/clients/stats-query'
 import {
@@ -18,6 +19,7 @@ interface SubscriptionRow {
   client_id: string | null
   client_name: string | null
   is_internal_client: boolean
+  is_partnership: boolean
 }
 
 function safeDivide(numerator: number, denominator: number): number | null {
@@ -64,13 +66,13 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
         supabase
           .from('agency_subscriptions')
           .select(
-            'id, name, category, billing_cycle, cost, status, client_id, clients(company_name, is_internal)'
+            'id, name, category, billing_cycle, cost, status, client_id, is_partnership, clients(company_name, is_internal)'
           ),
       () =>
         supabase
           .from('agency_subscriptions')
           .select(
-            'id, name, category, billing_cycle, cost, status, client_id, clients(company_name)'
+            'id, name, category, billing_cycle, cost, status, client_id, is_partnership, clients(company_name)'
           )
     ),
 
@@ -78,12 +80,16 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
       () =>
         supabase
           .from('clients')
-          .select('id, company_name, monthly_fee, billing_cycle, status, is_internal')
+          .select(
+            'id, company_name, monthly_fee, billing_cycle, setup_fee, subscription_start_date, status, is_internal, is_partnership'
+          )
           .eq('status', 'active'),
       () =>
         supabase
           .from('clients')
-          .select('id, company_name, monthly_fee, billing_cycle, status')
+          .select(
+            'id, company_name, monthly_fee, billing_cycle, setup_fee, subscription_start_date, status, is_partnership'
+          )
           .eq('status', 'active')
     ),
 
@@ -108,6 +114,7 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
       client_id,
       client_name: client.company_name,
       is_internal_client: client.is_internal,
+      is_partnership: row.is_partnership !== false,
     }
   })
   const activeSubs = allSubs.filter((s) => s.status === 'active')
@@ -172,8 +179,12 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
     })
     .map((c) => ({
       id: c.id as string,
+      company_name: (c.company_name as string | null) ?? 'Unnamed client',
       monthly_fee: Number(c.monthly_fee),
       billing_cycle: (c.billing_cycle as string | null) ?? null,
+      setup_fee: Number(c.setup_fee) || 0,
+      subscription_start_date: (c.subscription_start_date as string | null) ?? null,
+      is_partnership: c.is_partnership !== false,
     }))
   const externalClientIds = new Set(activeClients.map((c) => c.id))
   const addons = (addonsRes.data ?? [])
@@ -188,6 +199,12 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
   const runRateAfterCompanyTools = mrr - companyMonthlySpend
   const toolMarginPercent =
     mrr > 0 ? ((mrr - companyMonthlySpend) / mrr) * 100 : null
+
+  const partnership = computePartnershipProfit({
+    clients: activeClients,
+    addons,
+    subscriptions: activeSubs,
+  })
 
   return {
     monthlySpend,
@@ -207,5 +224,6 @@ export async function getFinanceAnalytics(): Promise<FinanceAnalytics> {
     avgMrrPerPayingClient,
     runRateAfterCompanyTools,
     toolMarginPercent,
+    partnership,
   }
 }

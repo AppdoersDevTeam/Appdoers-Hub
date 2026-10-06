@@ -114,6 +114,7 @@ export interface Client {
   payment_terms: number
   status: 'active' | 'inactive' | 'churned'
   is_internal: boolean
+  is_partnership: boolean
   slack_channel_id: string | null
   slack_channel_name: string | null
   slack_canvas_id: string | null
@@ -297,6 +298,7 @@ export interface AgencySubscription {
   url: string | null
   notes: string | null
   client_id: string | null
+  is_partnership: boolean
   created_at: string
   updated_at: string
 }

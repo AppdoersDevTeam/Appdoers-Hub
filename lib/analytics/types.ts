@@ -1,3 +1,5 @@
+import type { PartnershipProfit } from './partnership'
+
 export interface CategorySpend {
   category: string
   monthly: number
@@ -35,4 +37,6 @@ export interface FinanceAnalytics {
 
   runRateAfterCompanyTools: number
   toolMarginPercent: number | null
+
+  partnership: PartnershipProfit
 }

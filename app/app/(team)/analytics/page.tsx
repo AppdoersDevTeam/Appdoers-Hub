@@ -13,6 +13,7 @@ import { KpiSection, type KpiCardData } from '@/components/team/dashboard/kpi-gr
 import { SpendByCategoryChart } from '@/components/team/analytics/spend-by-category-chart'
 import { RevenueVsCostChart } from '@/components/team/analytics/revenue-vs-cost-chart'
 import { TopToolsTable } from '@/components/team/analytics/top-tools-table'
+import { PartnershipProfitCard } from '@/components/team/analytics/partnership-profit-card'
 import { getFinanceAnalytics } from '@/lib/analytics/finance'
 import { createClient } from '@/lib/supabase/server'
 import { getEffectivePermissions, can } from '@/lib/permissions'
@@ -60,6 +61,40 @@ export default async function AnalyticsPage() {
   }
 
   const metrics = await getFinanceAnalytics()
+
+  const { partnership } = metrics
+  const partnershipKpis: KpiCardData[] = [
+    {
+      label: 'Shared Clients',
+      value: formatCurrency(partnership.monthlyRevenue),
+      sub: `${partnership.clients.length} client${partnership.clients.length !== 1 ? 's' : ''} · plan + add-ons per month`,
+      icon: DollarSign,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50',
+    },
+    {
+      label: 'Shared Expenses',
+      value: formatCurrency(partnership.monthlyExpenses),
+      sub: `${partnership.subscriptions.length} subscription${partnership.subscriptions.length !== 1 ? 's' : ''} per month`,
+      icon: TrendingDown,
+      color: 'text-red-600',
+      bg: 'bg-red-50',
+    },
+    {
+      label: 'Profit / Month',
+      value: formatCurrency(partnership.monthlyProfit),
+      sub: 'Clients − expenses',
+      ...runRateTone(partnership.monthlyProfit),
+    },
+    {
+      label: 'Each (50%) / Month',
+      value: formatCurrency(partnership.monthlyShare),
+      sub: `Sara & Fabiano · ${formatCurrency(partnership.yearlyShare)} each this year`,
+      icon: Users,
+      color: 'text-indigo-600',
+      bg: 'bg-indigo-50',
+    },
+  ]
 
   const revenueKpis: KpiCardData[] = [
     {
@@ -135,6 +170,15 @@ export default async function AnalyticsPage() {
         title="Analytics"
         subtitle="Recurring run-rate, tool spend, and company overhead — not invoiced P&L"
       />
+
+      <div className="space-y-3">
+        <KpiSection
+          title="Sara & Fabiano"
+          description="Shared clients minus shared subscriptions, split 50/50. Fabiano-only items are excluded."
+          cards={partnershipKpis}
+        />
+        <PartnershipProfitCard data={partnership} />
+      </div>
 
       <div className="space-y-6">
         <KpiSection
